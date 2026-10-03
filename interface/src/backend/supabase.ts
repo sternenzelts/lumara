@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Backend, CueTopic, Me, Player, Presence, Settings, UserId, Unsubscribe } from './types';
+import { createSmoother } from './peerSmoothing';
 import { toAttendance, toFragment, toPlayer, toSession, toSettings, toVote, toVow } from './supabaseRows';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -40,9 +41,18 @@ export function createSupabaseBackend(sb: SupabaseClient, me: Me): Backend {
   const positions: Record<UserId, Presence> = {}; let online = new Set<UserId>();
   let peers: Record<UserId, Presence> = {}; let lastSent = 0; let lastKey = '';
   let joined = false; let lastPresence: Presence | null = null;
+  const smoother = createSmoother(); let frame: number | null = null;
+  const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
   const publishPeers = () => {
-    peers = Object.fromEntries(Object.entries(positions).filter(([id]) => id !== me.id && online.has(id)));
+    const drawn = smoother.sample(now());
+    peers = Object.fromEntries(Object.entries(drawn).filter(([id]) => id !== me.id && online.has(id)));
     peerSubs.forEach(fn => fn({ ...peers }));
+  };
+  // Redraw every frame while someone is still sliding between samples; stop once everyone has settled.
+  const animate = () => {
+    if (frame !== null || typeof requestAnimationFrame === 'undefined') return;
+    const step = () => { publishPeers(); frame = smoother.settled(now()) ? null : requestAnimationFrame(step); };
+    frame = requestAnimationFrame(step);
   };
   const sendPos = (p: Presence) => { lastSent = Date.now(); lastKey = JSON.stringify(p); void liveCh!.send({ type: 'broadcast', event: 'pos', payload: { from: me.id, p } }); };
   const openLive = () => {
@@ -51,11 +61,11 @@ export function createSupabaseBackend(sb: SupabaseClient, me: Me): Backend {
       ch.on('broadcast' as any, { event }, ({ payload }: any) => cueSubs.get(event)?.forEach(fn => fn(payload.data, payload.from))));
     ch.on('broadcast' as any, { event: 'pos' }, ({ payload }: any) => {
       if (!payload?.from || payload.from === me.id) return;
-      positions[payload.from] = payload.p; online.add(payload.from); publishPeers();
+      positions[payload.from] = payload.p; online.add(payload.from); smoother.add(payload.from, payload.p, now()); publishPeers(); animate();
     });
     ch.on('presence' as any, { event: 'sync' }, () => {
       online = new Set(Object.entries(ch.presenceState() as Record<string, unknown[]>).filter(([, v]) => v.length).map(([k]) => k));
-      for (const id of Object.keys(positions)) if (!online.has(id)) delete positions[id];
+      for (const id of Object.keys(positions)) if (!online.has(id)) { delete positions[id]; smoother.forget(id); }
       publishPeers();
     });
     ch.subscribe((status: string) => {
