@@ -11,10 +11,18 @@ export function createSupabaseBackend(sb: SupabaseClient, me: Me): Backend {
   const live = <T,>(tables: string[], load: () => Promise<T>, cb: (v: T) => void): Unsubscribe => {
     let alive = true; let seq = 0;
     const run = async () => { const mine = ++seq; try { const v = await load(); if (alive && mine === seq) cb(v); } catch (e) { console.error(e); } };
-    const ch = sb.channel(`watch-${++n}-${Math.random().toString(36).slice(2, 8)}`);
-    tables.forEach(table => ch.on('postgres_changes' as any, { event: '*', schema: 'public', table }, () => void run()));
-    ch.subscribe((status: string) => { if (status === 'SUBSCRIBED') void run(); });
-    return () => { alive = false; sb.removeChannel(ch); };
+    const open = () => {
+      const ch = sb.channel(`watch-${++n}-${Math.random().toString(36).slice(2, 8)}`);
+      tables.forEach(table => ch.on('postgres_changes' as any, { event: '*', schema: 'public', table }, () => void run()));
+      ch.subscribe((status: string) => {
+        if (status === 'SUBSCRIBED') { void run(); return; }
+        if (alive && (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT')) setTimeout(() => { if (!alive || current !== ch) return; void sb.removeChannel(ch); current = open(); }, 1500);
+      });
+      return ch;
+    };
+    let current = open();
+    void run();   // first load straight away, even if the live channel is slow to join
+    return () => { alive = false; sb.removeChannel(current); };
   };
   const loadPlayer = async (userId: string): Promise<Player | null> => {
     const [p] = await rows(sb.from('players').select('*').eq('user_id', userId)); if (!p) return null;
@@ -26,15 +34,27 @@ export function createSupabaseBackend(sb: SupabaseClient, me: Me): Backend {
   const cueSubs = new Map<string, Set<(d: unknown, from: UserId) => void>>();
   const peerSubs = new Set<(p: Record<UserId, Presence>) => void>();
   let peers: Record<UserId, Presence> = {}; let lastSent = 0;
-  const liveCh = sb.channel('lumara-live', { config: { broadcast: { self: false }, presence: { key: me.id } } });
-  (['pull_reveal', 'reaction', 'stage_cue', 'skill', 'say'] as const).forEach(event =>
-    liveCh.on('broadcast' as any, { event }, ({ payload }: any) => cueSubs.get(event)?.forEach(fn => fn(payload.data, payload.from))));
-  liveCh.on('presence' as any, { event: 'sync' }, () => {
-    const state = liveCh.presenceState() as Record<string, any[]>;
-    peers = Object.fromEntries(Object.entries(state).filter(([k, v]) => k !== me.id && v.length).map(([k, v]) => [k, v[v.length - 1]]));
-    peerSubs.forEach(fn => fn({ ...peers }));
-  });
-  liveCh.subscribe();
+  let joined = false; let lastPresence: Presence | null = null;
+  // The first join can fail ("transport failure"); a failed channel never recovers on its own, so rebuild it.
+  const openLive = () => {
+    const ch = sb.channel('lumara-live', { config: { broadcast: { self: false }, presence: { key: me.id } } });
+    (['pull_reveal', 'reaction', 'stage_cue', 'skill', 'say'] as const).forEach(event =>
+      ch.on('broadcast' as any, { event }, ({ payload }: any) => cueSubs.get(event)?.forEach(fn => fn(payload.data, payload.from))));
+    ch.on('presence' as any, { event: 'sync' }, () => {
+      const state = ch.presenceState() as Record<string, any[]>;
+      peers = Object.fromEntries(Object.entries(state).filter(([k, v]) => k !== me.id && v.length).map(([k, v]) => [k, v[v.length - 1]]));
+      peerSubs.forEach(fn => fn({ ...peers }));
+    });
+    ch.subscribe((status: string) => {
+      if (status === 'SUBSCRIBED') { joined = true; if (lastPresence) void ch.track(lastPresence); return; }
+      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+        if (liveCh !== ch) return; joined = false;
+        setTimeout(() => { if (liveCh !== ch) return; void sb.removeChannel(ch); liveCh = openLive(); }, 1500);
+      }
+    });
+    return ch;
+  };
+  let liveCh = openLive();
 
   const backend: Backend = {
     mode: 'artifact',
@@ -72,9 +92,9 @@ export function createSupabaseBackend(sb: SupabaseClient, me: Me): Backend {
     markIntroSeen: async () => { await call('mark_intro_seen'); },
     saveSettings: async s => { await call('save_settings', { p_data: s }); },
 
-    emit(topic: CueTopic, data: unknown) { cueSubs.get(topic)?.forEach(fn => fn(data, me.id)); void liveCh.send({ type: 'broadcast', event: topic, payload: { data, from: me.id } }); },
+    emit(topic: CueTopic, data: unknown) { cueSubs.get(topic)?.forEach(fn => fn(data, me.id)); if (joined) void liveCh.send({ type: 'broadcast', event: topic, payload: { data, from: me.id } }); },
     on(topic, cb) { let s = cueSubs.get(topic); if (!s) cueSubs.set(topic, s = new Set()); s.add(cb); return () => { s!.delete(cb); }; },
-    setPresence(p) { if (Date.now() - lastSent < 95) return; lastSent = Date.now(); void liveCh.track(p); },
+    setPresence(p) { lastPresence = p; if (!joined || Date.now() - lastSent < 95) return; lastSent = Date.now(); void liveCh.track(p); },
     onPeers(cb) { peerSubs.add(cb); cb({ ...peers }); return () => { peerSubs.delete(cb); }; },
   };
   return backend;

@@ -50,7 +50,7 @@ describe('supabase writes and sign-in', () => {
 describe('supabase cues and presence', () => {
   it('emit delivers to own listeners (self) and broadcasts', async () => {
     const sent: any[] = []; const bc: any[] = [];
-    const ch: any = { on: (_t: string, f: any, cb: any) => { bc.push({ f, cb }); return ch; }, subscribe: () => ch, send: (m: any) => { sent.push(m); }, track: vi.fn(), presenceState: () => ({}) };
+    const ch: any = { on: (_t: string, f: any, cb: any) => { bc.push({ f, cb }); return ch; }, subscribe: (cb?: (s: string) => void) => { cb?.('SUBSCRIBED'); return ch; }, send: (m: any) => { sent.push(m); }, track: vi.fn(), presenceState: () => ({}) };
     const client: any = { channel: () => ch, removeChannel: vi.fn(), from: () => ({}), rpc: vi.fn() };
     const b = createSupabaseBackend(client, me); const got: any[] = []; b.on('skill', (d, from) => got.push([d, from]));
     b.emit('skill', { x: 1 }); expect(got).toEqual([[{ x: 1 }, 'u1']]); expect(sent[0]).toMatchObject({ type: 'broadcast', event: 'skill' });
@@ -74,5 +74,24 @@ describe('start button for new visitors', () => {
     const client: any = { auth, rpc, from: () => ({ select: () => ({ eq: async () => ({ data: [], error: null }) }) }) };
     expect((await start(client)).id).toBe('n2'); expect(auth.signInAnonymously).toHaveBeenCalledTimes(1);
     expect(rpc).toHaveBeenCalledWith('claim_prereg_reward');
+  });
+});
+
+describe('live channel recovery', () => {
+  it('rebuilds the live channel after a failed join and then sends presence', async () => {
+    vi.useFakeTimers();
+    const made: any[] = [];
+    const client: any = { removeChannel: vi.fn(), from: () => ({}), rpc: vi.fn(), channel: () => {
+      const ch: any = { on: () => ch, track: vi.fn(), send: vi.fn(), presenceState: () => ({}), subscribe: (cb: (s: string) => void) => { ch.cb = cb; return ch; } };
+      made.push(ch); return ch; } };
+    const b = createSupabaseBackend(client, me);
+    made[0].cb('CHANNEL_ERROR');
+    b.setPresence({ x: 0.5, y: 0.5, facing: 'left', characterId: 'wren', moving: false });
+    expect(made[0].track).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1600);
+    expect(made).toHaveLength(2); expect(client.removeChannel).toHaveBeenCalledWith(made[0]);
+    made[1].cb('SUBSCRIBED');
+    expect(made[1].track).toHaveBeenCalledWith(expect.objectContaining({ characterId: 'wren' }));
+    vi.useRealTimers();
   });
 });
