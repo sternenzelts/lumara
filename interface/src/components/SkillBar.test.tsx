@@ -28,8 +28,8 @@ describe('SkillBar', () => {
     const { el } = await render();
     const tip = el.querySelectorAll('.skill-slot')[0].querySelector('[role=tooltip]')!;
     expect(tip.textContent).toContain('Disassemble');
-    expect(tip.textContent).toContain('10 s cooldown');
-    expect(el.querySelectorAll('.skill-slot')[3].querySelector('[role=tooltip]')!.textContent).toContain('90 s cooldown');
+    expect(tip.textContent).toContain('5 s cooldown');
+    expect(el.querySelectorAll('.skill-slot')[3].querySelector('[role=tooltip]')!.textContent).toContain('45 s cooldown');
   });
   it('greys out a skill while it is cooling down', async () => {
     const { el } = await render({ disassemble: 0.5 });

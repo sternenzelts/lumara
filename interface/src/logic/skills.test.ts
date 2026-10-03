@@ -12,7 +12,7 @@ beforeEach(() => localStorage.clear());
 describe('Mahesvara kit', () => {
   it('has four skills on keys 1 to 4: change form is quick, the ultimate needs true form', () => {
     expect(kit.skills.map(s => s.key)).toEqual(['1', '2', '3', '4']);
-    expect(changeForm.cooldownMs).toBe(1000);
+    expect(changeForm.cooldownMs).toBe(500);
     expect(ultimate.requiresTrueForm).toBe(true);
   });
 });
@@ -22,15 +22,15 @@ describe('cooldowns', () => {
     let st = emptySkillState();
     expect(canCast(disassemble, st, 1000, 's1', 'mahesvara')).toBe(true);
     st = cast(disassemble, st, 1000, 's1', 'mahesvara');
-    expect(canCast(disassemble, st, 5000, 's1', 'mahesvara')).toBe(false);
-    expect(cooldownLeft(disassemble, st, 6000, 's1', 'mahesvara')).toBeCloseTo(0.5);
-    expect(canCast(disassemble, st, 11000, 's1', 'mahesvara')).toBe(true);
+    expect(canCast(disassemble, st, 3000, 's1', 'mahesvara')).toBe(false);
+    expect(cooldownLeft(disassemble, st, 3500, 's1', 'mahesvara')).toBeCloseTo(0.5);
+    expect(canCast(disassemble, st, 6000, 's1', 'mahesvara')).toBe(true);
   });
-  it('gives the ultimate a 90 s cooldown', () => {
-    expect(ultimate.cooldownMs).toBe(90000);
+  it('gives the ultimate a 45 s cooldown', () => {
+    expect(ultimate.cooldownMs).toBe(45000);
     const st = cast(ultimate, emptySkillState(), 1000, 's1', 'mahesvara');
-    expect(canCast(ultimate, st, 60000, 's1', 'mahesvara')).toBe(false);
-    expect(canCast(ultimate, st, 91000, 's1', 'mahesvara')).toBe(true);
+    expect(canCast(ultimate, st, 30000, 's1', 'mahesvara')).toBe(false);
+    expect(canCast(ultimate, st, 46000, 's1', 'mahesvara')).toBe(true);
   });
 
 });
@@ -38,9 +38,9 @@ describe('cooldowns', () => {
 describe('admin cooldown setting', () => {
   it('half halves every timed cooldown', () => {
     const st = cast(disassemble, emptySkillState(), 1000, 's1', 'mahesvara');
-    expect(canCast(disassemble, st, 5000, 's1', 'mahesvara', 'half')).toBe(false);
-    expect(canCast(disassemble, st, 6000, 's1', 'mahesvara', 'half')).toBe(true);
-    expect(cooldownLeft(disassemble, st, 3500, 's1', 'mahesvara', 'half')).toBeCloseTo(0.5);
+    expect(canCast(disassemble, st, 3000, 's1', 'mahesvara', 'half')).toBe(false);
+    expect(canCast(disassemble, st, 3500, 's1', 'mahesvara', 'half')).toBe(true);
+    expect(cooldownLeft(disassemble, st, 2250, 's1', 'mahesvara', 'half')).toBeCloseTo(0.5);
   });
   it('none lets every skill be cast again at once, including a once-per-voyage ultimate', () => {
     const voyageUlt = { ...ultimate, cooldownMs: 'voyage' as const };
