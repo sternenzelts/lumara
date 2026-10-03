@@ -1,7 +1,9 @@
 import { selectedBanner } from './logic/bannerNavigation';
 import { Component, createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { ArrowRight, Sparkles, X } from 'lucide-react';
-import { getBackend } from './backend';
+import { bootBackend, type Boot } from './backend';
+import StartScreen from './components/StartScreen';
+import AdminSignIn from './components/AdminSignIn';
 import { DEFAULT_SETTINGS } from './backend/local';
 import type { Attendance, Backend, Fragment, Me, Player, PullRecord, Session, Settings, Vote, Vow } from './backend/types';
 import { CHARACTERS, GAME_NAME, characterById } from './data/characters';
@@ -40,9 +42,18 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean
   static getDerivedStateFromError() { return { failed: true }; }
   render() { return this.state.failed ? <main className="fatal-error"><Sparkles size={40} /><h1>Let’s find our way back.</h1><p>The interface couldn’t load. Your saved demo data is still in this browser.</p><Button onClick={() => location.reload()}>Reload the Sanctuary</Button></main> : this.props.children; }
 }
-export default function App() { return <ErrorBoundary><AppContent /></ErrorBoundary>; }
-function AppContent() {
-  const [backend] = useState(getBackend);
+export default function App() { return <ErrorBoundary><BackendGate /></ErrorBoundary>; }
+/** Online: returning players resume silently; a new browser sees the Start screen first. Offline: the local demo. */
+function BackendGate() {
+  const [boot, setBoot] = useState<Boot | null>(null); const [err, setErr] = useState('');
+  useEffect(() => { bootBackend().then(setBoot).catch(e => setErr(String(e?.message || e))); }, []);
+  if (location.hash === '#warden-login') return <AdminSignIn />;
+  if (err) return <main className="fatal-error"><Sparkles size={40} /><h1>The Sanctuary is unreachable.</h1><p>{err}</p><Button onClick={() => location.reload()}>Try again</Button></main>;
+  if (!boot) return <main className="loading-screen" aria-busy="true"><Sparkles size={40} /></main>;
+  if ('start' in boot) { const start = boot.start; return <StartScreen onStart={async () => setBoot({ backend: await start() })} />; }
+  return <AppContent backend={boot.backend} />;
+}
+function AppContent({ backend }: { backend: Backend }) {
   const [me, setMe] = useState<Me | null>(null);
   const [identityError, setIdentityError] = useState('');
   const [route, setRoute] = useState<Route>(currentRoute);
@@ -141,7 +152,7 @@ function AppContent() {
     session, sessions, attendance, allAttendance, fragments, votes, vows, player, players, settings, profiles: shownProfiles, busy, starlight, stardust, tutorial, route, navigate, run, pull, tell, openCreate: () => { setInput(`Voyage ${sessions.length + 1}`); setDialog('create'); }, openJoin: () => { setInput(''); setDialog('join'); } };
   const screen = { map: <WorldMap backend={backend} onBack={() => navigate('sanctuary')} onCharacter={id => { location.hash = `collection/${id}`; setRoute('collection'); }} />, sanctuary: null, retro: <RetroScreen />, banner: <BannerScreen />, collection: <CollectionScreen />, exchange: <ExchangeScreen />, archives: <ArchivesScreen />, settings: me.isAdmin || session?.wardenId === me.id ? <AdminScreen /> : <VowJournal />, title: null, welcome: null, vows: <VowJournal /> }[route];
   const opening = route === 'welcome' && activeKind
-    ? <Opening key={activeKind} kind={activeKind} accountName={me.name} onDone={finishOpening} onSkipStory={finishOpening}
+    ? <Opening key={activeKind} kind={activeKind} accountName={backend.mode === 'local' ? me.name : ''} onDone={finishOpening} onSkipStory={finishOpening}
         onNickname={async name => { await backend.setMyNickname(name); setSavedNickname(name); }} />
     : route === 'welcome' ? <main className="opening" aria-busy="true" /> : null;
   return <Context.Provider value={value}>
