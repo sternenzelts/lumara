@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import type { Stage, Vow } from '../backend/types';
+import type { Fragment, Stage, Vow } from '../backend/types';
 import { gatherPoint, gatherSpot } from '../logic/mapWorld';
 import { MAP } from '../data/sanctuaryMap';
 import occluders from '../../public/art/sanctuary/occluders/occluders.json';
@@ -17,7 +17,7 @@ const hold = async (key: string, ms: number, target: EventTarget = window) => { 
 const posOf = (el: HTMLElement) => { const o = el.querySelector<HTMLElement>('.scene-character.own')!; return { x: parseFloat(o.style.left) / 100, y: parseFloat(o.style.top) / 100 }; };
 const vow = (i: number): Vow => ({ id: 'v' + i, sessionId: 's', text: 't', ownerId: null, status: 'fulfilled', createdAt: 1 });
 let root: Root | undefined;
-async function render(characterId: string, extra: { vows?: Vow[]; stage?: Stage; onOpenVows?: () => void } = {}) {
+async function render(characterId: string, extra: { vows?: Vow[]; fragments?: Fragment[]; stage?: Stage; onOpenVows?: () => void; movement?: boolean } = {}) {
   await act(async () => root?.unmount());
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   vi.stubGlobal('BroadcastChannel', class { postMessage() {} addEventListener() {} close() {} });
@@ -29,10 +29,65 @@ async function render(characterId: string, extra: { vows?: Vow[]; stage?: Stage;
   const backend = createLocalBackend('jay');
   root = createRoot(el);
   let frozen = false;
-  const draw = (stage?: Stage) => root!.render(<Scene sessionId="s1" backend={backend} me={{ id: 'jay', name: 'Jay', isAdmin: true }} player={null} vows={extra.vows || []} movement frozen={frozen} activeCharacterId={characterId} stage={stage} onOpenVows={extra.onOpenVows} />);
+  const draw = (stage?: Stage) => root!.render(<Scene sessionId="s1" backend={backend} me={{ id: 'jay', name: 'Jay', isAdmin: true }} player={null} vows={extra.vows || []} fragments={extra.fragments} movement={extra.movement ?? true} frozen={frozen} activeCharacterId={characterId} stage={stage} onOpenVows={extra.onOpenVows} />);
   await act(async () => draw(extra.stage));
   return Object.assign(el, { backend, restage: (stage: Stage) => act(async () => draw(stage)), freeze: () => act(async () => { frozen = true; draw(extra.stage); }) });
 }
+
+describe('writing at the crystals', () => {
+  it('shows a nearby prompt and opens the writer with E', async () => {
+    const el = await render('wren', { stage: 'fragment_drop' });
+    expect(el.querySelector('.write-crystal.near .write-crystal-prompt')).toBeTruthy();
+    await act(async () => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'e', bubbles: true })));
+    expect(el.querySelector('.crystal-writer')).toBeNull();   // not yet: opening on key-down would type the 'e' into the box
+    await act(async () => window.dispatchEvent(new KeyboardEvent('keyup', { key: 'e', bubbles: true })));
+    expect(el.querySelector('.crystal-writer strong')?.textContent).toContain('Fracture');
+    const box = el.querySelector<HTMLTextAreaElement>('.crystal-writer textarea')!;
+    box.value = 'A problem';
+    await act(async () => box.dispatchEvent(new Event('input', { bubbles: true })));
+    await act(async () => box.dispatchEvent(new KeyboardEvent('keydown', { key: 'e', bubbles: true })));
+    expect(el.querySelector('.crystal-writer')).toBeTruthy();
+  });
+  it('opens directly when movement is off, and hides writing outside this stage', async () => {
+    const el = await render('wren', { stage: 'fragment_drop', movement: false });
+    await act(async () => el.querySelector<HTMLButtonElement>('[aria-label="Write a Fracture thought (Problem)"]')!.click());
+    expect(el.querySelector('.crystal-writer strong')?.textContent).toContain('Fracture');
+    await el.restage('vote');
+    expect(el.querySelector('.write-crystal')).toBeNull();
+    expect(el.querySelector('.crystal-writer')).toBeNull();
+  });
+  it('submits the crystal category through the existing backend', async () => {
+    const el = await render('wren', { stage: 'fragment_drop', movement: false });
+    const add = vi.spyOn(el.backend, 'addFragment');
+    await act(async () => el.querySelector<HTMLButtonElement>('[aria-label="Write a Spark thought (Try)"]')!.click());
+    const box = el.querySelector<HTMLTextAreaElement>('.crystal-writer textarea')!;
+    await act(async () => { Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(box, 'Try a new ritual'); box.dispatchEvent(new Event('input', { bubbles: true })); });
+    await act(async () => el.querySelector<HTMLFormElement>('.crystal-writer')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
+    expect(add).toHaveBeenCalledWith('s1', 'Try a new ritual', 'spark');
+  });
+  it('keeps a draft after walking away and returning', async () => {
+    const el = await render('wren', { stage: 'fragment_drop' });
+    await act(async () => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'e', bubbles: true })); window.dispatchEvent(new KeyboardEvent('keyup', { key: 'e', bubbles: true })); });
+    const box = el.querySelector<HTMLTextAreaElement>('.crystal-writer textarea')!;
+    await act(async () => { Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(box, 'Keep this draft'); box.dispatchEvent(new Event('input', { bubbles: true })); });
+    await hold('ArrowUp', 900);
+    expect(el.querySelector('.crystal-writer')).toBeNull();
+    await hold('ArrowDown', 900);
+    await act(async () => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'e', bubbles: true })); window.dispatchEvent(new KeyboardEvent('keyup', { key: 'e', bubbles: true })); });
+    expect(el.querySelector<HTMLTextAreaElement>('.crystal-writer textarea')?.value).toBe('Keep this draft');
+  });
+  it('counts fragments by category without exposing an author', async () => {
+    const el = await render('wren', { stage: 'fragment_drop', fragments: [
+      { id: 'a', sessionId: 's1', category: 'spark', text: 'one', createdAt: 1 },
+      { id: 'b', sessionId: 's1', category: 'spark', text: 'two', createdAt: 2 },
+      { id: 'c', sessionId: 's1', category: 'fracture', text: 'other', createdAt: 3 },
+    ] });
+    const glow = el.querySelector('.write-crystal.spark .write-crystal-count')!;
+    expect(glow.getAttribute('aria-hidden')).toBe('true');
+    expect(glow.outerHTML).not.toContain('jay');
+    expect(glow.parentElement!.getAttribute('style')).toContain('--count: 2');
+  });
+});
 
 describe('beacon journal interaction', () => {
   it('offers Vow at the beacon but not at a small crystal', async () => {

@@ -72,7 +72,8 @@ describe('opening gate', () => {
       vows: ['open', 'fulfilled', 'not_yet', 'carried', 'dropped'].map((status, i) => ({ id: `promise-${i}`, sessionId: 'past', text: `Promise ${i}`, status, ownerId: null, createdAt: 1 })),
     });
     await start('ana', '#retro');
-    await click('Close');
+    expect(container.querySelector('.voyage-window[open]')).toBeNull();
+    expect(button('My thoughts')).toBeTruthy();
     expect(button('Open vow journal')).toBeUndefined();
     await act(async () => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp' })));
     await act(async () => { await new Promise(r => setTimeout(r, 850)); });

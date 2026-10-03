@@ -1,7 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import { Flame, Navigation, ScrollText } from 'lucide-react';
-import type { Backend, Me, Player, Presence, Stage, Vow } from '../backend/types';
+import type { Backend, Fragment, FragmentCategory, Me, Player, Presence, Stage, Vow } from '../backend/types';
+import { CATEGORIES } from '../data/categories';
 import { characterById } from '../data/characters';
 import { SANCTUARY_CLOUDS } from '../data/art';
 import { MAP } from '../data/sanctuaryMap';
@@ -26,7 +27,7 @@ const raf = (cb: (t: number) => void) => requestAnimationFrame(cb);
 const GUN_HEIGHT = 60;   // px above the feet where shots leave his gun
 
 /** The Sanctuary: Jay's painted map at 2× zoom with a camera that follows your character. Positions are map fractions. */
-export default function Scene({ backend, me, player, vows, movement, cooldownMode, frozen = false, activeCharacterId, stage, sessionId = 'sanctuary', onOpenVows }: { sessionId?: string; backend: Backend; me: Me; player: Player | null; vows: Vow[]; movement: boolean; cooldownMode?: 'normal' | 'half' | 'none'; frozen?: boolean; activeCharacterId?: string | null; stage?: Stage; onOpenVows?: () => void }) {
+export default function Scene({ backend, me, player, vows, fragments = [], movement, cooldownMode, frozen = false, activeCharacterId, stage, sessionId = 'sanctuary', onOpenVows, editThought, onEditDone, onFragmentSaved }: { sessionId?: string; backend: Backend; me: Me; player: Player | null; vows: Vow[]; fragments?: Fragment[]; movement: boolean; cooldownMode?: 'normal' | 'half' | 'none'; frozen?: boolean; activeCharacterId?: string | null; stage?: Stage; onOpenVows?: () => void; editThought?: { id: string; text: string; category: FragmentCategory } | null; onEditDone?: () => void; onFragmentSaved?: (message: string, error?: boolean) => void }) {
   const reduced = useReducedMotion();
   const [position, setPosition] = useState(() => ({ ...resolveMove({ x: MAP.floor.cx, y: MAP.floor.cy }, { x: MAP.floor.cx - 0.12 + [...me.id].reduce((sum, letter) => sum + letter.charCodeAt(0), 0) % 24 / 100, y: MAP.floor.cy + 0.16 }), facing: 'right' as Presence['facing'], dir: 'down' as WalkDir, moving: false }));
   const [peers, setPeers] = useState<Record<string, Presence>>({});
@@ -58,6 +59,18 @@ export default function Scene({ backend, me, player, vows, movement, cooldownMod
   const characterId = activeCharacterId === undefined ? player?.displayCharacterId || null : activeCharacterId;
   const enabled = movement && !frozen;
   const nearBeacon = movement && characterId && onOpenVows && Math.hypot(position.x - MAP.beacon.x, (position.y - MAP.beacon.y) / MAP.aspect) <= 0.065;
+  const writing = stage === 'fragment_drop' && !frozen;
+  const nearCrystal = writing && characterId ? CATEGORIES.map(c => ({ ...c, distance: Math.hypot(position.x - MAP.crystals[c.id].x, (position.y - MAP.crystals[c.id].y) / MAP.aspect) })).filter(c => c.distance <= 0.07).sort((a, b) => a.distance - b.distance)[0] : undefined;
+  const [writer, setWriter] = useState<FragmentCategory | null>(null);
+  const [drafts, setDrafts] = useState<Record<FragmentCategory, string>>({ radiance: '', fracture: '', spark: '', wildcard: '' });
+  const [saving, setSaving] = useState(false);
+  const [arrival, setArrival] = useState<FragmentCategory | null>(null);
+  const [flight, setFlight] = useState<{ category: FragmentCategory; key: number } | null>(null);
+  useEffect(() => { if (writer && (!writing || (movement && characterId && nearCrystal?.id !== writer && editThought?.category !== writer))) setWriter(null); }, [writing, movement, characterId, nearCrystal?.id, writer, editThought?.category]);
+  useEffect(() => { if (arrival && nearCrystal?.id === arrival) { setWriter(arrival); setArrival(null); } }, [arrival, nearCrystal?.id]);
+  useEffect(() => { if (!editThought || !writing) return; setDrafts(d => ({ ...d, [editThought.category]: editThought.text })); setWriter(editThought.category); }, [editThought, writing]);
+  useEffect(() => { if (!writing) return; const key = (e: KeyboardEvent) => { if (e.key === 'Escape') { if (e.type === 'keydown') setWriter(null); return; } const target = e.target as HTMLElement | null; if (e.ctrlKey || e.metaKey || e.altKey || target?.isContentEditable || (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return; if ((e.key.toLowerCase() === 'e' || e.key === 'Enter') && nearCrystal) { e.preventDefault(); if (e.type === 'keyup') setWriter(nearCrystal.id); } };   // open on release: opening on key-down focuses the box in time to type the 'e' into it
+    window.addEventListener('keydown', key); window.addEventListener('keyup', key); return () => { window.removeEventListener('keydown', key); window.removeEventListener('keyup', key); }; }, [writing, nearCrystal?.id]);
 
   useLayoutEffect(() => {
     const el = ref.current; if (!el) return;
@@ -254,6 +267,8 @@ export default function Scene({ backend, me, player, vows, movement, cooldownMod
       {MAP.lamps.map((p, i) => <i key={i} className={`lamp-glow ${i < lit ? 'lit' : ''} ${lampMoment?.lamps.includes(i) ? 'igniting' : ''}`} style={{ left: `${p.x * 100}%`, top: `${p.y * 100}%`, zIndex: 11 + Math.round((p.y + 92 / 1024) * 1000), '--k': lampMoment ? lampMoment.lamps.indexOf(i) : 0 } as CSSProperties}   /* just above the lamp's own occluder cut-out (base = orb + 92 src px) */ aria-hidden="true" />)}
       {lampMoment && lampMoment.lamps.map((li, k) => <span key={`${lampMoment.key}-${li}`} className="lamp-moment-fx" aria-hidden="true" style={{ '--bx': `${MAP.beacon.x * 100}%`, '--by': `${MAP.beacon.y * 100}%`, '--lx': `${MAP.lamps[li].x * 100}%`, '--ly': `${MAP.lamps[li].y * 100}%`, '--k': k, '--step': `${LAMP_STEP_MS}ms` } as CSSProperties}><i className="lm-spark" /><i className="lm-burst" /><i className="lm-ring" /></span>)}
       {occluders.map(({ id, x, y, w, h, baseY }) => <img key={id} className="world-occluder" src={`${import.meta.env.BASE_URL}art/sanctuary/occluders/${id}.webp`} alt="" aria-hidden="true" draggable={false} style={{ left: `${x * 100}%`, top: `${y * 100}%`, width: `${w * 100}%`, height: `${h * 100}%`, zIndex: 10 + Math.round(baseY * 1000), pointerEvents: 'none' }} />)}
+      {writing && CATEGORIES.map(c => { const point = MAP.crystals[c.id], count = fragments.filter(f => f.category === c.id).length; return <div key={c.id} className={`write-crystal ${c.id} ${nearCrystal?.id === c.id ? 'near' : ''} ${flight?.category === c.id ? 'pulse' : ''}`} style={{ left: `${point.x * 100}%`, top: `${point.y * 100}%`, zIndex: 12 + Math.round((point.y + .04) * 1000), '--count': Math.min(count, 12) } as CSSProperties}><i className="write-crystal-aura" aria-hidden="true" /><i className="write-crystal-count" aria-hidden="true" /><button aria-label={`Write a ${c.label} thought (${c.plain})`} onClick={() => { if (!movement || !characterId || nearCrystal?.id === c.id) setWriter(c.id); else { setArrival(c.id); move(point.x, point.y + .045); } }}><span className="write-crystal-prompt">E · Write a {c.label} thought</span></button></div>; })}
+      {flight && <i key={flight.key} className="fragment-flight" aria-hidden="true" style={{ '--from-x': `${position.x * 100}%`, '--from-y': `${position.y * 100}%`, '--to-x': `${MAP.crystals[flight.category].x * 100}%`, '--to-y': `${MAP.crystals[flight.category].y * 100}%` } as CSSProperties} />}
       <div className={`scene-character own ${position.moving ? 'walking' : ''} ${fieldClass(me.id, position)}`} style={{ left: `${position.x * 100}%`, top: `${position.y * 100}%`, zIndex: 10 + Math.round(position.y * 1000), '--facing': position.facing === 'left' ? -1 : 1, ...leap(me.id) } as CSSProperties}><BodyAura characterId={characterId} casting={casting[me.id]} /><SkillFx skill={casting[me.id]?.skill} dir={casting[me.id]?.dir} angle={casting[me.id]?.angle} reach={reachOf(position, casting[me.id]?.dir, casting[me.id]?.angle)} /><Figure characterId={characterId} dir={position.dir} casting={casting[me.id]} idle={idle} /><span>{me.name}<small>you</small></span></div>
       <FieldLayer field={field} posOf={posOf} size={size} />
       {Object.entries(bubbles).map(([id, b]) => { const p = posOf(id); if (!p) return null; const name = id === me.id ? me.name : id.charAt(0).toUpperCase() + id.slice(1);
@@ -286,6 +301,7 @@ export default function Scene({ backend, me, player, vows, movement, cooldownMod
       <strong>Central Crystal</strong>
       <button onClick={onOpenVows} aria-label="Open vow journal"><ScrollText size={20} /><span>Vow<small>View your journal</small></span></button>
     </nav>}
+    {writer && writing && <form className="crystal-options crystal-writer" style={(() => { const p = MAP.crystals[writer], cam = cameraOffset(position, view.w, view.h), x = p.x * size.w + cam.x, y = p.y * size.h + cam.y; return { '--writer-color': { radiance: '#ffe09b', fracture: '#faacb8', spark: '#b7f3dc', wildcard: '#c7c1ff' }[writer], ...(view.w <= 760 || view.h > view.w ? {} : { left: Math.max(12, Math.min(view.w - 282, x + 42)), top: Math.max(72, Math.min(view.h - 270, y - 90)), right: 'auto', bottom: 'auto' }) } as CSSProperties; })()}   /* phones: world.css pins it to the bottom */ onSubmit={async e => { e.preventDefault(); const value = drafts[writer].trim(); if (!value || saving) return; setSaving(true); try { await backend.addFragment(sessionId, value, writer); if (editThought) { await backend.deleteMyFragment(sessionId, editThought.id); onEditDone?.(); } setDrafts(d => ({ ...d, [writer]: '' })); setWriter(null); const key = Date.now(); setFlight({ category: writer, key }); setTimeout(() => setFlight(f => f?.key === key ? null : f), 650); onFragmentSaved?.(editThought ? 'Your thought was updated.' : 'Your Fragment is in the constellation.'); } catch (error) { onFragmentSaved?.(error instanceof Error ? error.message : String(error), true); } finally { setSaving(false); } }}><strong>{(() => { const c = CATEGORIES.find(c => c.id === writer)!; return <><c.icon size={19} />{c.label} · {c.plain}</>; })()}</strong><label>Your anonymous thought<textarea value={drafts[writer]} onChange={e => setDrafts(d => ({ ...d, [writer]: e.target.value }))} rows={4} maxLength={1500} required autoFocus /></label><p>Anonymous to the party.</p><button type="submit" disabled={saving || !drafts[writer].trim()}>Drop it into the crystal</button></form>}
     <div className="scene-hint"><Navigation size={13} />{enabled ? 'Click to wander · WASD / arrows' : frozen ? 'Characters rest while you focus' : 'Movement is off'}</div>
   </div>;
 }
