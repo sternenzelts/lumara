@@ -5,7 +5,8 @@ import { createLocalBackend } from './local';
 // Integration seam: Claude supplies a Backend before mounting the UI.
 // The UI never needs to know how an artifact adapter detects its runtime.
 let instance: Backend | null = null;
-export function configureBackend(backend: Backend) { instance = backend; }
+let booting: Promise<Boot> | null = null;
+export function configureBackend(backend: Backend) { instance = backend; booting = null; }
 export function getBackend(): Backend { return instance ||= createLocalBackend(); }
 
 const SUPABASE_URL: string = import.meta.env.VITE_SUPABASE_URL || '';
@@ -18,7 +19,6 @@ export async function supabaseClient(): Promise<SupabaseClient> {
 
 /** Ready backend, or (online, first visit in this browser) a start() for the Start button. */
 export type Boot = { backend: Backend } | { start: () => Promise<Backend> };
-let booting: Promise<Boot> | null = null;
 /** Runs once per page, however many times it's called (React may mount twice), so the live channel is created once. */
 export function bootBackend(): Promise<Boot> { return booting ??= boot(); }
 async function boot(): Promise<Boot> {
