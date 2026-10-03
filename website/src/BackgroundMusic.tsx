@@ -4,7 +4,8 @@ import { Volume2, VolumeX } from 'lucide-react';
 export default function BackgroundMusic() {
   const audio = useRef<HTMLAudioElement>(null);
   const requested = useRef(false);
-  const autoPending = useRef(true);
+  // Remember the visitor's choice: if they muted, stay muted after reload; otherwise start on the first interaction.
+  const autoPending = useRef((() => { try { return localStorage.getItem('lumara.music') !== 'off'; } catch { return true; } })());
   const ducked = useRef(false);
   const [playing, setPlaying] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -50,24 +51,32 @@ export default function BackgroundMusic() {
       if (event.target instanceof Element && event.target.closest('.background-music')) return;
       void begin(true);
     };
+    // The entry screen's tap: start (or deliberately skip) the music.
+    const enter = (event: Event) => { const music = !!(event as CustomEvent<boolean>).detail; if (!music) { autoPending.current = false; try { localStorage.setItem('lumara.music', 'off'); } catch { /* storage off */ } return; } autoPending.current = false; try { localStorage.setItem('lumara.music', 'on'); } catch { /* storage off */ } void begin(false); };
+    window.addEventListener('lumara-enter', enter);
     window.addEventListener('lumara-voice', voice);
     document.addEventListener('visibilitychange', hide);
     document.addEventListener('pointerdown', activate, true);
     document.addEventListener('keydown', activate, true);
-    void begin(true);
+    document.addEventListener('touchstart', activate, true);
+    if (autoPending.current) void begin(true);
     return () => {
       requested.current = false;
       element.pause();
       document.removeEventListener('visibilitychange', hide);
       document.removeEventListener('pointerdown', activate, true);
       document.removeEventListener('keydown', activate, true);
+      document.removeEventListener('touchstart', activate, true);
       window.removeEventListener('lumara-voice', voice);
+      window.removeEventListener('lumara-enter', enter);
     };
   }, []);
 
   function toggle() {
     autoPending.current = false;
-    if (requested.current) { stop(); return; }
+    const turningOff = requested.current;
+    try { localStorage.setItem('lumara.music', turningOff ? 'off' : 'on'); } catch { /* storage off */ }
+    if (turningOff) { stop(); return; }
     void begin(false);
   }
 

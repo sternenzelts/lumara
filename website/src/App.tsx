@@ -1,3 +1,5 @@
+import EntryGate from './EntryGate';
+import Preregister from './Preregister';
 import CompanionPortrait from './CompanionPortrait';
 import LegendShowcase from './LegendShowcase';
 import WorldAtlas, { characterRegion } from './WorldAtlas';
@@ -127,6 +129,7 @@ export default function App() {
       <nav aria-label="Main navigation" className={menu ? 'navigation is-open' : 'navigation'}>{links.map(link => <a key={link.href} href={link.href} aria-current={activeSection === link.href.slice(1) ? 'location' : undefined} onClick={navigate}>{link.label}</a>)}</nav>
       <a className="header-discover" href="#characters">Meet the companions <ArrowRight size={15}/></a>
       <BackgroundMusic/>
+      <EntryGate background={WORLD} seren={`${import.meta.env.BASE_URL}art/seren/seren_cutout_v2.webp`} emblem={<Emblem/>}/>
       <button className="menu-button icon-button" aria-label={menu ? 'Close navigation' : 'Open navigation'} aria-expanded={menu} onClick={() => setMenu(!menu)}>{menu ? <X/> : <Menu/>}</button>
     </header>
 
@@ -177,7 +180,7 @@ export default function App() {
         <div className="promise-kept"><span className="promise-spark"/><span className="promise-lamp"/><p>Confirm the promises you kept ? every one relights a lamp.</p></div><div className="seren-guide"><img src={`${import.meta.env.BASE_URL}art/seren/seren_chibi.webp`} alt="Chibi Seren" loading="lazy" decoding="async"/><p>Come back with a story.<br/>Leave with a promise.<span>Seren / Your guide through every voyage</span></p></div><div className="voyage-footnotes"><p><strong>Your thoughts stay anonymous.</strong> Share openly. Vote on what matters. Discuss together.</p><p><strong>Follow-through becomes visible.</strong> Action items carry into the next voyage, where fulfilled promises relight the Sanctuary.</p></div>
       </section>
 
-      <section className="closing" aria-label="Continue exploring"><div className="closing-art" aria-hidden="true" style={{backgroundImage: `url("${WORLD}")`}}/><div className="closing-content"><Emblem/><h2>The next dawn<br/>starts with <em>you.</em></h2><a className="button button-primary" href="#characters">Find your companion <ArrowRight size={18}/></a></div></section>
+      <Preregister background={WORLD} emblem={<Emblem/>}/>
     </main>
     <footer className="site-footer"><a className="wordmark" href="#home"><Emblem/><span>LUMARA</span></a><p>A world waiting for its next dawn.<br/>Built around the promises we keep.</p><a href="#home" className="text-link">Back to the beginning <ArrowDown className="up-arrow" size={15}/></a></footer>
 

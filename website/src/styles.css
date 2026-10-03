@@ -179,3 +179,91 @@
 .motion-off .plaza-character,.motion-off .walk-sprite,.motion-off .promise-spark,.motion-off .promise-lamp{animation:none}
 @media(max-width:760px){.sanctuary-section{padding:60px 7%}.sanctuary-heading{display:block}.sanctuary-heading h2{font-size:38px}.sanctuary-heading p{margin-top:16px;font-size:12px}.plaza-scene{height:310px;margin:0 -8.15%}.plaza-walkers{display:grid;grid-template-columns:repeat(7,1fr);gap:7px 0;bottom:10px}.plaza-character{width:100%;font-size:7px;min-width:0}.walk-sprite,.plaza-character>img{width:40px;height:40px}.walk-sprite{background-size:160px 160px}@keyframes walk-cycle{to{background-position-x:-160px}}.plaza-bubble{left:13px;right:13px;top:12px;max-width:none}.sanctuary-skills{margin-top:42px}.sanctuary-skills h3{font-size:31px}.skill-roster,.signature-lines{grid-template-columns:1fr;gap:22px}.skill-character li{font-size:11px}.skill-tip{left:-100px!important;right:auto!important}.character-info{padding-bottom:0}.skill-row{margin-top:5px}.skill-item{width:30px;height:30px}.character-figure{top:465px}.character-figure.has-forms{top:465px}.character-figure.splash-only{top:465px}.voyage-tabs{display:grid;grid-template-columns:repeat(3,1fr)}.voyage-tabs>button{min-height:60px}.voyage-tabs>button>span:nth-child(2){font-size:12px}.promise-kept{font-size:14px;gap:10px}.promise-kept p{flex:1}}
 @media(prefers-reduced-motion:reduce){.plaza-character,.walk-sprite,.promise-spark,.promise-lamp{animation:none!important}}
+
+/* Plaza: the map is drawn at its true 3:2 shape inside the window (like background-size:cover, centred at 54%),
+   so companions can stand at map coordinates — on the stone floor, not the clouds. */
+.plaza-scene{container-type:inline-size;--h:330px;background:none}
+.plaza-map{position:absolute;left:50%;--w:max(100cqw,calc(var(--h) * 1.5));width:var(--w);aspect-ratio:3/2;top:calc((var(--h) - var(--w) * 2 / 3) * .54);transform:translateX(-50%);background-size:100% 100%}
+.plaza-map .plaza-walkers{position:absolute;inset:0;display:block}
+.plaza-map .plaza-character{position:absolute;width:auto;min-width:0;transform:translate(-50%,-100%)}
+.plaza-map .plaza-character:hover,.plaza-map .plaza-character:focus-visible{transform:translate(-50%,calc(-100% - 8px))}
+@media(max-width:760px){.plaza-scene{--h:310px}.plaza-map .plaza-walkers{display:block}.plaza-map .walk-sprite,.plaza-map .plaza-character>img{width:44px;height:44px;background-size:176px 176px}}
+@media(max-width:760px){.plaza-map .walk-sprite{animation-name:walk-cycle-sm}}@keyframes walk-cycle-sm{to{background-position-x:-176px}}
+
+/* Keira floats (no walk sheet): show only her first pose (sheet = 4 poses of 256x360) */
+.keira-float{display:block;width:46px;height:64px;background-repeat:no-repeat;background-size:400% 100%;background-position:0 0;animation:keira-hover 2.4s ease-in-out infinite alternate}
+@keyframes keira-hover{from{translate:0 0}to{translate:0 -6px}}
+.motion-off .keira-float{animation:none}
+@media(max-width:760px){.plaza-map .keira-float{width:32px;height:44px}}
+/* Show the whole Sanctuary circle: the window takes the map's 3:2 shape (scales with the page width) */
+.plaza-scene{height:auto;aspect-ratio:3/2;max-width:1180px;margin-left:auto;margin-right:auto}
+.plaza-map{width:100%;top:0;left:0;transform:none}
+@media(max-width:760px){.plaza-scene{height:auto;margin:0 -8.15%}}
+/* Bigger chibis on the plaza */
+.plaza-map .walk-sprite{width:88px;height:88px;background-size:352px 352px;animation-name:walk-cycle-lg}
+@keyframes walk-cycle-lg{to{background-position-x:-352px}}
+.plaza-map .keira-float{width:64px;height:90px}
+.plaza-map .plaza-character{font-size:11px}
+@media(max-width:760px){.plaza-map .walk-sprite{width:56px;height:56px;background-size:224px 224px;animation-name:walk-cycle-md}.plaza-map .keira-float{width:40px;height:57px}}
+@keyframes walk-cycle-md{to{background-position-x:-224px}}
+
+/* World map: beacon crests instead of square sun buttons */
+.atlas-map .atlas-pin{all:unset;position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;z-index:2}
+.atlas-pin .crest{position:relative;display:block;width:30px;height:30px;rotate:45deg;background:linear-gradient(135deg,#1b2f3f,#0c1a26);border:2px solid #d9bd7c;box-shadow:0 0 0 3px #0c1a2699,0 4px 12px #0008;transition:scale .2s ease}
+.atlas-pin .crest-core{position:absolute;inset:6px;border-radius:50%;rotate:-45deg;background:radial-gradient(circle,#fff 0,var(--region-color,#ffd27a) 45%,transparent 72%);box-shadow:0 0 12px 3px var(--region-color,#ffd27a);animation:crest-pulse 2.6s ease-in-out infinite}
+@keyframes crest-pulse{0%,100%{opacity:.75;scale:.9}50%{opacity:1;scale:1.1}}
+.atlas-pin>span{padding:3px 10px;background:#0c1a26e6;border:1px solid #d9bd7c99;color:#f7ecd2;font-family:Marcellus,serif;font-size:12px;letter-spacing:.04em;white-space:nowrap;box-shadow:0 2px 8px #0006}
+.atlas-pin:hover .crest,.atlas-pin:focus-visible .crest,.atlas-pin[aria-pressed=true] .crest{scale:1.18}
+.atlas-pin[aria-pressed=true] .crest{border-color:#fff1c9;box-shadow:0 0 0 3px #0c1a26aa,0 0 18px 4px var(--region-color,#ffd27a)}
+.atlas-pin[aria-pressed=true]>span{background:#d9bd7c;color:#10222f}
+.atlas-pin.sanctuary-pin .crest{width:38px;height:38px;border-color:#f3d995}
+.atlas-pin.sanctuary-pin .crest-core{--region-color:#ffe39a}
+.atlas-pin:focus-visible{outline:none}.atlas-pin:focus-visible>span{outline:2px solid #fff1c9}
+.motion-off .crest-core{animation:none}
+@media(prefers-reduced-motion:reduce){.crest-core{animation:none}}
+@media(max-width:760px){.atlas-pin>span{display:none}.atlas-pin .crest{width:20px;height:20px}.atlas-pin.sanctuary-pin .crest{width:26px;height:26px}}
+
+/* Pre-registration (replaces the closing call to action) */
+.prereg .prereg-panel{max-width:620px;padding:40px 36px;background:#f7f3e9e6;border:1px solid #c6aa71;outline:1px solid #c6aa7144;outline-offset:5px;box-shadow:0 20px 50px #17324233}
+.prereg h2{margin-bottom:22px}
+.prereg-countdown{display:flex;justify-content:center;gap:14px;margin-bottom:20px}
+.prereg-countdown>div{min-width:78px;padding:10px 6px;background:#172e3e;border:1px solid #c6aa71;color:#f7ecd2;display:flex;flex-direction:column;align-items:center}
+.prereg-countdown strong{font-family:Marcellus,serif;font-size:32px;line-height:1}
+.prereg-countdown span{font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#d3b983;margin-top:4px}
+.prereg-reward{color:#2b4a5e;margin-bottom:20px}.prereg-reward strong{color:#8a6a2e}
+.prereg-form{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.prereg-form input{flex:1 1 220px;max-width:280px;padding:12px 14px;border:1px solid #c6aa71;background:#fff;font:inherit;color:#172e3e}
+.prereg-form input:focus{outline:2px solid #c6aa71;outline-offset:2px}
+.prereg-error{flex-basis:100%;color:#9c3b3b;font-size:13px}
+.prereg-done{color:#2b4a5e;font-size:16px}.prereg-done strong{color:#8a6a2e}
+.prereg-milestones{margin-top:26px;display:flex;align-items:center;justify-content:center;gap:18px;color:#46657a;font-size:13px}
+.prereg-milestones>div{display:flex;gap:12px}
+.prereg-milestones i{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:#d8dfe4;border:1px solid #b6c3cc;font-style:normal}
+.prereg-milestones i b{font-size:10px;color:#5e7a8c}
+.prereg-milestones i.lit{background:radial-gradient(circle,#fff6d6,#f5c96a 60%,#d89a35);border-color:#c6aa71;box-shadow:0 0 12px #f5c96a}
+.prereg-milestones i.lit b{color:#5a3d0c}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+@media(max-width:760px){.prereg .prereg-panel{padding:28px 18px}.prereg-countdown>div{min-width:64px}.prereg-countdown strong{font-size:26px}.prereg-milestones{flex-direction:column;gap:10px}}
+.closing.prereg{height:auto;min-height:620px;padding:70px 20px;display:flex;align-items:center;justify-content:center}.closing.prereg .closing-content{padding:40px 36px;margin:0 auto}
+
+/* Entry screen: "Tap to enter" (the tap that lets the music start) */
+.entry-gate{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;overflow:hidden;background:#0c1a26;transition:opacity .9s ease,visibility .9s}
+.entry-gate.leaving{opacity:0;visibility:hidden}
+.entry-bg{position:absolute;inset:-4%;background-size:cover;background-position:50% 30%;filter:brightness(.62) saturate(1.05);animation:entry-drift 24s ease-in-out infinite alternate}
+@keyframes entry-drift{from{scale:1.02;translate:-1% 0}to{scale:1.08;translate:1% -1%}}
+.entry-gate::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 55%,transparent 30%,#0c1a26cc 100%);pointer-events:none}
+.entry-seren{position:absolute;right:6%;bottom:-6%;height:92%;max-width:46%;object-fit:contain;filter:drop-shadow(0 0 30px #fff3c860);animation:entry-seren 1.6s ease-out both;z-index:1}
+@keyframes entry-seren{from{opacity:0;translate:0 24px}to{opacity:1;translate:0 0}}
+.entry-content{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;gap:18px;text-align:center;color:#fff6e0;animation:entry-rise 1.4s ease-out .2s both}
+@keyframes entry-rise{from{opacity:0;translate:0 14px}to{opacity:1;translate:0 0}}
+.entry-logo{display:flex;flex-direction:column;align-items:center;gap:10px;color:#e8cf8f}
+.entry-logo svg{width:84px;height:84px;filter:drop-shadow(0 0 16px #ffd98a99)}
+.entry-logo span{font-family:Marcellus,serif;font-size:clamp(46px,8vw,92px);letter-spacing:.32em;padding-left:.32em;color:#fff6e0;text-shadow:0 2px 24px #0008}
+.entry-tagline{font-family:Marcellus,serif;font-size:clamp(16px,2.2vw,22px);color:#f1e3bf;text-shadow:0 2px 10px #0009}
+.entry-tap{margin-top:24px;padding:14px 46px;border:1px solid #e8cf8f;outline:1px solid #e8cf8f55;outline-offset:5px;background:#0c1a26b3;color:#fff6e0;font-family:Marcellus,serif;font-size:20px;letter-spacing:.18em;text-transform:uppercase;cursor:pointer;animation:entry-glow 2.2s ease-in-out infinite}
+.entry-tap:hover,.entry-tap:focus-visible{background:#e8cf8f;color:#10222f}
+@keyframes entry-glow{0%,100%{box-shadow:0 0 0 #ffd98a00}50%{box-shadow:0 0 26px #ffd98a88}}
+.entry-quiet{border:0;background:none;color:#d8dfe4;font-size:13px;text-decoration:underline;text-underline-offset:3px;cursor:pointer;opacity:.85}
+.entry-quiet:hover,.entry-quiet:focus-visible{opacity:1;color:#fff}
+@media(max-width:760px){.entry-seren{right:-14%;max-width:80%;height:70%;opacity:.55}}
+@media(prefers-reduced-motion:reduce){.entry-bg,.entry-tap,.entry-seren,.entry-content{animation:none}}

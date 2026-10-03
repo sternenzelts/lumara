@@ -67,6 +67,18 @@
   ],
   "azrenth": [
     {
+      "file": "azrenth_vo_greet.mp3",
+      "caption": "What is it? You need me?"
+    },
+    {
+      "file": "azrenth_vo_tap_2.mp3",
+      "caption": "They called me a misfit? Hmph — their eyes were simply blind."
+    },
+    {
+      "file": "azrenth_vo_tap_3.mp3",
+      "caption": "I'd say \"don't touch me\"… but I'm in a good mood today."
+    },
+    {
       "file": "vo_reveal.mp3",
       "caption": "So you're the one who summoned me. …Interesting."
     },
