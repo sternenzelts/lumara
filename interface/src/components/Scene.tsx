@@ -94,7 +94,7 @@ export default function Scene({ backend, me, player, vows, movement, frozen = fa
   const onCast = (skill: Skill, aimed: Aim) => {
     if ((skill.field?.kind === 'soar' || skill.field?.kind === 'skyfall' || skill.field?.kind === 'thunder') && aimed.to) {   // Yulan sets her down / Ashvane lands / Lucien reforms
       const to = aimed.to, landMs = skill.field.kind === 'skyfall' ? SKYFALL.landMs + 40 : skill.field.kind === 'thunder' ? THUNDER.landMs : SOAR.landMs;
-      setTimeout(() => { const state = { ...here.current, x: to.x, y: to.y, moving: false }; here.current = state; setPosition(state); backend.setPresence({ x: to.x, y: to.y, facing: state.facing, dir: state.dir, characterId, moving: false }); }, landMs);
+      setTimeout(() => { const state = { ...here.current, x: to.x, y: to.y, moving: false }; here.current = state; setPosition(state); backend.setPresence({ name: me.name, x: to.x, y: to.y, facing: state.facing, dir: state.dir, characterId, moving: false }); }, landMs);
       return;
     }
     if (skill.effect !== 'blink' && skill.effect !== 'lunge') return;
@@ -112,6 +112,7 @@ export default function Scene({ backend, me, player, vows, movement, frozen = fa
   };
   // Idle flourish: standing still for 8 s shows the idle pose.
   const [idle, setIdle] = useState(false);
+  const idleRef = useRef(idle); idleRef.current = idle;
   useEffect(() => { setIdle(false); if (position.moving) return; const t = setTimeout(() => setIdle(true), 8000); return () => clearTimeout(t); }, [position.moving, position.x, position.y]);
 
   const here = useRef(position); here.current = position; facingRef.current = position.dir;
@@ -124,10 +125,10 @@ export default function Scene({ backend, me, player, vows, movement, frozen = fa
   useEffect(() => {
     const tick = setInterval(() => {
       const p = here.current; const now = Date.now();
-      if (p.moving || now - sent.current > 1000) { sent.current = now; backend.setPresence({ x: p.x, y: p.y, facing: p.facing, dir: p.dir, characterId, moving: enabled && p.moving }); }
+      if (p.moving || now - sent.current > 1000) { sent.current = now; backend.setPresence({ name: me.name, idle: idleRef.current, x: p.x, y: p.y, facing: p.facing, dir: p.dir, characterId, moving: enabled && p.moving }); }
     }, 120);
     return () => clearInterval(tick);
-  }, [backend, characterId, enabled]);
+  }, [backend, characterId, enabled, me.name]);
 
   // Movement loop: held keys walk at a steady speed (diagonals too); a click or gathering target is walked to.
   const ensureLoop = () => {
@@ -257,7 +258,7 @@ export default function Scene({ backend, me, player, vows, movement, frozen = fa
       <FieldLayer field={field} posOf={posOf} size={size} />
       {Object.entries(bubbles).map(([id, b]) => { const p = posOf(id); if (!p) return null; const name = id === me.id ? me.name : id.charAt(0).toUpperCase() + id.slice(1);
         return <div key={`${id}-${b.key}`} className="say-bubble" role="status" style={{ left: `${p.x * 100}%`, top: `${p.y * 100}%`, '--say-ms': `${b.until - b.key}ms` } as CSSProperties}><p>{b.text.replace('{nickname}', name)}</p></div>; })}
-      {Object.entries(peers).filter(([, p]) => p.characterId).map(([id, p]) => <div key={id} className={`scene-character peer ${p.moving ? 'walking' : ''} ${fieldClass(id, p)}`} style={{ left: `${p.x * 100}%`, top: `${p.y * 100}%`, zIndex: 10 + Math.round(p.y * 1000), '--facing': p.facing === 'left' ? -1 : 1, ...leap(id) } as CSSProperties}><BodyAura characterId={p.characterId} casting={casting[id]} /><SkillFx skill={casting[id]?.skill} dir={casting[id]?.dir} angle={casting[id]?.angle} reach={reachOf(p, casting[id]?.dir, casting[id]?.angle)} /><Figure characterId={p.characterId} dir={p.dir || 'down'} casting={casting[id]} /><span>{id.charAt(0).toUpperCase() + id.slice(1)}</span></div>)}
+      {Object.entries(peers).filter(([, p]) => p.characterId).map(([id, p]) => <div key={id} className={`scene-character peer ${p.moving ? 'walking' : ''} ${fieldClass(id, p)}`} style={{ left: `${p.x * 100}%`, top: `${p.y * 100}%`, zIndex: 10 + Math.round(p.y * 1000), '--facing': p.facing === 'left' ? -1 : 1, ...leap(id) } as CSSProperties}><BodyAura characterId={p.characterId} casting={casting[id]} /><SkillFx skill={casting[id]?.skill} dir={casting[id]?.dir} angle={casting[id]?.angle} reach={reachOf(p, casting[id]?.dir, casting[id]?.angle)} /><Figure characterId={p.characterId} dir={p.dir || 'down'} casting={casting[id]} idle={!!p.idle && !p.moving} /><span>{p.name || id.charAt(0).toUpperCase() + id.slice(1)}</span></div>)}
     </div>
     {stasis && <StasisOverlay key={stasis.id} fx={stasis} />}
     {field.filter(f => f.kind === 'dawn').map(f => createPortal(<div key={f.id} className="ult-overlay cine-dawn" aria-hidden="true"><i style={{ animationDelay: `${(KITS.seren.skills.find(s => s.field?.kind === 'dawn')?.syncMs ?? 0) - 400}ms` }} /></div>, document.body))}

@@ -23,7 +23,7 @@ export interface Settings {
   starlight: { start: number; attend: number; perVote: number; perVow: number; pullCost: number };
   stardust: { dupeA: number; dupeSPlus: number; dupeSPlusPlus: number; costA: number; costSPlus: number; costSPlusPlus: number };
 }
-export interface Presence { x: number; y: number; facing: 'left' | 'right'; characterId: string | null; moving: boolean; dir?: 'down' | 'right' | 'up' | 'left' }
+export interface Presence { name?: string; idle?: boolean; x: number; y: number; facing: 'left' | 'right'; characterId: string | null; moving: boolean; dir?: 'down' | 'right' | 'up' | 'left' }
 export type CueTopic = 'pull_reveal' | 'reaction' | 'stage_cue' | 'skill' | 'say';
 export interface Backend {
   mode: 'artifact' | 'local';

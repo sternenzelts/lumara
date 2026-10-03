@@ -88,7 +88,7 @@ describe('live channel recovery', () => {
     made[0].cb('CHANNEL_ERROR');
     b.setPresence({ x: 0.5, y: 0.5, facing: 'left', characterId: 'wren', moving: false });
     expect(made[0].track).not.toHaveBeenCalled();
-    vi.advanceTimersByTime(1600);
+    vi.advanceTimersByTime(8100);
     expect(made).toHaveLength(2); expect(client.removeChannel).toHaveBeenCalledWith(made[0]);
     made[1].cb('SUBSCRIBED');
     expect(made[1].track).toHaveBeenCalledWith(expect.objectContaining({ characterId: 'wren' }));
