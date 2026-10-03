@@ -4,7 +4,7 @@
 .world-map{position:absolute;inset:0;width:100%;height:100%;display:block;user-select:none}
 .world-occluder{position:absolute;display:block;pointer-events:none;user-select:none}
 .world .scene-character{transition:none}
-.world .scene-character.peer{transition:left .14s linear,top .14s linear}
+.world .scene-character.peer{transition:left .28s linear,top .28s linear}  /* positions arrive every 250 ms */
 /* soft floor shadow under walkers and cutouts (ghosts draw their own) */
 .world .scene-character::before{content:'';position:absolute;left:50%;bottom:20%;width:62%;height:9%;transform:translateX(-50%);border-radius:50%;background:radial-gradient(closest-side,#1d2a4a59,#1d2a4a00);z-index:-1}
 .world .scene-character:has(.ghost-figure)::before{display:none}
