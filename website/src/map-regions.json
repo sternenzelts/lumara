@@ -1,0 +1,17 @@
+{
+  "_note": "Lumara v2 — 4 nations around Aurelis (Genshin / Wuthering Waves style). x/y = percent of lumara_map_v2.webp. Approximate; tweak after seeing on screen.",
+  "image": "lumara_map_v2.webp",
+  "sanctuary": { "id": "aurelis", "name": "Aurelis", "subtitle": "The Sanctuary", "inspiredBy": "original", "element": "Light", "color": "#F2C96B", "x": 48, "y": 38, "art": "regions/aurelis_center.webp", "characters": ["seren", "wren"], "lit": true },
+  "regions": [
+    { "id": "zaryeva",   "name": "Zaryeva",   "direction": "north", "inspiredBy": "Russia", "element": "Ice",       "color": "#9CD4FF", "x": 50, "y": 13, "art": "regions/zaryeva_north.webp",                          "characters": ["ayaka", "mahesvara"],
+      "beacons": [ { "x": 26, "y": 17 }, { "x": 63, "y": 18 }, { "x": 44, "y": 30 } ] },
+    { "id": "hoshimura", "name": "Hoshimura", "direction": "east",  "inspiredBy": "Japan",  "element": "Lightning", "color": "#C9A2FF", "x": 80, "y": 38, "art": "regions/hoshimura_east.webp", "characters": ["keira", "kairo"],
+      "beacons": [ { "x": 79, "y": 41 }, { "x": 91, "y": 40 }, { "x": 90, "y": 58 } ] },
+    { "id": "lianzhou",  "name": "Lianzhou",  "direction": "south", "inspiredBy": "China",  "element": "Earth",     "color": "#6FD3A2", "x": 55, "y": 72, "art": "regions/lianzhou_south.webp", "characters": ["suvara", "ashvane", "dax"],
+      "beacons": [ { "x": 27, "y": 68 }, { "x": 63, "y": 83 }, { "x": 82, "y": 74 } ] },
+    { "id": "belcourt",  "name": "Belcourt",  "direction": "west",  "inspiredBy": "France", "element": "Water",     "color": "#7C9BFF", "x": 17, "y": 42, "art": "regions/belcourt_west.webp",  "characters": ["sollene", "calla", "rook", "azrenth"],
+      "beacons": [ { "x": 8, "y": 25 }, { "x": 30, "y": 55 }, { "x": 9, "y": 51 } ] }
+  ],
+  "beaconsTotal": 12,
+  "beaconOrder": ["belcourt:0", "lianzhou:0", "hoshimura:0", "zaryeva:0", "belcourt:1", "lianzhou:1", "hoshimura:1", "zaryeva:1", "belcourt:2", "lianzhou:2", "hoshimura:2", "zaryeva:2"]
+}

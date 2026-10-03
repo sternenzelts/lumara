@@ -1,0 +1,506 @@
+[
+  {
+    "name": "play",
+    "src": "http://127.0.0.1:5177/art/seren/voice/ja/seren_vo_welcome_first.mp3",
+    "time": 1995.9000000003725,
+    "position": 0,
+    "volume": 0.7
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/art/seren/voice/ja/seren_vo_welcome_first.mp3",
+    "time": 1996.2000000001863,
+    "position": 0,
+    "volume": 0.7
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/art/seren/voice/ja/seren_vo_welcome_first.mp3",
+    "time": 1996.4000000003725,
+    "position": 0,
+    "volume": 0.7
+  },
+  {
+    "name": "play",
+    "src": "http://127.0.0.1:5177/art/seren/voice/ja/seren_vo_welcome_first.mp3",
+    "time": 1996.5,
+    "position": 0,
+    "volume": 0.7
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/art/seren/voice/ja/seren_vo_welcome_first.mp3",
+    "time": 2109.4000000003725,
+    "position": 0,
+    "volume": 0.7
+  },
+  {
+    "name": "play",
+    "src": "http://127.0.0.1:5177/art/seren/voice/ja/seren_vo_welcome_first.mp3",
+    "time": 2327.5999999996275,
+    "position": 0,
+    "volume": 0.7
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/audio/ayaka-reveal/sfx_pull_fall_whoosh.mp3",
+    "time": 2354,
+    "position": 0,
+    "volume": 0.75
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/audio/ayaka-reveal/sfx_tell_splusplus.mp3",
+    "time": 2354,
+    "position": 0,
+    "volume": 0.75
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/audio/ayaka-reveal/sfx_pull_flash_swell.mp3",
+    "time": 2354.0999999996275,
+    "position": 0,
+    "volume": 0.75
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/art/ayaka/reveal-stasis.mp3",
+    "time": 2354.0999999996275,
+    "position": 0,
+    "volume": 0.75
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/art/ayaka/reveal-theme.mp3",
+    "time": 2354.0999999996275,
+    "position": 0,
+    "volume": 0
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/audio/pull_music.mp3",
+    "time": 2354.0999999996275,
+    "position": 0,
+    "volume": 0.6
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/art/ayaka/reveal-voice.mp3",
+    "time": 2354.0999999996275,
+    "position": 0,
+    "volume": 1
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/art/ayaka/reveal-chrono.mp3",
+    "time": 2354.0999999996275,
+    "position": 0,
+    "volume": 1
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/art/ayaka/reveal-after.mp3",
+    "time": 2354.0999999996275,
+    "position": 0,
+    "volume": 1
+  },
+  {
+    "name": "play",
+    "src": "http://127.0.0.1:5177/audio/ayaka-reveal/sfx_pull_fall_whoosh.mp3",
+    "time": 2355.7999999998137,
+    "position": 0,
+    "volume": 0.75
+  },
+  {
+    "name": "play",
+    "src": "http://127.0.0.1:5177/audio/pull_music.mp3",
+    "time": 2355.9000000003725,
+    "position": 0,
+    "volume": 0.6
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/audio/ayaka-reveal/sfx_pull_fall_whoosh.mp3",
+    "time": 2359.5,
+    "position": 0,
+    "volume": 0.75
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/audio/ayaka-reveal/sfx_tell_splusplus.mp3",
+    "time": 2359.5,
+    "position": 0,
+    "volume": 0.75
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/audio/ayaka-reveal/sfx_pull_flash_swell.mp3",
+    "time": 2359.5,
+    "position": 0,
+    "volume": 0.75
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/art/ayaka/reveal-stasis.mp3",
+    "time": 2359.5,
+    "position": 0,
+    "volume": 0.75
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/art/ayaka/reveal-theme.mp3",
+    "time": 2359.5,
+    "position": 0,
+    "volume": 0
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/audio/pull_music.mp3",
+    "time": 2359.5,
+    "position": 0,
+    "volume": 0.6
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/art/ayaka/reveal-voice.mp3",
+    "time": 2359.5,
+    "position": 0,
+    "volume": 1
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/art/ayaka/reveal-chrono.mp3",
+    "time": 2359.5,
+    "position": 0,
+    "volume": 1
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/art/ayaka/reveal-after.mp3",
+    "time": 2359.5,
+    "position": 0,
+    "volume": 1
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/audio/ayaka-reveal/sfx_pull_fall_whoosh.mp3",
+    "time": 2361.4000000003725,
+    "position": 0,
+    "volume": 0.75
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/audio/ayaka-reveal/sfx_tell_splusplus.mp3",
+    "time": 2361.4000000003725,
+    "position": 0,
+    "volume": 0.75
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/audio/ayaka-reveal/sfx_pull_flash_swell.mp3",
+    "time": 2361.4000000003725,
+    "position": 0,
+    "volume": 0.75
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/art/ayaka/reveal-stasis.mp3",
+    "time": 2361.4000000003725,
+    "position": 0,
+    "volume": 0.75
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/art/ayaka/reveal-theme.mp3",
+    "time": 2361.4000000003725,
+    "position": 0,
+    "volume": 0
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/audio/pull_music.mp3",
+    "time": 2361.4000000003725,
+    "position": 0,
+    "volume": 0.6
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/art/ayaka/reveal-voice.mp3",
+    "time": 2361.4000000003725,
+    "position": 0,
+    "volume": 1
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/art/ayaka/reveal-chrono.mp3",
+    "time": 2361.4000000003725,
+    "position": 0,
+    "volume": 1
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/art/ayaka/reveal-after.mp3",
+    "time": 2361.4000000003725,
+    "position": 0,
+    "volume": 1
+  },
+  {
+    "name": "play",
+    "src": "http://127.0.0.1:5177/audio/ayaka-reveal/sfx_pull_fall_whoosh.mp3",
+    "time": 2362.0999999996275,
+    "position": 0,
+    "volume": 0.75
+  },
+  {
+    "name": "play",
+    "src": "http://127.0.0.1:5177/audio/pull_music.mp3",
+    "time": 2362.0999999996275,
+    "position": 0,
+    "volume": 0.6
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/audio/ayaka-reveal/sfx_pull_fall_whoosh.mp3",
+    "time": 4290.700000000186,
+    "position": 1.717218,
+    "volume": 0.75
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/audio/ayaka-reveal/sfx_tell_splusplus.mp3",
+    "time": 4291.0999999996275,
+    "position": 0,
+    "volume": 0.75
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/audio/ayaka-reveal/sfx_pull_flash_swell.mp3",
+    "time": 4291.200000000186,
+    "position": 0,
+    "volume": 0.75
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/art/ayaka/reveal-stasis.mp3",
+    "time": 4291.299999999814,
+    "position": 0,
+    "volume": 0.75
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/art/ayaka/reveal-theme.mp3",
+    "time": 4291.4000000003725,
+    "position": 0,
+    "volume": 0
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/audio/pull_music.mp3",
+    "time": 4291.4000000003725,
+    "position": 1.628068,
+    "volume": 0.6
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/art/ayaka/reveal-voice.mp3",
+    "time": 4291.5,
+    "position": 0,
+    "volume": 1
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/art/ayaka/reveal-chrono.mp3",
+    "time": 4291.5999999996275,
+    "position": 0,
+    "volume": 1
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/art/ayaka/reveal-after.mp3",
+    "time": 4291.700000000186,
+    "position": 0,
+    "volume": 1
+  },
+  {
+    "name": "play",
+    "src": "http://127.0.0.1:5177/audio/ayaka-reveal/sfx_pull_fall_whoosh.mp3",
+    "time": 4292.4000000003725,
+    "position": 0,
+    "volume": 0.75
+  },
+  {
+    "name": "play",
+    "src": "http://127.0.0.1:5177/audio/pull_music.mp3",
+    "time": 4292.5,
+    "position": 0,
+    "volume": 0.6
+  },
+  {
+    "name": "play",
+    "src": "http://127.0.0.1:5177/audio/ayaka-reveal/sfx_tell_splusplus.mp3",
+    "time": 6705.5999999996275,
+    "position": 0,
+    "volume": 0.75
+  },
+  {
+    "name": "ended",
+    "src": "http://127.0.0.1:5177/audio/ayaka-reveal/sfx_pull_fall_whoosh.mp3",
+    "time": 6962.0999999996275,
+    "position": 2.599977
+  },
+  {
+    "name": "ended",
+    "src": "http://127.0.0.1:5177/art/seren/voice/ja/seren_vo_welcome_first.mp3",
+    "time": 8723.099999999627,
+    "position": 6.323991
+  },
+  {
+    "name": "play",
+    "src": "http://127.0.0.1:5177/audio/ayaka-reveal/sfx_pull_flash_swell.mp3",
+    "time": 8825.5,
+    "position": 0,
+    "volume": 0.75
+  },
+  {
+    "name": "ended",
+    "src": "http://127.0.0.1:5177/audio/ayaka-reveal/sfx_pull_flash_swell.mp3",
+    "time": 9962.700000000186,
+    "position": 1.1
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/audio/ayaka-reveal/sfx_pull_fall_whoosh.mp3",
+    "time": 10007.599999999627,
+    "position": 2.599977,
+    "volume": 0
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/audio/ayaka-reveal/sfx_tell_splusplus.mp3",
+    "time": 10007.799999999814,
+    "position": 3.260095,
+    "volume": 0
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/audio/ayaka-reveal/sfx_pull_flash_swell.mp3",
+    "time": 10007.900000000373,
+    "position": 1.1,
+    "volume": 0
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/art/ayaka/reveal-stasis.mp3",
+    "time": 10007.900000000373,
+    "position": 0,
+    "volume": 0
+  },
+  {
+    "name": "play",
+    "src": "http://127.0.0.1:5177/art/ayaka/reveal-theme.mp3",
+    "time": 11864.099999999627,
+    "position": 0,
+    "volume": 0
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/audio/ayaka-reveal/sfx_pull_fall_whoosh.mp3",
+    "time": 12206.5,
+    "position": 2.599977,
+    "volume": 0
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/audio/ayaka-reveal/sfx_tell_splusplus.mp3",
+    "time": 12206.599999999627,
+    "position": 3.260105,
+    "volume": 0
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/audio/ayaka-reveal/sfx_pull_flash_swell.mp3",
+    "time": 12206.700000000186,
+    "position": 1.1,
+    "volume": 0
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/art/ayaka/reveal-stasis.mp3",
+    "time": 12206.700000000186,
+    "position": 0,
+    "volume": 0
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/audio/pull_music.mp3",
+    "time": 12950.599999999627,
+    "position": 8.598991,
+    "volume": 0
+  },
+  {
+    "name": "play",
+    "src": "http://127.0.0.1:5177/art/ayaka/reveal-voice.mp3",
+    "time": 14389.299999999814,
+    "position": 0,
+    "volume": 1
+  },
+  {
+    "name": "ended",
+    "src": "http://127.0.0.1:5177/art/ayaka/reveal-voice.mp3",
+    "time": 20781.599999999627,
+    "position": 6.316009
+  },
+  {
+    "name": "play",
+    "src": "http://127.0.0.1:5177/art/ayaka/reveal-chrono.mp3",
+    "time": 20782.200000000186,
+    "position": 0,
+    "volume": 1
+  },
+  {
+    "name": "play",
+    "src": "http://127.0.0.1:5177/art/ayaka/reveal-stasis.mp3",
+    "time": 20782.700000000186,
+    "position": 0,
+    "volume": 0.75
+  },
+  {
+    "name": "ended",
+    "src": "http://127.0.0.1:5177/art/ayaka/reveal-chrono.mp3",
+    "time": 24301.599999999627,
+    "position": 3.433991
+  },
+  {
+    "name": "pause",
+    "src": "http://127.0.0.1:5177/art/ayaka/reveal-theme.mp3",
+    "time": 24301.700000000186,
+    "position": 12.398242,
+    "volume": 0.3
+  },
+  {
+    "name": "play",
+    "src": "http://127.0.0.1:5177/art/ayaka/reveal-theme.mp3",
+    "time": 26106.099999999627,
+    "position": 12.398246,
+    "volume": 0.3
+  },
+  {
+    "name": "play",
+    "src": "http://127.0.0.1:5177/art/ayaka/reveal-after.mp3",
+    "time": 26107.099999999627,
+    "position": 0,
+    "volume": 1
+  },
+  {
+    "name": "ended",
+    "src": "http://127.0.0.1:5177/art/ayaka/reveal-stasis.mp3",
+    "time": 26753.5,
+    "position": 5.890208
+  },
+  {
+    "name": "ended",
+    "src": "http://127.0.0.1:5177/art/ayaka/reveal-after.mp3",
+    "time": 29982,
+    "position": 3.801995
+  }
+]

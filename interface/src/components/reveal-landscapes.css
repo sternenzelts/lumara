@@ -1,0 +1,4 @@
+.approved-reveal[data-character="ayaka"] #splash,
+.approved-reveal[data-character="keira"] #splash,
+.approved-reveal[data-character="mahesvara"] #splashBase,
+.approved-reveal[data-character="mahesvara"] #splashMirror{object-fit:cover;object-position:50% 50%;transform-origin:50% 50%;background:#03060f}

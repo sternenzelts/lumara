@@ -1,0 +1,385 @@
+/* Skill bar (left edge, under the minimap) */
+.skill-bar{display:none}
+.game-voyage-screen .skill-bar{position:fixed;left:20px;top:200px;z-index:24;display:flex;flex-direction:column;gap:12px}
+.skill-slot{position:relative;width:62px;height:62px;padding:0;border:1px solid #c9d2dcaa;background:#10233a;cursor:pointer;box-shadow:0 6px 16px #0a1a2c66;font:inherit;color:#fff4dc}
+.skill-slot.ultimate{border-color:#e2c27a;box-shadow:0 0 14px #e2c27a55,0 6px 16px #0a1a2c66}
+.skill-slot img{display:block;width:100%;height:100%;object-fit:cover}
+.skill-slot::after{content:'';position:absolute;inset:0;background:conic-gradient(#0a1424d9 calc(var(--cd,0) * 360deg),transparent 0);pointer-events:none}
+.skill-slot:not(:disabled):hover{transform:translateY(-1px);filter:brightness(1.12)}
+.skill-slot:focus-visible{outline:2px solid #fff4dc;outline-offset:3px}
+.skill-key{position:absolute;right:-6px;bottom:-6px;z-index:1;min-width:20px;height:20px;padding:0 5px;border:1px solid #d8bf82;background:#10233a;font-family:'Marcellus',serif;font-size:13px;line-height:18px;text-align:center}
+.skill-used{position:absolute;inset:0;z-index:1;display:grid;place-items:center;font-family:'Marcellus',serif;font-size:13px;color:#f3dca0;background:#0a1424a8}
+.skill-tip{position:absolute;left:calc(100% + 14px);top:50%;transform:translateY(-50%);z-index:2;width:230px;padding:10px 12px;display:grid;gap:4px;text-align:left;background:#0f2135f2;border:1px solid #d8bf82aa;box-shadow:0 10px 24px #0a1a2c66;opacity:0;visibility:hidden;transition:opacity .15s;pointer-events:none}
+.skill-tip strong{font-family:'Marcellus',serif;font-weight:400;font-size:16px;color:#fff4dc}
+.skill-tip span{font-size:12.5px;line-height:1.45;color:#d9e2ea}
+.skill-tip em{font-style:normal;font-size:11.5px;color:#d8bf82}
+.skill-slot:hover .skill-tip,.skill-slot:focus-visible .skill-tip,.skill-slot.show-tip .skill-tip{opacity:1;visibility:visible}
+@media (max-width:760px),(orientation:portrait){.game-voyage-screen .skill-bar{top:170px;left:12px;gap:9px}.skill-slot{width:50px;height:50px}.skill-tip{width:190px}}
+
+/* ---------- On the plaza: poses, aura, effects, true form ---------- */
+.pose-sprite{position:absolute;left:50%;bottom:-6%;width:var(--pose-w,170%);aspect-ratio:var(--pose-ar,256/360);transform:translateX(-50%);background-repeat:no-repeat;background-size:calc(var(--pose-n,4) * 100%) 100%;background-position:calc(var(--pose,0) * 100% / (var(--pose-n,4) - 1)) 0;pointer-events:none;animation:pose-pop .25s ease-out}
+@keyframes pose-pop{from{transform:translateX(-50%) scale(.94)}to{transform:translateX(-50%) scale(1)}}
+.kit-aura{position:absolute;left:50%;bottom:-12%;width:230%;transform:translateX(-50%);z-index:-1;pointer-events:none;opacity:.55;animation:aura-pulse 3.2s ease-in-out infinite}
+.kit-aura.strong{width:330%;bottom:-30%;opacity:.95}
+@keyframes aura-pulse{0%,100%{filter:brightness(1);transform:translateX(-50%) scale(1)}50%{filter:brightness(1.35);transform:translateX(-50%) scale(1.04)}}
+/* true form: flying */
+.true-form{position:absolute;inset:0;--lean:0deg;--flip:1;pointer-events:none}
+.true-form[data-dir=left]{--lean:-6deg}.true-form[data-dir=right]{--lean:6deg}
+.true-form .ghost-shadow{bottom:0;width:120%;opacity:.7}
+.true-body{position:absolute;left:50%;bottom:26%;width:var(--true-size,400%);aspect-ratio:1;transform:translateX(-50%);animation:true-hover 2.4s ease-in-out infinite}
+.true-pose{position:absolute;inset:0;background-repeat:no-repeat;background-size:400% 100%;background-position:calc(var(--pose,0) * 100% / 3) 0;transform:rotate(var(--lean));transition:transform .35s ease;filter:drop-shadow(0 0 10px #6fb7ff88)}
+@keyframes true-hover{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,-6%)}}
+.void-trail{position:absolute;left:50%;top:40%;width:0;height:0;opacity:0;transition:opacity .3s}
+.scene-character.walking .void-trail{opacity:1}
+.void-trail i{position:absolute;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle,#140a24 35%,#7a2bd6 60%,#ff3b6b00 75%);opacity:0;animation:void-drift 1.1s linear infinite;animation-delay:calc(var(--i) * -.16s)}
+@keyframes void-drift{0%{opacity:.9;transform:translate(0,calc(var(--i) * 5px)) scale(1)}100%{opacity:0;transform:translate(calc((var(--i) - 3) * 14px),calc(var(--i) * 9px + 30px)) scale(.3)}}
+/* effects (drawn at the caster's feet) */
+.skill-fx{position:absolute;left:50%;bottom:20%;width:0;height:0;pointer-events:none;z-index:3}
+/* Disassemble: a crystal bullet flies the way he faces, then the impact bursts and rewinds */
+/* --tx/--ty/--reach/--angle come from the shot (stops at the first object hit) */
+.fx-disassemble .muzzle{position:absolute;left:-18px;top:-78px;width:36px;height:36px;border-radius:50%;background:radial-gradient(circle,#fff 0 18%,#bfe8ff 35%,#5fb6ff66 55%,#5fb6ff00 72%);transform:rotate(var(--angle)) translateX(14px);animation:muzzle .22s ease-out forwards}
+@keyframes muzzle{0%{opacity:1;scale:.5}60%{opacity:1;scale:1.25}100%{opacity:0;scale:1.4}}
+.fx-disassemble .bullet{position:absolute;left:0;top:-60px;width:34px;height:8px;margin:-4px 0 0 -6px;background:linear-gradient(90deg,#5fb6ff00,#9fdcff 45%,#fff 80%,#fff);clip-path:polygon(0 35%,78% 0,100% 50%,78% 100%,0 65%);filter:drop-shadow(0 0 6px #6fc4ff);transform-origin:6px 4px;animation:bullet-fly .3s cubic-bezier(.3,.6,.4,1) forwards}
+@keyframes bullet-fly{0%{opacity:1;transform:translate(0,0) rotate(var(--angle))}90%{opacity:1}100%{opacity:0;transform:translate(var(--tx),var(--ty)) rotate(var(--angle))}}
+.fx-disassemble .tracer{position:absolute;left:0;top:-60px;height:3px;width:var(--reach);margin-top:-1.5px;transform-origin:0 50%;transform:rotate(var(--angle)) scaleX(0);background:linear-gradient(90deg,#bfe8ff00,#bfe8ffcc 60%,#ffffff);box-shadow:0 0 8px #6fc4ff;animation:tracer .55s ease-out forwards}
+@keyframes tracer{0%{opacity:1;transform:rotate(var(--angle)) scaleX(0)}45%{opacity:1;transform:rotate(var(--angle)) scaleX(1)}100%{opacity:0;transform:rotate(var(--angle)) scaleX(1)}}
+.fx-disassemble .impact{position:absolute;left:0;top:-53px;transform:translate(var(--tx),var(--ty))}
+.fx-disassemble i{position:absolute;width:10px;height:10px;background:#8fd6ff;box-shadow:0 0 8px #4fb4ff;opacity:0;animation:shard-burst 1.05s .32s cubic-bezier(.2,.7,.3,1) forwards;--a:calc(var(--i) * 25.7deg)}
+/* aim pose turns to face the shot (the painted aim points to the viewer's left) */
+.pose-sprite[data-dir=right]{transform:translateX(-50%) scaleX(-1);animation:none}
+.fx-disassemble i:nth-child(odd){width:6px;height:6px;background:#d4f0ff}
+@keyframes shard-burst{0%{opacity:0;transform:rotate(var(--a)) translateX(4px)}15%{opacity:1}50%{opacity:1;transform:rotate(var(--a)) translateX(46px) rotate(90deg)}100%{opacity:0;transform:rotate(var(--a)) translateX(4px) rotate(0)}}
+.fx-nullify .hex{position:absolute;left:-60px;top:-120px;width:120px;height:120px;clip-path:polygon(25% 3%,75% 3%,100% 50%,75% 97%,25% 97%,0 50%);background:linear-gradient(135deg,#bfe6ff55,#4fa6ff22 45%,#e6f6ff66);border:0;animation:hex-flash 1.6s ease-out forwards;filter:drop-shadow(0 0 12px #7cc6ff)}
+@keyframes hex-flash{0%{opacity:0;transform:scale(.4)}20%{opacity:1;transform:scale(1.05)}70%{opacity:.8;transform:scale(1)}100%{opacity:0;transform:scale(1.25)}}
+.fx-nullify i{position:absolute;width:12px;height:4px;background:#e2c27a;box-shadow:0 0 6px #ffe2a0;--a:calc(var(--i) * 36deg);animation:rune-shatter 1.6s ease-out forwards;transform:rotate(var(--a)) translateX(64px)}
+@keyframes rune-shatter{0%,45%{opacity:1;transform:rotate(var(--a)) translateX(64px)}100%{opacity:0;transform:rotate(calc(var(--a) + 25deg)) translateX(120px) scale(.4)}}
+.fx-transform b{position:absolute;left:-150px;top:-260px;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,#ffffff 0 12%,#9fd8ffcc 30%,#3b6bd655 55%,#0000 70%);animation:true-flash .9s ease-out forwards}
+.fx-transform b.ring{background:none;border:3px solid #bfe6ff;animation:true-ring .9s ease-out forwards}
+@keyframes true-flash{0%{opacity:0;transform:scale(.2)}40%{opacity:1}100%{opacity:0;transform:scale(1.6)}}
+@keyframes true-ring{0%{opacity:1;transform:scale(.1)}100%{opacity:0;transform:scale(2.4)}}
+.fx-transform i{position:absolute;width:8px;height:16px;background:#bfe6ff;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);--a:calc(var(--i) * 30deg);animation:crystal-out .9s ease-out forwards}
+@keyframes crystal-out{0%{opacity:1;transform:rotate(var(--a)) translateY(-10px)}100%{opacity:0;transform:rotate(var(--a)) translateY(-160px)}}
+.sanctuary-scene.reduce .skill-fx *,.sanctuary-scene.reduce .kit-aura,.sanctuary-scene.reduce .true-body,.sanctuary-scene.reduce .void-trail i{animation-duration:.01s!important;animation-iteration-count:1!important}
+
+/* Ultimate: Return to Dust — whole screen: dim, shockwaves, plaza turns to dust, restoring flash (3.6 s) */
+.ult-overlay{position:absolute;inset:0;z-index:6;pointer-events:none;overflow:hidden}
+.ult-dim{position:absolute;inset:0;background:radial-gradient(circle at 50% 55%,#1b0d3acc,#05030fee 70%);animation:ult-dim 3.6s ease forwards}
+@keyframes ult-dim{0%{opacity:0}12%,72%{opacity:1}100%{opacity:0}}
+.ult-shockwave{position:absolute;left:50%;top:55%;width:40px;height:20px;border-radius:50%;border:4px solid #bfe6ff;box-shadow:0 0 30px #7cc6ff,inset 0 0 20px #7cc6ff;transform:translate(-50%,-50%) scale(0);animation:ult-wave 1.6s .5s cubic-bezier(.2,.6,.3,1) forwards}
+.ult-shockwave.late{border-color:#c79bff;box-shadow:0 0 30px #9a5cff;animation-delay:.85s}
+@keyframes ult-wave{0%{opacity:1;transform:translate(-50%,-50%) scale(0)}100%{opacity:0;transform:translate(-50%,-50%) scale(60)}}
+.ult-dust i{position:absolute;left:var(--x);top:var(--y);width:6px;height:6px;background:#d8e8ff;box-shadow:0 0 6px #9fd8ff;opacity:0;animation:ult-dust 2.2s calc(.9s + var(--i) * .02s) ease-in forwards}
+.ult-dust i:nth-child(3n){background:#8a5cff;box-shadow:0 0 6px #b48bff}
+@keyframes ult-dust{0%{opacity:0;transform:translate(0,0)}20%{opacity:1}100%{opacity:0;transform:translate(calc((var(--i) - 18) * 6px),-140px) scale(.2)}}
+.ult-flash{position:absolute;inset:0;background:#eef8ff;opacity:0;animation:ult-flash 3.6s ease forwards}
+@keyframes ult-flash{0%,74%{opacity:0}80%{opacity:.95}100%{opacity:0}}
+.skill-slot.locked img{filter:grayscale(.7) brightness(.6)}
+.skill-slot.locked .skill-used{font-size:10px;text-align:center;line-height:1.1;padding:0 4px}
+.sanctuary-scene.reduce .ult-overlay *{animation-duration:.01s!important}
+/* Skills are triggered by the player: they play even when "Pause motion" freezes ambient animation */
+.game-still .skill-fx *,.game-still .ult-overlay *,.game-still .pose-sprite,.game-still .fx-transform *{animation-play-state:running!important}
+
+/* Screen shake: big for the ultimate (peaks with the first shockwave, fades with the dust), small for changing form */
+.sanctuary-scene.shake-big{animation:shake-big 3s linear}
+.sanctuary-scene.shake-small{animation:shake-small .6s .75s linear}
+@keyframes shake-big{0%,15%{transform:none}17%{transform:translate(-12px,7px)}20%{transform:translate(11px,-8px)}23%{transform:translate(-10px,-6px)}26%{transform:translate(9px,8px)}30%{transform:translate(-8px,4px)}35%{transform:translate(7px,-5px)}42%{transform:translate(-5px,3px)}50%{transform:translate(4px,-3px)}60%{transform:translate(-3px,2px)}72%{transform:translate(2px,-1px)}85%,100%{transform:none}}
+@keyframes shake-small{0%,100%{transform:none}20%{transform:translate(-4px,2px)}40%{transform:translate(4px,-2px)}60%{transform:translate(-3px,-1px)}80%{transform:translate(2px,1px)}}
+.game-still .sanctuary-scene.shake-big,.game-still .sanctuary-scene.shake-small{animation-play-state:running!important}
+
+/* S++ body aura: glow + rising energy flames + sparks around the character (colour from the kit) */
+.body-aura{position:absolute;left:50%;bottom:0;width:150%;height:115%;transform:translateX(-50%);pointer-events:none;z-index:0;--aura:#5fb6ff}
+.body-aura .glow{position:absolute;inset:8% 14% 2%;border-radius:45% 45% 40% 40%;background:radial-gradient(ellipse at 50% 60%,color-mix(in srgb,var(--aura) 55%,transparent),transparent 70%);filter:blur(6px);animation:aura-glow 2.2s ease-in-out infinite}
+@keyframes aura-glow{0%,100%{opacity:.55;transform:scale(1)}50%{opacity:.9;transform:scale(1.06)}}
+.body-aura .flame{position:absolute;bottom:4%;left:calc(12% + var(--i) * 9.5%);width:16%;height:46%;border-radius:50% 50% 40% 40% / 70% 70% 30% 30%;background:linear-gradient(to top,color-mix(in srgb,var(--aura) 85%,white) 0%,color-mix(in srgb,var(--aura) 55%,transparent) 45%,transparent 100%);filter:blur(2px);mix-blend-mode:screen;transform-origin:50% 100%;opacity:0;animation:aura-flame calc(1.1s + var(--i) * .07s) ease-out infinite;animation-delay:calc(var(--i) * -.23s)}
+@keyframes aura-flame{0%{opacity:0;transform:translateY(10%) scaleY(.4) scaleX(.8)}25%{opacity:.85}100%{opacity:0;transform:translateY(-55%) scaleY(1.15) scaleX(.5)}}
+.scene-character.walking .body-aura .flame{transform-origin:50% 100%;rotate:-8deg}
+.scene-character.walking .body-aura[data-left] .flame{rotate:8deg}
+.body-aura .spark{position:absolute;bottom:20%;left:calc(18% + var(--i) * 13%);width:4px;height:4px;border-radius:50%;background:#fff;box-shadow:0 0 6px var(--aura),0 0 12px var(--aura);opacity:0;animation:aura-spark calc(1.8s + var(--i) * .2s) linear infinite;animation-delay:calc(var(--i) * -.4s)}
+@keyframes aura-spark{0%{opacity:0;transform:translate(0,0)}20%{opacity:1}100%{opacity:0;transform:translate(calc((var(--i) - 2.5) * 5px),-90px)}}
+.body-aura.strong{width:260%;height:190%;bottom:-4%}
+.body-aura.strong .glow{animation-duration:1.4s}
+.body-aura.strong .flame{height:58%;animation-duration:calc(.8s + var(--i) * .05s)}
+.sanctuary-scene.reduce .body-aura *{animation:none!important;opacity:.6}
+.game-still .body-aura *{animation-play-state:running!important}
+
+/* Painted aura loop: 8 frames stepped, plus a half-frame-offset echo layer cross-fading for smoothness; behind the body */
+.body-aura{z-index:-1}
+.body-aura .aura-sheet{position:absolute;left:50%;bottom:-8%;width:138%;aspect-ratio:1;transform:translateX(-50%);background-repeat:no-repeat;background-size:calc(var(--af,8) * 100%) 100%;animation:aura-frames calc(var(--af,8) * .12s) steps(var(--af,8)) infinite,aura-rise 1.9s ease-in-out infinite}
+.body-aura .aura-sheet.echo{opacity:.5;animation-delay:-.06s,-.95s;filter:blur(1px)}
+@keyframes aura-frames{from{background-position-x:0}to{background-position-x:calc(100% * var(--af,8) / (var(--af,8) - 1))}}
+@keyframes aura-rise{0%,100%{translate:0 0}50%{translate:0 -3%}}
+.body-aura.strong .aura-sheet{width:150%;bottom:-2%;animation-duration:calc(var(--af,8) * .09s),1.4s;filter:brightness(1.25) saturate(1.2)}
+.scene-character.walking .body-aura .aura-sheet{rotate:-4deg}
+
+/* Painted gun VFX (ChatGPT sheets): replace the code shapes when present */
+.fx-disassemble.painted .muzzle{left:0;top:-60px;width:96px;height:64px;margin:-32px 0 0 0;border-radius:0;background-color:transparent;background-repeat:no-repeat;background-size:400% 100%;transform-origin:0 50%;transform:rotate(var(--angle));animation:vfx-muzzle .26s steps(4) forwards;scale:none}
+@keyframes vfx-muzzle{from{background-position-x:0;opacity:1}to{background-position-x:calc(100% * 4 / 3);opacity:1}}
+.fx-disassemble.painted .bullet{left:0;top:-60px;width:84px;height:56px;margin:-28px 0 0 -79px;clip-path:none;filter:none;background-color:transparent;background-image:none;background-repeat:no-repeat;background-size:400% 100%;transform-origin:79px 28px;animation:bullet-fly .3s cubic-bezier(.3,.6,.4,1) forwards,vfx-loop4 .2s steps(4) infinite}
+.fx-disassemble.painted .bullet[style]{background-color:transparent}
+@keyframes vfx-loop4{from{background-position-x:0}to{background-position-x:calc(100% * 4 / 3)}}
+.fx-disassemble.painted .tracer{opacity:.55}
+.fx-disassemble.painted .impact{left:-70px;top:-100px;width:140px;height:94px;margin:0;background-repeat:no-repeat;background-size:800% 100%;background-position-x:0;opacity:0;animation:vfx-impact .95s .28s steps(8) forwards}
+@keyframes vfx-impact{0%{opacity:1;background-position-x:0}99.9%{opacity:1;background-position-x:calc(100% * 8 / 7)}100%{opacity:0}}
+.fx-disassemble.painted .impact i{display:none}
+.game-still .fx-disassemble.painted *{animation-play-state:running!important}
+
+/* ---------- Keira: floating base form, mech companion, pink skills ---------- */
+.ghost-figure.kit-float .ghost-body{width:170%;aspect-ratio:256/360;bottom:2%}
+.ghost-figure.kit-float .pose-sprite{left:0;bottom:0;width:100%;height:100%;transform:rotate(var(--lean)) scaleX(var(--flip));transition:transform .35s ease;animation:none}
+.kit-companion{position:absolute;left:-75%;bottom:38%;width:115%;aspect-ratio:1;background-repeat:no-repeat;background-size:400% 100%;background-position:calc(var(--pose,0) * 100% / 3) 0;pointer-events:none;z-index:-1;animation:mech-bob 2.8s ease-in-out infinite;transition:left .45s ease}
+.kit-companion[data-dir=left]{left:60%}
+@keyframes mech-bob{0%,100%{translate:0 0}50%{translate:0 -7%}}
+.fx-blink{position:absolute;left:-70px;top:-150px;width:140px;height:140px;background-repeat:no-repeat;background-size:400% 100%;animation:vfx-4 .6s steps(4) forwards}
+.fx-slash{position:absolute;left:0;top:-70px;width:170px;height:170px;margin:-85px 0 0 -20px;background-repeat:no-repeat;background-size:400% 100%;transform-origin:20px 85px;transform:rotate(var(--angle));animation:vfx-4 .55s steps(4) forwards}
+@keyframes vfx-4{0%{opacity:1;background-position-x:0}99.9%{opacity:1;background-position-x:calc(100% * 4 / 3)}100%{opacity:0}}
+.fx-blast{position:absolute;left:-260px;top:-380px;width:520px;height:520px;background-repeat:no-repeat;background-size:800% 100%;opacity:0;animation:vfx-8 1.9s .45s steps(8) forwards;z-index:7}
+@keyframes vfx-8{0%{opacity:1;background-position-x:0}99.9%{opacity:1;background-position-x:calc(100% * 8 / 7)}100%{opacity:0}}
+.ult-overlay.theme-pink .ult-dim{background:radial-gradient(circle at 50% 55%,#5a0d3acc,#14030fee 70%)}
+.ult-overlay.theme-pink .ult-shockwave{border-color:#ffc2e4;box-shadow:0 0 30px #ff6fb8,inset 0 0 20px #ff6fb8}
+.ult-overlay.theme-pink .ult-shockwave.late{border-color:#9ff0ff;box-shadow:0 0 30px #5fe0ff}
+.ult-overlay.theme-pink .ult-dust i{background:#ffd0ea;box-shadow:0 0 6px #ff7cc4}
+.ult-overlay.theme-pink .ult-flash{background:#fff0f8}
+.game-still .fx-blink,.game-still .fx-slash,.game-still .fx-blast,.game-still .kit-companion{animation-play-state:running!important}
+.sanctuary-scene.reduce .kit-companion{animation:none}
+.kit-companion{z-index:1}
+/* mech floats clearly beside her, not behind her */
+.kit-companion{left:-150%;bottom:30%;width:150%}
+.kit-companion[data-dir=left]{left:100%}
+
+/* Keira ultimate: fly up (raise pose) → dive sword-first (slash pose) → KABOOM on landing at ~1.15 s */
+.true-form.ult-dive .true-body{animation:ult-dive-body 3.6s cubic-bezier(.3,0,.2,1) forwards}
+@keyframes ult-dive-body{0%{transform:translate(-50%,0)}22%{transform:translate(-50%,-150%)}28%{transform:translate(-50%,-160%) rotate(-6deg)}32%{transform:translate(-50%,6%) rotate(8deg)}36%{transform:translate(-50%,0) rotate(0)}100%{transform:translate(-50%,0)}}
+.true-form.ult-dive .true-pose{animation:ult-dive-pose 3.6s steps(1) forwards}
+@keyframes ult-dive-pose{0%{background-position-x:100%}28%{background-position-x:66.667%}60%{background-position-x:0}}
+.scene-character:has(.ult-dive) .fx-blast{animation-delay:1.15s}
+.ult-overlay.theme-pink .ult-shockwave{animation-delay:1.15s}
+.ult-overlay.theme-pink .ult-shockwave.late{animation-delay:1.45s}
+.ult-overlay.theme-pink .ult-dust i{animation-delay:calc(1.4s + var(--i) * .02s)}
+@keyframes shake-dive{0%,30%{transform:none}32%{transform:translate(-14px,9px)}35%{transform:translate(12px,-9px)}38%{transform:translate(-11px,-6px)}41%{transform:translate(9px,8px)}45%{transform:translate(-7px,4px)}52%{transform:translate(5px,-4px)}62%{transform:translate(-3px,2px)}75%{transform:translate(2px,-1px)}85%,100%{transform:none}}
+.sanctuary-scene.shake-big:has(.ult-overlay.theme-pink){animation:shake-dive 3.6s linear}
+/* the mech punch lunges forward so it reads */
+.kit-companion{transition:left .45s ease,transform .18s ease}
+.scene-character:has(.fx-slash) .kit-companion{transform:translateX(35%) scale(1.12)}
+.scene-character:has(.fx-slash) .kit-companion[data-dir=left]{transform:translateX(-35%) scale(1.12)}
+
+/* true/combined pose sheets with any frame count */
+.true-pose{background-size:calc(var(--true-frames,4) * 100%) 100%;background-position:calc(var(--pose,0) * 100% / (var(--true-frames,4) - 1)) 0}
+@keyframes ult-dive-pose{0%{background-position-x:75%}28%{background-position-x:50%}60%{background-position-x:0}}
+
+/* dive with the plunge pose (6-frame sheet: raise = 60%, plunge = 100%), and play even when "Pause motion" is on */
+@keyframes ult-dive-pose{0%{background-position-x:60%}22%{background-position-x:100%}62%{background-position-x:0}}
+.game-still .true-form.ult-dive .true-body,.game-still .true-form.ult-dive .true-pose{animation-play-state:running!important}
+
+/* Keira's ultimate, longer (5.6 s): impact at ~1.8 s, slower blast, bigger waves, lingering dust */
+.ult-overlay.theme-pink .ult-dim,.ult-overlay.theme-pink .ult-flash{animation-duration:5.6s}
+.true-form.ult-dive .true-body,.true-form.ult-dive .true-pose{animation-duration:5.6s}
+.scene-character:has(.ult-dive) .fx-blast{animation-delay:1.8s;animation-duration:3.2s;width:640px;height:640px;left:-320px;top:-470px}
+.ult-overlay.theme-pink .ult-shockwave{animation-delay:1.8s;animation-duration:2.6s}
+.ult-overlay.theme-pink .ult-shockwave.late{animation-delay:2.3s;animation-duration:2.6s}
+.ult-overlay.theme-pink .ult-dust i{animation-delay:calc(2s + var(--i) * .03s);animation-duration:3.2s}
+.sanctuary-scene.shake-big:has(.ult-overlay.theme-pink){animation-duration:5.6s}
+
+/* Blaze Code: centred on her body, pushed out toward the aim, never upside-down */
+.fx-slash{left:0;top:var(--slash-y,25px);width:190px;height:190px;margin:-95px 0 0 -95px;transform-origin:50% 50%;transform:rotate(var(--angle)) translateX(70px) scaleY(var(--flipy,1))}
+.ghost-figure.kit-float ~ .fx-slash,.scene-character:has(.kit-float) .fx-slash{left:48px;top:8px}
+.true-body{bottom:var(--true-bottom,26%)}
+
+/* ---------- Azrenth: walking demon king, summoned sword, crimson skills ---------- */
+.kit-weapon{position:absolute;left:-95%;bottom:6%;height:150%;width:auto;pointer-events:none;z-index:-1;filter:drop-shadow(0 0 10px #ff2a3caa);animation:weapon-hover 2.6s ease-in-out infinite,weapon-rise .9s cubic-bezier(.2,.8,.3,1)}
+.kit-weapon[data-dir=left]{left:auto;right:-95%}
+@keyframes weapon-hover{0%,100%{translate:0 0;rotate:-4deg}50%{translate:0 -6%;rotate:3deg}}
+@keyframes weapon-rise{from{opacity:0;transform:translateY(60%) scale(.6)}to{opacity:1;transform:none}}
+.fx-ruin,.fx-blacksun{position:absolute;left:0;top:-40px;width:220px;height:110px;margin:-55px 0 0 -110px;background-repeat:no-repeat;background-size:400% 100%;transform:translate(var(--tx),var(--ty));animation:vfx-4 1.2s steps(4) forwards}
+.fx-blacksun{width:200px;height:100px;margin:-50px 0 0 -100px;transform:translate(var(--tx),var(--ty)) rotate(var(--angle));animation:vfx-4 1.2s steps(4) forwards}
+.fx-summon{position:absolute;left:-180px;top:-330px;width:360px;height:360px;background-repeat:no-repeat;background-size:800% 100%;animation:vfx-8 1.6s steps(8) forwards;z-index:2}
+.fx-sever{position:fixed;inset:12% 0;background-repeat:no-repeat;background-size:800% 100%;opacity:0;animation:vfx-8 2.6s .7s steps(8) forwards;z-index:7;pointer-events:none}
+.ult-overlay.theme-crimson .ult-dim{background:radial-gradient(circle at 50% 55%,#3a0508cc,#0a0203f2 70%);animation-duration:4.2s}
+.ult-overlay.theme-crimson .ult-shockwave{border-color:#ffd77a;box-shadow:0 0 30px #ffb02e,inset 0 0 20px #ff3348;animation-delay:1.2s}
+.ult-overlay.theme-crimson .ult-shockwave.late{border-color:#ff3348;box-shadow:0 0 30px #ff1f33;animation-delay:1.5s}
+.ult-overlay.theme-crimson .ult-dust i{background:#ff6a3d;box-shadow:0 0 6px #ff2a1a;animation-delay:calc(1.4s + var(--i) * .02s)}
+.ult-overlay.theme-crimson .ult-flash{background:#ffe9d6;animation-duration:4.2s}
+.game-still .kit-weapon,.game-still .fx-ruin,.game-still .fx-blacksun,.game-still .fx-summon,.game-still .fx-sever{animation-play-state:running!important}
+.sanctuary-scene.reduce .kit-weapon{animation:none}
+
+/* ---------- Azrenth ultimate: Sever cinematic (5.2 s), after the pull reveal's Sever beat ----------
+   0–1.2 s threads glow, world trembles · 1.2 s blade of light cuts edge to edge · 1.35 s halves slide apart over a
+   violet void, threads snap, cracks · 2.9 s white flash → Sever painting holds · 4.8 s fades back */
+.cine-sever{--cut:-31deg}
+.cine-sever .sv-dim{position:absolute;inset:0;background:#000;animation:sv-dim 5.2s ease forwards}
+@keyframes sv-dim{0%{opacity:0}10%,55%{opacity:.5}60%,100%{opacity:0}}
+.cine-sever .sv-half{position:absolute;inset:0;animation:sv-split 5.2s cubic-bezier(.2,.7,.2,1) forwards}
+.cine-sever .sv-half.a{clip-path:polygon(0 0,100% 0,100% 18%,0 82%)}
+.cine-sever .sv-half.b{clip-path:polygon(0 82%,100% 18%,100% 100%,0 100%);animation-name:sv-split-b}
+@keyframes sv-split{0%,26%{transform:none}34%,56%{transform:translate(-14px,-22px)}60%,100%{transform:none}}
+@keyframes sv-split-b{0%,26%{transform:none}34%,56%{transform:translate(14px,22px)}60%,100%{transform:none}}
+.cine-sever .sv-threads{position:absolute;inset:0}
+.cine-sever .sv-thread{position:absolute;left:-10%;width:120%;height:2px;top:calc(22% + var(--i) * 17%);background:linear-gradient(90deg,#ffd77a00,#ffe9a8 30%,#fff6d6 50%,#ffe9a8 70%,#ffd77a00);box-shadow:0 0 10px #ffc84a,0 0 22px #ffb02e88;transform:rotate(calc(8deg - var(--i) * 5deg));opacity:0;animation:sv-thread 5.2s ease forwards}
+@keyframes sv-thread{0%{opacity:0}12%,25%{opacity:1}27%{opacity:1;filter:brightness(2.5)}33%{opacity:.9}52%{opacity:0}100%{opacity:0}}
+.cine-sever .sv-void{position:absolute;left:-10%;right:-10%;top:50%;height:0;transform:translateY(-50%) rotate(var(--cut));background:radial-gradient(ellipse at center,#2a0b4a 0,#12051f 60%,#05010a 100%);box-shadow:0 0 0 2px #ff3348,0 0 30px #ff1f33,inset 0 0 40px #ff334866;animation:sv-void 5.2s cubic-bezier(.2,.7,.2,1) forwards;overflow:hidden}
+.cine-sever .sv-void::before{content:'';position:absolute;inset:0;background-image:radial-gradient(1px 1px at 20% 40%,#fff,transparent),radial-gradient(1px 1px at 60% 70%,#ffd6f0,transparent),radial-gradient(2px 2px at 80% 30%,#fff,transparent),radial-gradient(1px 1px at 40% 20%,#c9a8ff,transparent);background-size:120px 60px}
+@keyframes sv-void{0%,26%{height:0}34%,56%{height:52px}60%,100%{height:0}}
+.cine-sever .sv-blade{position:absolute;left:-10%;width:120%;top:50%;height:10px;margin-top:-5px;transform:rotate(var(--cut)) scaleX(0);transform-origin:0 50%;background:linear-gradient(90deg,#ffffff00,#fff 8%,#ffe0e6 50%,#fff 92%,#ffffff00);clip-path:polygon(0 50%,8% 0,92% 0,100% 50%,92% 100%,8% 100%);box-shadow:0 0 30px #ff6d7a,0 0 60px #ff2a3c;opacity:0;animation:sv-blade 5.2s forwards}
+@keyframes sv-blade{0%,22.5%{opacity:0;transform:rotate(var(--cut)) scaleX(0)}23%{opacity:1;transform:rotate(var(--cut)) scaleX(0)}25.5%{opacity:1;transform:rotate(var(--cut)) scaleX(1)}31%{opacity:0;transform:rotate(var(--cut)) scaleX(1)}100%{opacity:0;transform:rotate(var(--cut)) scaleX(1)}}
+.cine-sever .sv-cracks{position:absolute;inset:0;background:repeating-linear-gradient(calc(var(--cut) + 90deg),transparent 0 46px,#ff334855 46px 48px,transparent 48px 120px);-webkit-mask:linear-gradient(calc(var(--cut) + 90deg),transparent 35%,#000 48%,#000 52%,transparent 65%);mask:linear-gradient(calc(var(--cut) + 90deg),transparent 35%,#000 48%,#000 52%,transparent 65%);opacity:0;animation:sv-cracks 5.2s ease forwards}
+@keyframes sv-cracks{0%,26%{opacity:0}30%,54%{opacity:1}58%,100%{opacity:0}}
+.cine-sever .sv-flash{position:absolute;inset:0;background:#fff;opacity:0;animation:sv-flash 5.2s forwards}
+@keyframes sv-flash{0%,24.5%{opacity:0}25.5%{opacity:.85}29%{opacity:0}54%{opacity:0}57%{opacity:1}61%{opacity:0}100%{opacity:0}}
+.cine-sever .sv-painting{position:absolute;inset:0;background-size:cover;background-position:64% 45%;opacity:0;animation:sv-paint 5.2s forwards}
+@keyframes sv-paint{0%,56.9%{opacity:0;transform:scale(1)}57%{opacity:1;transform:scale(1)}88%{opacity:1;transform:scale(1.035)}100%{opacity:0;transform:scale(1.04)}}
+.cine-sever ~ .scene-mist{display:none}
+.scene-character:has(.fx-sever) .fx-sever{display:none}
+.sanctuary-scene.shake-big:has(.cine-sever){animation:shake-sever 5.2s linear}
+@keyframes shake-sever{0%,4%{transform:none}6%{transform:translate(-2px,1px)}10%{transform:translate(2px,-1px)}14%{transform:translate(-2px,-1px)}18%{transform:translate(2px,1px)}22%{transform:translate(-2px,1px)}25%{transform:translate(-15px,9px)}28%{transform:translate(13px,-9px)}31%{transform:translate(-10px,-6px)}35%{transform:translate(7px,6px)}40%{transform:translate(-5px,3px)}46%{transform:translate(3px,-2px)}54%,100%{transform:none}}
+.game-still .cine-sever *{animation-play-state:running!important}
+.sanctuary-scene.reduce .cine-sever *{animation-duration:.01s!important}
+
+/* Azrenth v2 effects: violet rift opens under the summon pillar; Sever sheet (4 frames) plays along the cinematic cut */
+.fx-rift{position:absolute;left:-130px;top:-120px;width:260px;height:260px;background-repeat:no-repeat;background-size:400% 100%;animation:vfx-4 1.4s steps(4) forwards;z-index:1}
+.fx-summon{animation-delay:.35s;opacity:0;animation-fill-mode:forwards}
+.scene-character:has(.fx-sever) .fx-sever{display:block;position:fixed;inset:20% 10%;background-size:400% 100%;animation:vfx-4 1.4s 1.15s steps(4) forwards;z-index:8}
+.game-still .fx-rift{animation-play-state:running!important}
+
+/* Sever without the painting: 3.6 s, ends on the split and a soft white fade */
+.cine-sever .sv-dim,.cine-sever .sv-half,.cine-sever .sv-thread,.cine-sever .sv-void,.cine-sever .sv-blade,.cine-sever .sv-cracks,.cine-sever .sv-flash{animation-duration:3.6s}
+@keyframes sv-flash{0%,32%{opacity:0}35%{opacity:.85}40%{opacity:0}80%{opacity:0}86%{opacity:.6}100%{opacity:0}}
+@keyframes sv-dim{0%{opacity:0}12%,80%{opacity:.5}100%{opacity:0}}
+@keyframes sv-split{0%,36%{transform:none}46%,80%{transform:translate(-14px,-22px)}92%,100%{transform:none}}
+@keyframes sv-split-b{0%,36%{transform:none}46%,80%{transform:translate(14px,22px)}92%,100%{transform:none}}
+@keyframes sv-void{0%,36%{height:0}46%,80%{height:52px}92%,100%{height:0}}
+@keyframes sv-blade{0%,32.5%{opacity:0;transform:rotate(var(--cut)) scaleX(0)}33%{opacity:1;transform:rotate(var(--cut)) scaleX(0)}36.5%{opacity:1;transform:rotate(var(--cut)) scaleX(1)}44%{opacity:0;transform:rotate(var(--cut)) scaleX(1)}100%{opacity:0;transform:rotate(var(--cut)) scaleX(1)}}
+@keyframes sv-thread{0%{opacity:0}14%,35%{opacity:1}37%{opacity:1;filter:brightness(2.5)}46%{opacity:.9}78%{opacity:0}100%{opacity:0}}
+@keyframes sv-cracks{0%,36%{opacity:0}42%,78%{opacity:1}86%,100%{opacity:0}}
+.sanctuary-scene.shake-big:has(.cine-sever){animation-duration:3.6s}
+
+/* ---------- Ayaka: field skills on the map + Chrono Stasis ----------
+   Strips are 7 frames: painted 0,2,4,6 with blended in-betweens 1,3,5 → frame k sits at k × 16.667%.
+   Each effect also eases its own scale/opacity so nothing pops in or out. */
+.field-fx{position:absolute;display:block;pointer-events:none;background-repeat:no-repeat;background-size:700% 100%}
+/* Deceleration Zone: dome grows (frames 0–4), then shimmers between 4–6, fades at 4 s */
+.fx-dome{width:var(--w);aspect-ratio:320/234;transform:translate(-50%,-88%);filter:saturate(1.5) drop-shadow(0 0 5px #3fb6e8) drop-shadow(0 0 14px #7fd4f5aa);animation:dome-frames 4s step-end forwards,dome-life 4s ease-out forwards}
+@keyframes dome-frames{0%{background-position-x:0}3%{background-position-x:16.667%}6%{background-position-x:33.333%}9%{background-position-x:50%}12%{background-position-x:66.667%}30%{background-position-x:83.333%}45%{background-position-x:100%}60%{background-position-x:83.333%}75%{background-position-x:100%}90%,100%{background-position-x:83.333%}}
+@keyframes dome-life{0%{opacity:0;scale:.55}12%{opacity:.75;scale:1}50%{opacity:.6;scale:1.015}88%{opacity:.6;scale:1}100%{opacity:0;scale:1.05}}
+.scene-character.slowed .walk-sprite,.scene-character.slowed .pose-sprite{filter:drop-shadow(-9px 2px 0 #bfefff55) drop-shadow(-18px 4px 0 #bfefff33) saturate(.75) brightness(1.06)}
+.scene-character.slowed.walking .walk-sprite{animation-duration:1.6s,.8s}
+/* Frost Cadenza: spires burst one after another along the line, then the ice prison locks the target */
+.fx-spire{width:150px;aspect-ratio:320/231;transform:translate(-50%,-90%);opacity:0;filter:saturate(1.4) drop-shadow(0 0 4px #3fa6dc);animation:spire-frames .7s step-end var(--d) forwards,spire-pop .25s cubic-bezier(.2,1.4,.4,1) var(--d) both}
+.fx-spire.last{width:200px}
+@keyframes spire-frames{0%{opacity:1;background-position-x:0}12%{background-position-x:16.667%}24%{background-position-x:33.333%}36%{background-position-x:50%}50%{background-position-x:66.667%}66%{background-position-x:83.333%}80%{background-position-x:100%}96%{opacity:1}100%{opacity:0;background-position-x:100%}}
+@keyframes spire-pop{from{scale:.4 .2}to{scale:1}}
+.fx-prison{width:130px;aspect-ratio:320/259;transform:translate(-50%,-92%);filter:saturate(1.4) drop-shadow(0 0 4px #3fa6dc);opacity:0;animation:prison-frames 1.45s step-end .5s forwards,prison-life 1.45s ease .5s forwards}
+@keyframes prison-frames{0%{opacity:1;background-position-x:0}5%{background-position-x:16.667%}10%{background-position-x:33.333%}14%{background-position-x:50%}18%{background-position-x:66.667%}40%{background-position-x:83.333%}55%{background-position-x:66.667%}70%{background-position-x:83.333%}72%{background-position-x:100%}100%{opacity:1;background-position-x:100%}}
+@keyframes prison-life{0%{scale:.85}18%{scale:1.04}24%{scale:1}72%{scale:1;opacity:1}100%{scale:1.15;opacity:0}}
+.scene-character.iced .walk-sprite,.scene-character.iced .pose-sprite{filter:saturate(.35) brightness(1.18) drop-shadow(0 0 6px #bfefff)}
+/* Niflheim: frost spreads, the throne rises (0–.45 s), a mist puff hides the swap to her seated pose,
+   freezing mist rolls until 3.2 s, a second puff as she stands, and the empty throne melts away */
+.fx-frost{width:380px;height:130px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side,#e4f8ffee,#a9e2f8bb 45%,#8fd6f544 75%,transparent);animation:frost-life 3.8s ease forwards}
+@keyframes frost-life{0%{opacity:0;scale:.25}12%{opacity:.85;scale:1}84%{opacity:.85;scale:1.05}100%{opacity:0;scale:1.08}}
+.fx-throne{width:125px;aspect-ratio:470/560;transform:translate(-50%,-97%);background-size:100% 100%;transform-origin:50% 100%;animation:throne-life 3.8s forwards}
+@keyframes throne-life{0%{opacity:0;translate:0 30%;clip-path:inset(100% 0 0 0);filter:brightness(1.6)}11.8%{opacity:1;translate:0 0;clip-path:inset(0 0 0 0);filter:brightness(1.15)}13%{opacity:1}16%{opacity:0}84%{opacity:0;translate:0 0;scale:1;filter:none}85.5%{opacity:1;filter:brightness(1.1)}100%{opacity:0;translate:0 14%;scale:1 .8;filter:blur(3px) brightness(1.7)}}
+.fx-mist{width:360px;aspect-ratio:320/224;transform:translate(-50%,-62%);filter:drop-shadow(0 0 6px #5fbfeacc) saturate(1.3);opacity:0;animation:mist-frames 1.05s steps(7) .45s infinite alternate,mist-life 3.8s ease forwards}
+@keyframes mist-frames{from{background-position-x:0}to{background-position-x:calc(100% * 7 / 6)}}
+@keyframes mist-life{0%,11%{opacity:0;scale:.6}22%{opacity:.8;scale:1}82%{opacity:.7;scale:1.08}100%{opacity:0;scale:1.18}}
+.fx-mist.front{-webkit-mask-image:linear-gradient(to bottom,transparent 52%,#000 74%);mask-image:linear-gradient(to bottom,transparent 52%,#000 74%);animation-direction:alternate-reverse,normal}   /* only the low drift passes in front of her */
+.fx-puff{width:190px;height:190px;transform:translate(-50%,-70%);border-radius:50%;background:radial-gradient(closest-side,#ffffffee,#dff8ffaa 45%,transparent);opacity:0;animation:frost-puff .55s ease-out .32s forwards}
+.fx-puff.late{animation-delay:3.08s}
+@keyframes frost-puff{0%{opacity:0;scale:.3}25%{opacity:.95;scale:.9}100%{opacity:0;scale:1.6}}
+/* Chrono Stasis (5 s): clock forms and spins → 1.1 s TICK, world greys, everyone else frozen → 4.1 s clock shatters, colour snaps back */
+.cine-stasis .st-veil{position:absolute;inset:0;background:radial-gradient(ellipse at center,#9fd8ff10 30%,#0b1c2ccc 100%);opacity:0;animation:st-veil 5s forwards}
+@keyframes st-veil{0%{opacity:0}20%{opacity:.35}22%{opacity:1}80%{opacity:1}84%,100%{opacity:0}}
+.cine-stasis .st-clock{position:absolute;left:50%;top:44%;width:min(66vmin,560px);aspect-ratio:320/334;transform:translate(-50%,-50%);background-repeat:no-repeat;background-size:700% 100%;mix-blend-mode:screen;animation:st-clock-frames 5s step-end forwards,st-clock-life 5s ease forwards}
+@keyframes st-clock-frames{0%{background-position-x:0}7%{background-position-x:16.667%}10%{background-position-x:33.333%}13%{background-position-x:50%}16%{background-position-x:33.333%}18%{background-position-x:50%}20%{background-position-x:33.333%}22%{background-position-x:66.667%}82%{background-position-x:83.333%}85%,100%{background-position-x:100%}}
+@keyframes st-clock-life{0%{opacity:0;scale:.7;rotate:-25deg}8%{opacity:1;scale:1;rotate:0deg}21%{scale:1}22%{scale:1.07}25%{scale:1}32%{opacity:.5}80%{opacity:.5;scale:1.02}82%{opacity:1;scale:1.05}94%{opacity:0;scale:1.4}100%{opacity:0;scale:1.4}}
+.cine-stasis .st-flash{position:absolute;inset:0;background:radial-gradient(circle at 50% 44%,#fff8e0,#ffe2908c 35%,transparent 70%);opacity:0;animation:st-flash 5s forwards}
+.cine-stasis .st-flash.release{background:radial-gradient(circle at 50% 44%,#ffffff,#bfefffaa 40%,transparent 75%);animation-name:st-flash-release}
+@keyframes st-flash{0%,21.5%{opacity:0}22%{opacity:.9}27%,100%{opacity:0}}
+@keyframes st-flash-release{0%,81.5%{opacity:0}82.5%{opacity:.85}90%,100%{opacity:0}}
+.sanctuary-scene.stasis .world-map,.sanctuary-scene.stasis .lamp-glow,.sanctuary-scene.stasis .scene-character:not(.stasis-caster),.sanctuary-scene.stasis .scene-sky,.sanctuary-scene.stasis .scene-mist{animation:st-gray 5s linear forwards}
+.sanctuary-scene.stasis .lamp-glow:not(.lit){animation:none}
+@keyframes st-gray{0%,21.5%{filter:none}22%,80%{filter:grayscale(1) brightness(.82) contrast(1.08)}84%{filter:brightness(1.35) saturate(1.3)}90%,100%{filter:none}}
+.sanctuary-scene.stasis .scene-character.stasis-caster{z-index:1500!important;filter:drop-shadow(0 0 10px #ffe7a0aa)}
+.sanctuary-scene.time-stopped .cloud-band,.sanctuary-scene.time-stopped .scene-character:not(.stasis-caster) *{animation-play-state:paused!important}
+/* Pause motion must not freeze skills; reduced motion gets still frames */
+.game-still .field-fx,.game-still .cine-stasis *,.game-still .sanctuary-scene.stasis .world-map,.game-still .sanctuary-scene.stasis .lamp-glow,.game-still .sanctuary-scene.stasis .scene-character,.game-still .sanctuary-scene.stasis .scene-sky,.game-still .sanctuary-scene.stasis .scene-mist{animation-play-state:running!important}
+.sanctuary-scene.reduce .field-fx{animation:none!important;opacity:.8;background-position-x:66.667%}
+.sanctuary-scene.reduce .fx-throne,.sanctuary-scene.reduce .fx-puff{display:none}
+.sanctuary-scene.reduce .cine-stasis *{animation-duration:.01s!important}
+
+/* ---------- Venuzdonoa cuts Chrono Stasis ----------
+   During the stop a summoned sword stays in colour and glows (its owner can cut it); the cut snaps colour back
+   and the clock is slashed away while Azrenth's Sever cinematic plays. */
+.sanctuary-scene.stasis .scene-character.time-resist{animation:none}
+.sanctuary-scene.stasis .scene-character.time-resist>:not(.kit-weapon){animation:st-gray 5s linear forwards}
+.sanctuary-scene.stasis .scene-character.time-resist .kit-weapon{filter:drop-shadow(0 0 10px #ff2a3c) drop-shadow(0 0 26px #ff2a3cbb) brightness(1.25) saturate(1.3)}
+.sanctuary-scene.time-stopped .scene-character.time-resist .kit-weapon,.sanctuary-scene.time-stopped .scene-character.time-resist>:not(.kit-weapon){animation-play-state:running!important}   /* the grey-out itself must not pause */
+.game-still .sanctuary-scene.stasis .scene-character.time-resist>*{animation-play-state:running!important}
+.cine-stasis.cut .st-veil{animation:st-veil-out .35s ease forwards}
+@keyframes st-veil-out{from{opacity:1}to{opacity:0}}
+.cine-stasis.cut .st-clock{animation:st-clock-cut .6s ease-in forwards;background-position-x:66.667%}
+@keyframes st-clock-cut{0%{opacity:.9;filter:none;clip-path:polygon(0 0,100% 0,100% 100%,0 100%)}30%{opacity:1;filter:brightness(1.8) hue-rotate(-40deg) saturate(2)}100%{opacity:0;scale:1.25;rotate:8deg;filter:brightness(2) hue-rotate(-40deg);clip-path:polygon(0 0,100% 0,100% 38%,0 62%)}}
+.cine-stasis.cut .st-flash{animation:none;opacity:0}
+.cine-stasis.cut::after{content:'';position:absolute;left:-10%;right:-10%;top:50%;height:6px;margin-top:-3px;background:linear-gradient(90deg,#fff0,#fff 20%,#ffd0d6 50%,#fff 80%,#fff0);box-shadow:0 0 24px #ff2a3c,0 0 50px #ff2a3c;transform:rotate(-31deg) scaleX(0);transform-origin:0 50%;animation:st-slash .5s ease-out forwards}
+@keyframes st-slash{0%{transform:rotate(-31deg) scaleX(0);opacity:1}40%{transform:rotate(-31deg) scaleX(1);opacity:1}100%{transform:rotate(-31deg) scaleX(1);opacity:0}}
+.game-still .cine-stasis.cut::after{animation-play-state:running!important}
+
+/* ---------- Speech bubbles: characters talking (English text, Japanese voice) ---------- */
+.say-bubble{position:absolute;z-index:5000;width:max-content;max-width:230px;transform:translate(-50%,calc(-100% - 150px));pointer-events:none;animation:say-life var(--say-ms,3000ms) ease forwards}
+.say-bubble p{margin:0;padding:8px 13px;border-radius:12px;background:#163447eb;border:1px solid #c8ae70;outline:1px solid #e3d2a244;outline-offset:3px;color:#f6efdc;font-size:12px;line-height:1.45;text-align:center;box-shadow:0 6px 18px #0b1c2a55}
+.say-bubble::after{content:'';position:absolute;left:50%;bottom:-7px;width:12px;height:12px;margin-left:-6px;background:#163447eb;border-right:1px solid #c8ae70;border-bottom:1px solid #c8ae70;transform:rotate(45deg)}
+@keyframes say-life{0%{opacity:0;translate:0 8px;scale:.85}6%{opacity:1;translate:0 0;scale:1}90%{opacity:1;translate:0 0}100%{opacity:0;translate:0 -6px}}
+.game-still .say-bubble{animation-play-state:running!important}
+.sanctuary-scene.reduce .say-bubble{animation:none}
+
+/* ---------- Suvara (S+): crescent wave, lanterns, Yulan ---------- */
+@keyframes vfx-7{0%{opacity:1;background-position-x:0}99.9%{opacity:1;background-position-x:calc(100% * 7 / 6)}100%{opacity:0}}
+@keyframes vfx-hold7{from{background-position-x:0}to{background-position-x:100%}}
+.fx-crescent{position:absolute;left:0;top:0;width:250px;height:206px;margin-left:-125px;background-repeat:no-repeat;background-size:700% 100%;transform:translate(var(--tx),calc(var(--ty) - 85%)) scaleX(var(--flip));filter:drop-shadow(0 0 6px #f5c76a) saturate(1.2);animation:vfx-7 1s steps(7) forwards}
+.fx-lanterns{width:260px;aspect-ratio:320/321;transform:translate(-50%,-82%);background-size:700% 100%;opacity:0;filter:drop-shadow(0 0 8px #ffb84d);animation:vfx-hold7 1.4s steps(6) forwards,lantern-life 4s ease forwards}
+@keyframes lantern-life{0%{opacity:0;translate:0 10px}10%{opacity:1}80%{opacity:1;translate:0 -50px}100%{opacity:0;translate:0 -80px}}
+.scene-character.lantern-lit .walk-sprite,.scene-character.lantern-lit .pose-sprite{filter:drop-shadow(0 0 7px #ffcf7a) brightness(1.08)}
+.scene-character.lantern-lit>span{color:#a86d12;text-shadow:0 0 6px #ffd27a}
+.fx-wings{width:280px;aspect-ratio:320/375;transform:translate(-50%,-82%);background-size:700% 100%;opacity:0;filter:drop-shadow(0 0 10px #ffe9b0);animation:vfx-7 .9s steps(7) 1.45s forwards}
+.scene-character.riding>*{opacity:0;transition:opacity .15s}
+.game-still .fx-crescent,.game-still .fx-lanterns,.game-still .fx-yulan,.game-still .fx-wings{animation-play-state:running!important}
+.sanctuary-scene.reduce .fx-yulan{animation-duration:.01s!important}
+
+/* Yulan v2: in a sky layer above the haze; path on the wrapper, sway + tilt + facing on the body, light trail behind */
+.sky-world{position:absolute;left:0;top:0;z-index:1;pointer-events:none;will-change:transform}
+.fx-yulan{position:absolute;width:0;height:0;opacity:0;animation:yulan-path 2.6s cubic-bezier(.45,.05,.35,1) forwards}
+.fx-yulan .yulan-body{position:absolute;left:0;top:0;width:260px;aspect-ratio:900/657;background-size:100% 100%;transform:translate(-50%,-78%) scaleX(var(--flip)) rotate(var(--tilt));filter:drop-shadow(0 6px 10px #1c2c3a55) drop-shadow(0 0 8px #ffe3a0aa);animation:yulan-sway .55s ease-in-out infinite alternate}
+@keyframes yulan-sway{from{translate:0 -5px;rotate:-2.5deg}to{translate:0 5px;rotate:2.5deg}}
+.fx-yulan .yulan-trail{position:absolute;left:0;top:0;width:240px;height:46px;margin-top:-70px;transform-origin:0 50%;transform:scaleX(calc(-1 * var(--flip))) rotate(var(--tilt));background:radial-gradient(ellipse at left,#fff6d8 0,#ffd98a99 25%,#7fe0d655 55%,transparent 75%);filter:blur(4px);opacity:.85}
+@keyframes yulan-path{0%{opacity:0;translate:calc(-340px * var(--flip)) -380px;scale:.7}10%{opacity:1}17%{translate:0 -30px;scale:1}38%{translate:calc(var(--dx) * .5) calc(var(--dy) * .5 - 130px)}58%{translate:var(--dx) calc(var(--dy) - 30px);scale:1}75%{opacity:1}100%{opacity:0;translate:calc(var(--dx) + 340px * var(--flip)) calc(var(--dy) - 420px);scale:.75}}
+.fx-yulan-shadow{width:170px;height:34px;margin:-17px 0 0 -85px;border-radius:50%;background:radial-gradient(closest-side,#1f2f3c55,#1f2f3c00);opacity:0;animation:yulan-shadow 2.6s cubic-bezier(.45,.05,.35,1) forwards}
+@keyframes yulan-shadow{0%{opacity:0;translate:calc(-340px * var(--flip)) 0;scale:.5}17%{opacity:1;translate:0 0;scale:1}38%{translate:calc(var(--dx) * .5) calc(var(--dy) * .5);scale:.75;opacity:.6}58%{translate:var(--dx) var(--dy);scale:1;opacity:1}100%{opacity:0;translate:calc(var(--dx) + 340px * var(--flip)) var(--dy);scale:.4}}
+.game-still .fx-yulan,.game-still .fx-yulan *,.game-still .fx-yulan-shadow{animation-play-state:running!important}
+.sanctuary-scene.reduce .fx-yulan,.sanctuary-scene.reduce .fx-yulan-shadow{animation-duration:.01s!important}
+
+/* ---------- Ashvane (S+): spear streak, leaf ring, Skyfall leap + slam ---------- */
+.fx-fang{position:absolute;left:0;top:-40px;width:230px;height:60px;margin-top:-30px;background-repeat:no-repeat;background-size:700% 100%;transform-origin:0 50%;transform:rotate(var(--angle));filter:drop-shadow(0 0 6px #ffb347);animation:vfx-7 .55s steps(7) forwards}
+.fx-blossom{position:absolute;left:-150px;top:-120px;width:300px;height:226px;background-repeat:no-repeat;background-size:700% 100%;filter:drop-shadow(0 0 6px #ff9a3c);animation:vfx-7 .9s steps(7) forwards}
+.fx-slam{width:300px;height:240px;transform:translate(-50%,-78%);background-size:700% 100%;opacity:0;filter:drop-shadow(0 0 8px #ffb347);animation:vfx-7 1s steps(7) .85s forwards}
+.scene-character.leaping{animation:leap .9s cubic-bezier(.35,.1,.45,1) forwards}
+@keyframes leap{0%{translate:0 0}45%{translate:calc(var(--jx) * .45) calc(var(--jy) * .45 - 150px)}100%{translate:var(--jx) var(--jy)}}
+.game-still .fx-fang,.game-still .fx-blossom,.game-still .fx-slam,.game-still .scene-character.leaping{animation-play-state:running!important}
+.sanctuary-scene.reduce .scene-character.leaping{animation:none}
+
+/* ---------- Lucien (S+): stone wall, moon shield, lightning flash ---------- */
+.fx-wall{width:150px;height:118px;transform:translate(-50%,-85%);background-size:700% 100%;filter:drop-shadow(0 0 6px #9b7bff);animation:wall-frames 4s step-end forwards}
+@keyframes wall-frames{0%{background-position-x:0}4%{background-position-x:16.667%}8%{background-position-x:33.333%}86%{background-position-x:50%}90%{background-position-x:66.667%}94%{background-position-x:83.333%}97%{background-position-x:100%;opacity:1}100%{opacity:0;background-position-x:100%}}
+.fx-aegis{width:300px;height:232px;transform:translate(-50%,-80%);background-size:700% 100%;opacity:.8;filter:drop-shadow(0 0 8px #b8a4ff);animation:aegis-frames 4s step-end forwards}
+@keyframes aegis-frames{0%{background-position-x:0}5%{background-position-x:16.667%}10%{background-position-x:33.333%}55%{background-position-x:50%}80%{background-position-x:66.667%}90%{background-position-x:83.333%}96%{background-position-x:100%;opacity:.8}100%{opacity:0;background-position-x:100%}}
+.fx-thunder{width:260px;height:236px;transform:translate(-50%,-82%);background-size:700% 100%;opacity:0;filter:drop-shadow(0 0 10px #a98bff);animation:vfx-7 .9s steps(7) .3s forwards}
+.fx-bolt-out{width:16px;height:220px;margin-left:-8px;transform:translateY(-100%);background:linear-gradient(#fff0,#e9e2ff 30%,#fff 60%,#b49bff);box-shadow:0 0 18px #a98bff,0 0 40px #7b5cff;opacity:0;animation:bolt-out .38s ease-out forwards}
+@keyframes bolt-out{0%{opacity:0;scale:1 .2;transform-origin:50% 100%}30%{opacity:1;scale:1 1}100%{opacity:0;scale:.3 1.1}}
+.game-still .fx-wall,.game-still .fx-aegis,.game-still .fx-thunder,.game-still .fx-bolt-out{animation-play-state:running!important}
+
+/* ---------- Seren (S+): dawn slash, guiding halo, Dawnbreak (blinds the whole screen white) ---------- */
+.fx-halo{width:380px;height:140px;transform:translate(-50%,-60%);background-size:700% 100%;filter:drop-shadow(0 0 8px #ffe08a);animation:halo-frames 4s step-end forwards}
+@keyframes halo-frames{0%{background-position-x:0}5%{background-position-x:16.667%}10%{background-position-x:33.333%}50%{background-position-x:50%}75%{background-position-x:66.667%}88%{background-position-x:83.333%}96%{background-position-x:100%;opacity:1}100%{opacity:0;background-position-x:100%}}
+.fx-pillar{width:300px;height:290px;transform:translate(-50%,-90%);background-size:700% 100%;filter:drop-shadow(0 0 14px #fff0b8);animation:vfx-7 1.6s steps(7) .25s forwards;opacity:0}
+.cine-dawn i{position:absolute;inset:0;background:radial-gradient(circle at 50% 55%,#fff 0,#fffdf2 45%,#fff6d8 100%);opacity:0;animation:dawn-flash 2.2s ease forwards}
+@keyframes dawn-flash{0%,18%{opacity:0}26%{opacity:1}62%{opacity:1}100%{opacity:0}}
+.game-still .fx-halo,.game-still .fx-pillar,.game-still .cine-dawn i{animation-play-state:running!important}
+.sanctuary-scene.reduce .cine-dawn i{animation-duration:.6s}
+.ult-overlay.cine-dawn{position:fixed;inset:0;z-index:2147483000;pointer-events:none}
+.game-still .cine-dawn i{animation-play-state:running!important}

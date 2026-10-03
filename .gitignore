@@ -1,0 +1,17 @@
+# Only the deployable apps and docs live in the repo; raw art sources stay local.
+/*
+!/.gitignore
+!/.github/
+!/website/
+!/interface/
+!/*.md
+node_modules/
+dist/
+.impeccable/
+qa-screenshots/
+.playwright-mcp/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+/.github/

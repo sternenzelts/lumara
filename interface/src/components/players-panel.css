@@ -1,0 +1,32 @@
+.warden-players>h2{font-size:29px}
+.game-panel .players-description{font-size:13px;color:#c3d4df;margin:9px 0 26px;max-width:65ch}
+.players-workspace{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,320px);gap:32px;align-items:start}
+.players-list{min-width:0;border-top:1px solid #c0a66a55}
+.player-balance-row{display:flex;align-items:center;justify-content:space-between;gap:18px;width:100%;min-height:80px;padding:16px 12px;text-align:left;border-bottom:1px solid #c0a66a55;color:#fff2d6}
+.player-balance-row:hover{background:#19354a99}
+.player-balance-row[aria-pressed=true]{background:#dec18820}
+.player-row-name{min-width:0;display:flex;flex-direction:column;gap:5px}
+.player-row-name strong{font:22px/1.2 Marcellus,serif;overflow-wrap:anywhere}
+.player-row-name small{font-size:11px;color:#c3d4df}
+.player-row-currency{display:flex;flex-direction:column;gap:6px;flex:none}
+.player-row-currency>span{display:flex;align-items:center;gap:7px;font-size:13px;font-variant-numeric:tabular-nums;color:#ffe4a8}
+.player-row-currency>span:last-child{color:#e2bdff}
+.player-row-currency small{font-size:10px;color:#c3d4df}
+.player-grants{min-width:0}
+.currency-gift{display:flex;flex-direction:column;gap:20px;padding:22px;background:#0e2538;border:1px solid #c0a66a66}
+.currency-gift h3{font-size:23px;line-height:1.4;overflow-wrap:anywhere;margin-bottom:3px}
+.currency-gift label{font-size:13px;color:#f5ecda;gap:8px}
+.game-panel .currency-gift input,.game-panel .currency-gift select{background:#122b3e!important;color:#fff2d6!important;border-color:#8b7955;color-scheme:dark;min-height:48px;font-size:16px;border-radius:3px}
+.currency-gift option{background:#122b3e;color:#fff2d6}
+.currency-gift .button{min-height:46px;justify-content:center}
+.game-panel .gift-error{color:#ffd6c8;font-size:12px}
+.game-panel .gift-message{color:#d4edc7;font-size:12px}
+.currency-grant-history{margin-top:25px}
+.currency-grant-history h3{font-size:21px;margin-bottom:12px}
+.currency-grant-history ul{list-style:none;margin:0;padding:0}
+.currency-grant-history li{display:flex;flex-direction:column;gap:5px;padding:12px 0;border-bottom:1px solid #c0a66a40}
+.currency-grant-history strong{font-size:12px;color:#ffe4a8}
+.currency-grant-history span{font-size:11px;color:#c3d4df}
+.players-empty{padding:26px 0;font-size:14px}
+@media(max-width:1000px){.players-workspace{grid-template-columns:1fr;gap:26px}.player-grants{max-width:520px}}
+@media(max-width:680px){.warden-players>h2{font-size:25px}.game-panel .players-description{font-size:12px}.player-balance-row{padding:14px 8px;gap:12px}.player-row-name strong{font-size:20px}.player-row-currency small{display:none}.currency-gift{padding:18px}.currency-gift h3{font-size:23px}}

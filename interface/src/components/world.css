@@ -1,0 +1,64 @@
+/* Painted Sanctuary map at 2× zoom; the camera translates .world so your character stays near the centre. */
+.sanctuary-scene{overflow:hidden}
+.world{position:absolute;left:0;top:0;z-index:-3;will-change:transform}
+.world-map{position:absolute;inset:0;width:100%;height:100%;display:block;user-select:none}
+.world-occluder{position:absolute;display:block;pointer-events:none;user-select:none}
+.world .scene-character{transition:none}
+.world .scene-character.peer{transition:left .14s linear,top .14s linear}
+/* soft floor shadow under walkers and cutouts (ghosts draw their own) */
+.world .scene-character::before{content:'';position:absolute;left:50%;bottom:20%;width:62%;height:9%;transform:translateX(-50%);border-radius:50%;background:radial-gradient(closest-side,#1d2a4a59,#1d2a4a00);z-index:-1}
+.world .scene-character:has(.ghost-figure)::before{display:none}
+/* step bob while walking (sprite sheets) */
+.world .scene-character.walking>.walk-sprite{animation:walk-frames calc(var(--frames,8) * .1s + .2s) steps(var(--frames,8)) infinite,walk-bob calc((var(--frames,8) * .1s + .2s) / 2) ease-in-out infinite}
+@keyframes walk-bob{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(-3%)}}
+.sanctuary-scene.reduce .walk-sprite{animation:none!important}
+.lamp-glow{position:absolute;width:3.2%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;pointer-events:none;opacity:0;transition:opacity 1.2s ease;
+  background:radial-gradient(circle,#fff6d6 0 18%,#ffd36ecc 30%,#ffb54a55 55%,#ffb54a00 72%)}
+.lamp-glow::after{content:'';position:absolute;left:50%;top:260%;width:260%;height:90%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side,#ffd17a66,#ffd17a00)}
+.lamp-glow.lit{opacity:1;animation:lamp-breathe 3.6s ease-in-out infinite}
+@keyframes lamp-breathe{0%,100%{filter:brightness(1)}50%{filter:brightness(1.25)}}
+.sanctuary-scene.reduce .lamp-glow.lit{animation:none}
+/* Minimap (voyage only, under the Exit button) */
+.minimap{display:none}
+.game-voyage-screen .minimap{display:block;position:fixed;left:20px;top:72px;z-index:22;width:168px;aspect-ratio:1.5;border:1px solid #d8bf82aa;outline:1px solid #d8bf8233;outline-offset:3px;background:#10233a;overflow:hidden;box-shadow:0 8px 20px #0a1a2c55;pointer-events:none}
+.minimap img{position:absolute;inset:0;width:100%;height:100%;opacity:.85}
+.minimap i{position:absolute;transform:translate(-50%,-50%);border-radius:50%}
+.minimap .lamp{width:4px;height:4px;background:#5b6474}
+.minimap .lamp.lit{background:#ffd36e;box-shadow:0 0 4px #ffd36e}
+.minimap .crystal{width:6px;height:6px;border:1px solid #fff8}
+.minimap .beacon{width:8px;height:8px;background:#7fd3ff;border:1px solid #fff;box-shadow:0 0 6px #7fd3ff}
+.minimap .mate{width:7px;height:7px;background:#fff;border:1px solid #10233a}
+.minimap .you{width:9px;height:9px;background:#ffcf5a;border:2px solid #10233a;box-shadow:0 0 0 2px #ffcf5a88;transition:left .45s,top .45s}
+@media (max-width:760px),(orientation:portrait){.game-voyage-screen .minimap{width:120px;top:68px}}
+
+/* Walking always animates its steps, even with Pause motion on (Pause motion stills scenery, not characters). */
+.game-still .world .scene-character.walking>.walk-sprite{animation-play-state:running!important}
+
+/* Local crystal actions sit beside the player, outside the moving map layer. */
+.crystal-options{position:absolute;z-index:15;top:42%;right:24px;width:220px;color:#fff4dc;background:#10233aeb;border:1px solid #d8bf82aa;box-shadow:0 10px 28px #0a1a2c55}
+.crystal-options>strong{display:block;padding:12px 16px 9px;font:18px Marcellus,serif;border-bottom:1px solid #d8bf8255}
+.crystal-options button{display:flex;align-items:center;gap:12px;width:100%;min-height:60px;padding:10px 16px;text-align:left;color:#fff4dc;background:none;font:16px Marcellus,serif}
+.crystal-options button small{display:block;margin-top:3px;color:#c4d7e3;font:12px Manrope,sans-serif}
+.crystal-options button:hover{background:#294557}
+.crystal-options button:focus-visible{outline:2px solid #ffe3a0;outline-offset:-4px}
+@media(max-width:760px),(orientation:portrait){.crystal-options{right:16px;top:38%;width:190px}}
+
+/* ---------- Vow kept: a spark flies from the beacon and the next lamp ignites (2.6 s, every screen) ---------- */
+.lamp-moment-fx{position:absolute;inset:0;pointer-events:none;z-index:4000}
+.lamp-moment-fx .lm-spark{position:absolute;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;background:radial-gradient(circle,#fff,#ffe6a0 40%,#ffb84d00 70%);box-shadow:0 0 24px 8px #ffd27a;left:var(--bx);top:var(--by);opacity:0;animation:lm-fly 1.1s cubic-bezier(.35,0,.25,1) calc(.25s + var(--k,0) * var(--step,650ms)) forwards}
+@keyframes lm-fly{0%{opacity:0;left:var(--bx);top:calc(var(--by) - 9%);scale:.4}12%{opacity:1;scale:1}88%{opacity:1;left:var(--lx);top:var(--ly);scale:1.1}100%{opacity:0;left:var(--lx);top:var(--ly);scale:2.2}}
+.lamp-moment-fx .lm-burst{position:absolute;left:var(--lx);top:var(--ly);width:14%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,#fffbe8 0,#ffe08acc 30%,#ffb84d55 55%,transparent 72%);opacity:0;animation:lm-burst 1.3s ease-out calc(1.25s + var(--k,0) * var(--step,650ms)) forwards}
+@keyframes lm-burst{0%{opacity:0;scale:.2}20%{opacity:1;scale:1}100%{opacity:0;scale:1.6}}
+.lamp-moment-fx .lm-ring{position:absolute;left:var(--lx);top:var(--ly);width:6%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;border:3px solid #ffe7a8;box-shadow:0 0 18px #ffd27a;opacity:0;animation:lm-ring 1s ease-out calc(1.3s + var(--k,0) * var(--step,650ms)) forwards}
+@keyframes lm-ring{0%{opacity:1;scale:.3}100%{opacity:0;scale:3.4}}
+.lamp-glow.igniting{animation:lamp-ignite 1.4s ease-out calc(1.25s + var(--k,0) * 650ms) both}
+@keyframes lamp-ignite{0%{opacity:0;filter:brightness(1)}25%{opacity:1;filter:brightness(2.6)}100%{opacity:1;filter:brightness(1)}}
+.lamp-moment-banner{position:absolute;left:50%;top:42%;transform:translateX(-50%);z-index:30;padding:10px 22px;background:#10283cee;border:1px solid #e7ca8b;outline:1px solid #e7ca8b44;outline-offset:3px;color:#fff4dc;font-family:'Marcellus',serif;font-size:17px;white-space:nowrap;pointer-events:none;animation:lm-banner calc(2.6s + (var(--n,1) - 1) * 650ms) ease forwards}
+@keyframes lm-banner{0%,40%{opacity:0;translate:0 8px}52%,88%{opacity:1;translate:0 0}100%{opacity:0}}
+body.lamp-moment .voyage-window,body.lamp-moment .crystal-options,body.lamp-moment .voyage-hud{visibility:hidden;pointer-events:none}
+.game-still .lamp-moment-fx *,.game-still .lamp-glow.igniting,.game-still .lamp-moment-banner{animation-play-state:running!important}
+.sanctuary-scene.reduce .lamp-moment-fx{display:none}
+
+/* A lit lamp's ORB glows (the painted ball is dark): bright core sitting exactly on the ball, plus the halo */
+.lamp-glow::before{content:'';position:absolute;inset:24%;border-radius:50%;background:radial-gradient(circle at 42% 38%,#ffffff 0,#fff3c4 22%,#ffd36e 52%,#f0a43a 78%,#c97a1e 100%);box-shadow:0 0 10px 3px #ffd36ecc,0 0 24px 8px #ffb54a66;opacity:0;transition:opacity 1.2s ease}
+.lamp-glow.lit::before{opacity:1}

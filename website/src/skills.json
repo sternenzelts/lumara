@@ -1,0 +1,158 @@
+{
+  "mahesvara": [
+    {
+      "name": "Disassemble",
+      "description": "Fires a crystal round the way he faces — where it lands breaks into blue mist, then rewinds into form.",
+      "icon": "mahesvara_skill_disassemble.webp"
+    },
+    {
+      "name": "Nullify",
+      "description": "A cracked-glass barrier flashes up and a ring of runes shatters into nothing.",
+      "icon": "mahesvara_skill_nullify.webp"
+    },
+    {
+      "name": "Change Form",
+      "description": "Reveals his true form and takes flight on crystal wings — press again to return to his base form.",
+      "icon": "mahesvara_skill_ultimate.webp"
+    },
+    {
+      "name": "Return to Dust",
+      "description": "Ultimate — the whole plaza breaks into dust, then is restored in a flash of light. True form only.",
+      "icon": "mahesvara_skill_return_to_dust.webp"
+    }
+  ],
+  "keira": [
+    {
+      "name": "Pixel Blink",
+      "description": "Glitches out and pops back in a short hop toward where you point.",
+      "icon": "keira_skill_pixel_blink.webp"
+    },
+    {
+      "name": "Blaze Code",
+      "description": "A wide pink flame-sword slash toward where you point — her guardian punches along.",
+      "icon": "keira_skill_blaze_code.webp"
+    },
+    {
+      "name": "Combine",
+      "description": "Her guardian breaks into plates and fuses onto her as armour — press again to separate.",
+      "icon": "keira_skill_combine.webp"
+    },
+    {
+      "name": "Guardian Protocol",
+      "description": "Ultimate — all systems unlocked: a huge pink blast tears across the plaza. Combined only.",
+      "icon": "keira_skill_guardian_protocol.webp"
+    }
+  ],
+  "azrenth": [
+    {
+      "name": "Eyes of Ruin",
+      "description": "His gaze erases what it falls on — the ground where you point cracks and crumbles to ash.",
+      "icon": "azrenth_skill_eyes_of_ruin.webp"
+    },
+    {
+      "name": "Black Sun",
+      "description": "A black-flame sun forms in his palm and is hurled where you point — black fire explodes.",
+      "icon": "azrenth_skill_black_sun.webp"
+    },
+    {
+      "name": "Summon Venuzdonoa",
+      "description": "The ground tears open and the reason-destroying sword rises from the shadow to hover at his side — press again to send it back.",
+      "icon": "azrenth_skill_summon.webp"
+    },
+    {
+      "name": "Venuzdonoa: Sever",
+      "description": "Ultimate — the golden threads of fate appear across the world, and one slash severs them all. Sword summoned only. Cuts through stopped time.",
+      "icon": "azrenth_skill_sever.webp"
+    }
+  ],
+  "ayaka": [
+    {
+      "name": "Deceleration Zone",
+      "description": "A pale-aqua dome spreads around her for 4 s — anyone inside moves at half speed, trailing afterimages.",
+      "icon": "ayaka_skill_deceleration.webp"
+    },
+    {
+      "name": "Frost Cadenza",
+      "description": "Point at a player — ice spires race to them in rhythm and lock them in ice for 1 s.",
+      "icon": "ayaka_skill_frost_cadenza.webp"
+    },
+    {
+      "name": "Niflheim",
+      "description": "Her ice throne rises beneath her and freezing mist rolls out — the ground frosts over and snow swirls.",
+      "icon": "ayaka_skill_niflheim.webp"
+    },
+    {
+      "name": "Chrono Stasis",
+      "description": "Ultimate — a golden clock ticks once and time stops: everyone else freezes for 3 s while she alone moves.",
+      "icon": "ayaka_skill_chrono_stasis.webp"
+    }
+  ],
+  "suvara": [
+    {
+      "name": "Crescent Horizon",
+      "description": "She draws her sword — a gold-and-teal crescent of light sweeps across the ground toward where you point.",
+      "icon": "suvara_skill_crescent_horizon.webp"
+    },
+    {
+      "name": "Lantern Ascent",
+      "description": "Warm lanterns rise around her and drift into the sky — everyone nearby glows for 4 s.",
+      "icon": "suvara_skill_lantern_ascent.webp"
+    },
+    {
+      "name": "Yulan, Soar",
+      "description": "Ultimate — her light dragon swoops down and carries her to where you point, landing in a burst of radiant wings.",
+      "icon": "suvara_skill_yulan.webp"
+    }
+  ],
+  "ashvane": [
+    {
+      "name": "Dragon Fang",
+      "description": "A spear lunge — he dashes a short hop toward where you point, leaving an amber streak.",
+      "icon": "ashvane_skill_dragon_fang.webp"
+    },
+    {
+      "name": "Falling Blossom",
+      "description": "An open-palm strike — a ring of autumn leaves and amber wind bursts out around him.",
+      "icon": "ashvane_skill_falling_blossom.webp"
+    },
+    {
+      "name": "Skyfall",
+      "description": "Ultimate — he leaps high and drives his spear down where you point: the ground cracks in a shockwave of leaves.",
+      "icon": "ashvane_skill_skyfall.webp"
+    }
+  ],
+  "lucien": [
+    {
+      "name": "Rampart of Stone",
+      "description": "A stone wall with violet runes rises where you point — nobody can walk through it for 4 s.",
+      "icon": "lucien_skill_rampart.webp"
+    },
+    {
+      "name": "Lunar Aegis",
+      "description": "A moon-shield sphere forms around him for 4 s — anyone inside can't be slowed or frozen in ice.",
+      "icon": "lucien_skill_lunar_aegis.webp"
+    },
+    {
+      "name": "Thunder Sovereign",
+      "description": "Ultimate — his body becomes lightning: he flashes to where you point and chain lightning strikes around him.",
+      "icon": "lucien_skill_thunder_sovereign.webp"
+    }
+  ],
+  "seren": [
+    {
+      "name": "Dawn Slash",
+      "description": "Her crystal sword cuts an arc of golden light toward where you point.",
+      "icon": "seren_skill_dawn_slash.webp"
+    },
+    {
+      "name": "Guiding Light",
+      "description": "Her halo spreads into a warm ring — everyone inside walks 30% faster for 4 s and can't be slowed.",
+      "icon": "seren_skill_guiding_light.webp"
+    },
+    {
+      "name": "Dawnbreak",
+      "description": "Ultimate — she raises her sword and a pillar of sunrise erupts: the whole world is blinded white, then dawn returns.",
+      "icon": "seren_skill_dawnbreak.webp"
+    }
+  ]
+}

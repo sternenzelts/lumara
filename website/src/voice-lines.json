@@ -1,0 +1,398 @@
+{
+  "mahesvara": [
+    {
+      "file": "mahesvara_vo_reveal.mp3",
+      "caption": "…So you're the one who called me."
+    },
+    {
+      "file": "mahesvara_vo_transform.mp3",
+      "caption": "Let me show you. This is my true form."
+    },
+    {
+      "file": "mahesvara_vo_true_reveal.mp3",
+      "caption": "Destroy or restore — all of it answers to me."
+    },
+    {
+      "file": "mahesvara_vo_greet.mp3",
+      "caption": "What do you want?"
+    },
+    {
+      "file": "mahesvara_vo_tap_3.mp3",
+      "caption": "…Heh. You're interesting."
+    }
+  ],
+  "keira": [
+    {
+      "file": "keira_vo_reveal.mp3",
+      "caption": "H-hiii! …Hehe, I glitched a little. Did you call me?"
+    },
+    {
+      "file": "keira_vo_reveal_2.mp3",
+      "caption": "I'm Keira! Let's be partners from today!"
+    },
+    {
+      "file": "keira_vo_greet.mp3",
+      "caption": "What, what? Did you call me?"
+    },
+    {
+      "file": "keira_vo_tap_2.mp3",
+      "caption": "Hey hey, I'm a ghost, you know. A digital one!"
+    },
+    {
+      "file": "keira_vo_mech.mp3",
+      "caption": "My guardian's in a great mood today! Me too!"
+    }
+  ],
+  "ayaka": [
+    {
+      "file": "ayaka_vo_reveal.mp3",
+      "caption": "*Yawn…* So noisy. Was it you who woke me?"
+    },
+    {
+      "file": "ayaka_vo_greet.mp3",
+      "caption": "What? I'm sleepy."
+    },
+    {
+      "file": "ayaka_vo_idle.mp3",
+      "caption": "*…zzz…*"
+    },
+    {
+      "file": "ayaka_vo_timestop.mp3",
+      "caption": "Stop."
+    },
+    {
+      "file": "ayaka_vo_after_timestop.mp3",
+      "caption": "…There. Quieter now, isn't it?"
+    }
+  ],
+  "azrenth": [
+    {
+      "file": "vo_reveal.mp3",
+      "caption": "So you're the one who summoned me. …Interesting."
+    },
+    {
+      "file": "vo_reveal_2.mp3",
+      "caption": "Azrenth, the Demon King. Don't forget that name."
+    },
+    {
+      "file": "vo_sig_short.mp3",
+      "caption": "Sever."
+    },
+    {
+      "file": "vo_sig_full.mp3",
+      "caption": "All that my eyes behold — return to ash. Sever reason itself — Venuzdonoa!"
+    },
+    {
+      "file": "vo_jirasd.mp3",
+      "caption": "Black sun, turn all to ash."
+    }
+  ],
+  "lucien": [
+    {
+      "file": "lucien_vo_reveal.mp3",
+      "caption": "…So it was you who called me. On such a quiet night, too."
+    },
+    {
+      "file": "lucien_vo_greet.mp3",
+      "caption": "Oh? Do you need something from me?"
+    },
+    {
+      "file": "lucien_vo_tap_2.mp3",
+      "caption": "The mastermind? …I'm just a count who worries too much."
+    },
+    {
+      "file": "lucien_vo_vow_seal.mp3",
+      "caption": "In the name of an old god… I bind my vow, here."
+    },
+    {
+      "file": "lucien_vo_sig_short.mp3",
+      "caption": "Hundredfold Chain."
+    }
+  ],
+  "ashvane": [
+    {
+      "file": "ashvane_vo_reveal.mp3",
+      "caption": "...*yawn*. You called me? Sorry, I was napping."
+    },
+    {
+      "file": "ashvane_vo_reveal_2.mp3",
+      "caption": "Ashvane. Well, you don't have to remember it. You'll remember soon enough."
+    },
+    {
+      "file": "ashvane_vo_greet.mp3",
+      "caption": "Hm? Need something?"
+    },
+    {
+      "file": "ashvane_vo_sig_short.mp3",
+      "caption": "...Fine. I'll get a little serious."
+    },
+    {
+      "file": "ashvane_vo_sig_full.mp3",
+      "caption": "Dragon Fang, Skyfall, Falling Blossom - I'm not done yet. Autumn's End!"
+    }
+  ],
+  "suvara": [
+    {
+      "file": "suvara_vo_reveal.mp3",
+      "caption": "Did the light reach the edge of the horizon? Yes. I have come."
+    },
+    {
+      "file": "suvara_vo_reveal_2.mp3",
+      "caption": "Suvara, Keeper of the Horizon. And this is my guardian dragon, Yulan."
+    },
+    {
+      "file": "suvara_vo_greet.mp3",
+      "caption": "Yes? Is there something you need?"
+    },
+    {
+      "file": "suvara_vo_bond.mp3",
+      "caption": "Yulan, lend me your strength."
+    },
+    {
+      "file": "suvara_vo_sig_short.mp3",
+      "caption": "Sentinel's Descent."
+    }
+  ],
+  "seren": [
+    {
+      "file": "seren_vo_welcome_first.mp3",
+      "caption": "Welcome to Lumara! I've been waiting for you. What should I call you?"
+    },
+    {
+      "file": "seren_vo_tap_1.mp3",
+      "caption": "Need something? I'm right here."
+    },
+    {
+      "file": "seren_vo_tap_2.mp3",
+      "caption": "The view from here never gets old."
+    },
+    {
+      "file": "seren_vo_tap_3.mp3",
+      "caption": "Hehe, that tickles."
+    },
+    {
+      "file": "stage_vows.mp3",
+      "caption": "Did we keep last voyage's vows?"
+    },
+    {
+      "file": "vow_fulfilled.mp3",
+      "caption": "Vow fulfilled — a beacon is relit!"
+    },
+    {
+      "file": "skill_1.mp3",
+      "caption": "Blade of dawn — Dawn Slash!"
+    },
+    {
+      "file": "skill_2.mp3",
+      "caption": "It's okay — follow my light."
+    },
+    {
+      "file": "ultimate.mp3",
+      "caption": "Darkness, give way to morning — Dawnbreak!"
+    }
+  ],
+  "wren": [
+    {
+      "file": "greet.mp3",
+      "caption": "Hey there! The wind brought me right to you!"
+    },
+    {
+      "file": "tap_2.mp3",
+      "caption": "Where's our next adventure? I'll follow you anywhere!"
+    },
+    {
+      "file": "tap_3.mp3",
+      "caption": "I never miss my target… probably!"
+    },
+    {
+      "file": "idle.mp3",
+      "caption": "The wind smells different… something good is coming!"
+    },
+    {
+      "file": "laugh.mp3",
+      "caption": "Ahaha! This is fun!"
+    },
+    {
+      "file": "vote.mp3",
+      "caption": "Which one… okay, going with my gut!"
+    },
+    {
+      "file": "vow.mp3",
+      "caption": "You kept your promise! Amazing!"
+    },
+    {
+      "file": "retro_end.mp3",
+      "caption": "Good work! Let's ride the wind together again!"
+    }
+  ],
+  "rook": [
+    {
+      "file": "greet.mp3",
+      "caption": "Yo. Need something?"
+    },
+    {
+      "file": "tap_2.mp3",
+      "caption": "Rules are made to be broken, you know."
+    },
+    {
+      "file": "tap_3.mp3",
+      "caption": "Don't rush. Even lightning picks where it strikes."
+    },
+    {
+      "file": "idle.mp3",
+      "caption": "Yawn… boring. Someone let me fire a shot."
+    },
+    {
+      "file": "laugh.mp3",
+      "caption": "Heh. Not bad."
+    },
+    {
+      "file": "vote.mp3",
+      "caption": "Three votes? I don't miss."
+    },
+    {
+      "file": "vow.mp3",
+      "caption": "Kept your word, huh? Not bad at all."
+    },
+    {
+      "file": "retro_end.mp3",
+      "caption": "That's it for today. See ya, partner."
+    }
+  ],
+  "calla": [
+    {
+      "file": "greet.mp3",
+      "caption": "Oh, welcome. Do you need a remedy?"
+    },
+    {
+      "file": "tap_2.mp3",
+      "caption": "Poison or medicine — it all depends on the dose."
+    },
+    {
+      "file": "tap_3.mp3",
+      "caption": "Don't touch. …Just kidding."
+    },
+    {
+      "file": "idle.mp3",
+      "caption": "I'd love to test a new brew… on someone."
+    },
+    {
+      "file": "laugh.mp3",
+      "caption": "Fufufu… how amusing."
+    },
+    {
+      "file": "vote.mp3",
+      "caption": "Choose carefully. The effects differ."
+    },
+    {
+      "file": "vow.mp3",
+      "caption": "You kept your promise. A fine result."
+    },
+    {
+      "file": "retro_end.mp3",
+      "caption": "That's all for today. Let's brew again soon."
+    }
+  ],
+  "kairo": [
+    {
+      "file": "greet.mp3",
+      "caption": "…You called?"
+    },
+    {
+      "file": "tap_2.mp3",
+      "caption": "Still waters run deep."
+    },
+    {
+      "file": "tap_3.mp3",
+      "caption": "The best sword is the one never drawn."
+    },
+    {
+      "file": "idle.mp3",
+      "caption": "…I can hear the tide."
+    },
+    {
+      "file": "laugh.mp3",
+      "caption": "Heh… not bad."
+    },
+    {
+      "file": "vote.mp3",
+      "caption": "Don't hesitate. Follow your heart."
+    },
+    {
+      "file": "vow.mp3",
+      "caption": "You kept your vow. Well done."
+    },
+    {
+      "file": "retro_end.mp3",
+      "caption": "Until we meet again — where the current leads."
+    }
+  ],
+  "dax": [
+    {
+      "file": "greet.mp3",
+      "caption": "Yo! Are you fired up!?"
+    },
+    {
+      "file": "tap_2.mp3",
+      "caption": "My fire never goes out!"
+    },
+    {
+      "file": "tap_3.mp3",
+      "caption": "Come at me! …Oh, you're a friend."
+    },
+    {
+      "file": "idle.mp3",
+      "caption": "Sitting still makes me rusty…!"
+    },
+    {
+      "file": "laugh.mp3",
+      "caption": "Hahaha! Yeah, yeah!"
+    },
+    {
+      "file": "vote.mp3",
+      "caption": "I'm voting for the hottest one!"
+    },
+    {
+      "file": "vow.mp3",
+      "caption": "You kept your promise! That's so fired up!"
+    },
+    {
+      "file": "retro_end.mp3",
+      "caption": "Burned it all out today! See you tomorrow!"
+    }
+  ],
+  "sollene": [
+    {
+      "file": "greet.mp3",
+      "caption": "Good evening. The moon is watching over you."
+    },
+    {
+      "file": "tap_2.mp3",
+      "caption": "A quiet prayer steadies the sky."
+    },
+    {
+      "file": "tap_3.mp3",
+      "caption": "My crescent staff carries the light of home."
+    },
+    {
+      "file": "idle.mp3",
+      "caption": "The moonlight… it's so beautiful tonight."
+    },
+    {
+      "file": "laugh.mp3",
+      "caption": "Hehe… that makes me happy."
+    },
+    {
+      "file": "vote.mp3",
+      "caption": "Listen to your heart, and choose."
+    },
+    {
+      "file": "vow.mp3",
+      "caption": "A promise kept. The moon rejoices too."
+    },
+    {
+      "file": "retro_end.mp3",
+      "caption": "Thank you for today. Sweet dreams."
+    }
+  ]
+}

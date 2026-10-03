@@ -1,0 +1,114 @@
+/* Full-screen voyage: the Sanctuary fills the screen. Floating over it: Exit (top-left), pause + mute (top-right),
+   the stage label, one action button, the Warden's controls, and the stage window. */
+.game-voyage-screen{background:linear-gradient(180deg,#3a74e0 0%,#9cc0f4 9%,#dde9fc 17%,#eef4ff 24%,#c9daf6 70%,#aec6ef 100%)}
+.game-voyage-screen .game-landscape,.game-voyage-screen .game-screen-frame,.game-voyage-screen .game-navigation,.game-voyage-screen .menu-seren,.game-voyage-screen .game-corner-status,
+.game-voyage-screen .game-player,.game-voyage-screen .game-wallet,
+.game-voyage-screen .game-system-controls>*:not(#sanctuary-music-slot):not([aria-label$="motion"]):not([aria-label$="Seren"]){display:none!important}
+.game-voyage-screen .game-hud{z-index:30;background:none;pointer-events:none;justify-content:flex-end}
+.game-voyage-screen .game-hud button{pointer-events:auto}
+.game-voyage-screen .game-panel{inset:0!important;width:auto!important;border:0!important;outline:0!important;background:transparent!important;box-shadow:none!important;backdrop-filter:none!important;animation:none!important;transform:none!important}
+.game-voyage-screen .game-panel-heading{position:absolute;top:18px;left:20px;z-index:40;border:0!important;padding:0!important;background:none!important}
+.game-voyage-screen .game-panel-heading h1{display:none}
+.game-voyage-screen .game-panel-scroll{position:absolute;inset:0;padding:0!important;overflow:hidden}
+.voyage-exit{display:inline-flex;align-items:center;gap:8px;padding:9px 16px 9px 12px;border-radius:999px;border:1px solid #d8bf82;background:#10233ad9;color:#fff4dc;font:inherit;font-size:14px;cursor:pointer;box-shadow:0 6px 18px #0b1a2a40}
+.voyage-exit:hover{background:#18324fe6}
+
+/* Sanctuary backdrop (shifted left on wide screens while the window is open, so it never hides the crystals) */
+.voyage-backdrop{display:none}
+.game-voyage-screen .voyage-backdrop{display:block;position:fixed;top:0;bottom:0;left:0;width:100vw;z-index:0;transition:left .5s ease}
+.game-voyage-screen .voyage-backdrop .sanctuary-scene{position:absolute;inset:0;height:100%;border-radius:0;overflow:hidden;isolation:isolate}
+.game-voyage-screen .voyage-backdrop .scene-copy,.game-voyage-screen .voyage-backdrop .scene-wash,.game-voyage-screen .voyage-backdrop .scene-hint,.game-voyage-screen .voyage-backdrop .lamp-row{display:none}
+.voyage-backdrop.lobby-dim .scene-character{opacity:0}
+
+/* HUD */
+.voyage-hud{position:fixed;inset:0;z-index:20;pointer-events:none;font-family:'Manrope',sans-serif;color:#fff4dc}
+.voyage-hud button{pointer-events:auto;font:inherit;cursor:pointer}
+.voyage-stage-label{position:absolute;top:20px;left:50%;transform:translateX(-50%);margin:0;display:flex;align-items:center;gap:12px;padding:8px 30px;background:linear-gradient(90deg,#10233a00,#10233add 18%,#10233add 82%,#10233a00);border-top:1px solid #d8bf8288;border-bottom:1px solid #d8bf8288;font-family:'Marcellus',serif;font-size:18px;white-space:nowrap}
+.voyage-stage-label em{font-style:normal;font-family:'Manrope',sans-serif;font-size:12px;padding:2px 8px;border:1px solid #f0b86b;color:#f7d49a}
+.voyage-action{position:absolute;bottom:22px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:9px;min-height:48px;padding:0 26px;border:1px solid #f3dca0;background:linear-gradient(180deg,#e9cf8f,#c9a45a);color:#1b2a3a;font-family:'Marcellus',serif!important;font-size:17px;clip-path:polygon(12px 0,calc(100% - 12px) 0,100% 50%,calc(100% - 12px) 100%,12px 100%,0 50%)}
+.voyage-warden{position:absolute;right:22px;bottom:22px;display:flex;gap:8px}
+.voyage-warden button{display:flex;align-items:center;gap:7px;min-height:42px;padding:0 14px;border:1px solid #d8bf8299;background:#10233add;color:#fff4dc;font-size:14px}
+.voyage-warden .voyage-next{border-color:#f3dca0;background:#1d3a5c}
+.voyage-warden button:disabled{opacity:.45;cursor:not-allowed}
+.voyage-follow{position:absolute;right:22px;bottom:30px;margin:0;font-size:13px;text-shadow:0 1px 6px #0a1a2c}
+.voyage-action:focus-visible,.voyage-warden button:focus-visible,.voyage-window-close:focus-visible,.voyage-exit:focus-visible{outline:2px solid #fff4dc;outline-offset:3px}
+
+/* Stage window: framed game panel on the right on wide screens, bottom sheet on phones */
+.voyage-window{position:fixed;z-index:25;top:74px;right:22px;bottom:84px;width:min(560px,40vw);display:flex;flex-direction:column;background:#0f2135eb;border:1px solid #d8bf82aa;outline:1px solid #d8bf8233;outline-offset:4px;color:#e9eef3;box-shadow:0 20px 50px #0a1a2c66}
+.voyage-window>header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px 10px 20px;border-bottom:1px solid #d8bf8255}
+.voyage-window h2{margin:0;font-family:'Marcellus',serif;font-weight:400;font-size:22px;color:#fff4dc}
+.voyage-window-close{display:grid;place-items:center;width:34px;height:34px;border:1px solid #d8bf8266;background:none;color:#fff4dc;cursor:pointer}
+.voyage-window-body{overflow:auto;padding:18px 20px 22px;overscroll-behavior:contain}
+.voyage-window--vow-review{background:linear-gradient(155deg,#1b3b55f5 0%,#10283df7 48%,#0a1c30f9 100%);border-color:#f0d89b;outline-color:#d8bf8266;box-shadow:0 24px 65px #061423a6,inset 0 0 0 3px #091a2b99,inset 0 0 0 4px #d8bf823d}
+.voyage-window--vow-review:before,.voyage-window--vow-review:after{content:'';position:absolute;z-index:2;width:30px;height:30px;pointer-events:none;border-color:#ffedbe}
+.voyage-window--vow-review:before{top:6px;left:6px;border-top:1px solid;border-left:1px solid}
+.voyage-window--vow-review:after{right:6px;bottom:6px;border-right:1px solid;border-bottom:1px solid}
+.voyage-window--vow-review>header{position:relative;min-height:68px;padding:17px 20px 14px 28px;border-bottom-color:#e7ca8b8c;background:linear-gradient(90deg,#e8cb8824,transparent 74%)}
+.voyage-window--vow-review>header:after{content:'';position:absolute;left:50%;bottom:-5px;transform:translateX(-50%) rotate(45deg);width:10px;height:10px;background:#d9bd76;border:2px solid #142f46}
+.voyage-window--vow-review h2{font-size:27px;letter-spacing:.01em;text-shadow:0 2px 10px #050f1daa}
+.voyage-window--vow-review .voyage-window-close{width:37px;height:37px;background:#10283c;border-color:#d8bf8299}
+.voyage-window--vow-review .voyage-window-close:hover{background:#29465c;color:#fff}
+.voyage-window--vow-review .voyage-window-body{padding:28px 27px 29px;scrollbar-color:#af945d #10283c}
+.vow-review-content .stage-intro{margin:0 0 24px;text-align:center}
+.vow-review-content .stage-intro h3{font-family:'Marcellus',serif;font-size:27px;font-weight:400;line-height:1.25;color:#fff1cf;text-wrap:balance}
+.vow-review-content .stage-intro p{margin:10px auto 0;max-width:42ch;color:#d2e2e9;font-size:13px;line-height:1.6}
+.vow-review-list{display:grid;gap:10px}
+.vow-review-list .vow-row{position:relative;gap:15px;min-height:79px;padding:15px 16px;border:1px solid #a8c4cf38;background:linear-gradient(105deg,#24435aeb,#152e44ed);box-shadow:0 5px 14px #06152540}
+.vow-review-list .vow-row.fulfilled{border-color:#ddc27a99;background:linear-gradient(105deg,#554a38b8,#1a3648ed)}
+.vow-review-list .vow-check{width:28px;height:28px;border:1px solid #d5bf87;background:#102739;color:#e5d4ac;box-shadow:inset 0 0 0 3px #102739}
+.vow-review-list .vow-row.fulfilled .vow-check{background:#d9bd76;border-color:#f7dfa3;color:#122b3f}
+.vow-review-list .vow-check:disabled{cursor:default}
+.vow-review-list .vow-text p{color:#fff2d9;font-size:14px;line-height:1.5}
+.vow-review-list .vow-text>span{color:#c5d8df;font-size:11px;margin-top:5px}
+.vow-review-list .vow-row select{width:124px;min-height:39px;padding:8px 10px;background:#0d2438;color:#fff1ce;border:1px solid #cdb477a6;border-radius:2px;font:600 12px 'Manrope',sans-serif;cursor:pointer}
+.vow-review-list .vow-row select:hover{border-color:#ffdf9d;background:#19374e}
+.vow-review-list .vow-row select:disabled{opacity:.6;cursor:not-allowed}
+.vow-review-list .vow-row select:focus-visible,.vow-review-list .vow-check:focus-visible{outline:2px solid #ffdf9d;outline-offset:3px}
+.vow-review-content .review-lamps{margin:22px 0 0;padding:17px 18px;border:1px solid #d8bf8266;background:#d8bf8214;color:#f1d18d;display:grid;grid-template-columns:auto 1fr;gap:3px 11px}
+.vow-review-content .review-lamps strong{font-family:'Marcellus',serif;font-size:17px;font-weight:400;color:#ffedc2}
+.vow-review-content .review-lamps span{grid-column:2;margin:0;color:#d0e0e5;font-size:11px;line-height:1.5}
+.vow-journal-window{margin:0;left:auto;max-width:none;max-height:none;height:auto;padding:0}
+.vow-journal-window:not([open]){display:none}
+.vow-journal-window::backdrop{background:#08182755}
+.vow-journal-window .game-vow-journal>h2{margin-bottom:10px}
+.vow-journal-window .game-vow-journal>p{margin-bottom:20px;color:#c4d7e3;font-size:13px}
+.vow-journal-window .vow-text p{color:#fff4dc;font-size:14px}
+.vow-journal-window .vow-text>span{color:#c4d7e3;font-size:12px}
+.game-voyage-screen:has(.voyage-window) .voyage-backdrop{left:-14vw}
+.game-voyage-screen:has(.voyage-window) .voyage-action{display:none}
+@media (max-width:760px),(orientation:portrait){
+  .game-voyage-screen:has(.voyage-window) .voyage-backdrop{left:0}
+  .voyage-window{top:auto;left:0;right:0;bottom:64px;width:auto;max-height:45vh;outline:0}   /* bottom sheet: the plaza (and your character) stay visible above it */
+  .voyage-window--vow-review .voyage-window-body{padding:24px 18px 21px}
+  .voyage-window--vow-review>header{min-height:57px;padding:12px 17px 12px 22px}
+  .voyage-window--vow-review h2{font-size:23px}
+  .vow-review-content .stage-intro h3{font-size:23px}
+  .vow-review-list .vow-row{flex-wrap:wrap;padding:13px}
+  .vow-review-list .vow-row select{margin-left:43px;width:calc(100% - 43px)}
+  .voyage-stage-label{top:70px;font-size:15px}
+  .voyage-action{bottom:84px}
+  .voyage-warden{left:12px;right:12px;bottom:14px;justify-content:space-between;gap:6px}
+  .voyage-warden button{padding:0 11px}
+  .voyage-warden .voyage-btn-text{display:none}
+  .voyage-warden .voyage-next{flex:1;justify-content:center}
+  .voyage-follow{left:0;right:0;bottom:22px;text-align:center}
+}
+@media (prefers-reduced-motion:reduce){.game-voyage-screen .voyage-backdrop{transition:none}}
+
+/* Skills stay usable and visible while a stage window is open */
+.game-shell.game-voyage-screen .skill-bar{z-index:30}
+@media (max-width:760px),(orientation:portrait){.game-voyage-screen:has(.voyage-window) .skill-bar{top:96px}}
+
+/* Vow review: confirm before a promise counts as kept */
+.vow-row.confirming{flex-wrap:wrap}
+.vow-confirm{flex-basis:100%;margin-top:12px;padding:12px 14px;background:#0a1c2ccc;border:1px solid #e7ca8b99;outline:1px solid #e7ca8b33;outline-offset:3px;animation:vow-confirm-in .2s ease-out}
+@keyframes vow-confirm-in{from{opacity:0;translate:0 -4px}to{opacity:1;translate:0 0}}
+.vow-confirm p{margin:0 0 10px;color:#e9eef3;font-size:13px}.vow-confirm strong{color:#ffe7a8}
+.vow-confirm>div{display:flex;gap:10px}
+.vow-confirm button{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 16px;font:inherit;font-size:13px;cursor:pointer;border:1px solid #d8bf82}
+.vow-confirm-yes{background:linear-gradient(#e9cd86,#c9a656);color:#1a2a38;font-weight:600}
+.vow-confirm-yes:hover{filter:brightness(1.08)}
+.vow-confirm-no{background:none;color:#e9eef3;border-color:#d8bf8266}
+
+.vow-row.pending-kept{outline:1px dashed #e7ca8b99;outline-offset:2px}
+.vow-review-content .vow-confirm{position:sticky;bottom:0;z-index:3;margin-top:14px;box-shadow:0 -10px 24px #061423cc}

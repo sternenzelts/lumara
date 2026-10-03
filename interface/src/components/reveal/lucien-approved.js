@@ -1,0 +1,427 @@
+// Lucien choreography ported from the approved reveal-demos/lucien/index.html.
+import {createPlayback} from './playback.js';
+import {assets} from './lucien-markup.js';
+import {primeAzrenthAudio} from './azrenth-audio.js';
+export function createRuntime(host,onFinished,base){
+const asset=name=>base+assets[name];
+const life=createPlayback(host,onFinished);
+const $ = id => host.querySelector('#'+id);
+const fx = $('fx'), g = fx.getContext('2d'), fx2 = $('fx2'), g2 = fx2.getContext('2d');
+const DPR = Math.min(devicePixelRatio, 1.5);
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let motionFrozen = false;
+function beat(name){ $('stage').dataset.beat = name; }
+let W, H; function size(){ W = fx.width = fx2.width = innerWidth * DPR; H = fx.height = fx2.height = innerHeight * DPR; } size(); window.addEventListener('resize', size);
+const crystalImg = new Image(); crystalImg.src = asset('crystal.webp');
+
+/* ---------- audio: every level goes through setV so the Sound button can scale it ---------- */
+const LEVELS = [{ k:'on', m:1, label:'Sound on' }, { k:'low', m:.3, label:'Sound low' }, { k:'off', m:0, label:'Muted' }];
+let level = 0; try { const s = localStorage.getItem('lumara.revealSound'); if (s !== null) level = Math.min(2, Math.max(0, +s || 0)); } catch (e) {}
+const ALL = [];
+function setV(a, v){ a._v = Math.max(0, Math.min(1, v)); a.volume = a._v * LEVELS[level].m; }
+function track(src, v){ const a = new Audio(asset(src)); a.preload = 'auto';ALL.push(a); setV(a, v); return a; }
+const SFX = {}; ['pull_fall_whoosh','tell_splus','pull_flash_swell','slash','shatter'].forEach(n => SFX[n] = track('sfx_' + n + '.mp3', .75));
+const VO = {}; ['reveal','reveal_2','vow_seal','sig_full'].forEach(n => VO[n] = track('vo_' + n + '.mp3', 1));
+// lightning crackle, synthesised: short bursts of filtered noise
+let actx = null; const activeCrackles = new Set();
+function initSfx(){ actx = primeAzrenthAudio(); }
+function crackle(v = .5){ if (!actx || !LEVELS[level].m) return; const n = Math.floor(actx.sampleRate * .14), b = actx.createBuffer(1, n, actx.sampleRate), d = b.getChannelData(0);
+  for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 3) * (Math.random() < .3 ? 1 : .3);
+  const src = actx.createBufferSource(), f = actx.createBiquadFilter(), gn = actx.createGain(); f.type = 'highpass'; f.frequency.value = 1200; gn.gain.value = v * .45 * LEVELS[level].m;
+  src.buffer = b; src.connect(f).connect(gn).connect(actx.destination); activeCrackles.add(src); src.onended = () => activeCrackles.delete(src); src.start(); }
+const PULL = track('pull_music.mp3', .6);
+const THEME = track('theme.mp3', 0); THEME.loop = true; // "We're the Moonlight" (first 60 s); vocals from 6.5 s, so it ducks under every line // 魔王 — BURNOUT SYNDROMES × Nao Tōyama; instrumental intro covers the whole reveal
+let themeActive = false;
+const ramps = new Map();
+function ramp(a, to, step = .03, ms = 80, pauseAtZero = false){
+  clearInterval(ramps.get(a));
+  ramps.set(a, setInterval(() => { const d = to - a._v; if (Math.abs(d) <= step) { setV(a, to); clearInterval(ramps.get(a)); if (pauseAtZero && to === 0) a.pause(); } else setV(a, a._v + Math.sign(d) * step); }, ms));
+}
+function resume(a){return a.play();}
+function play(a, v){ a.currentTime = 0; if (v !== undefined) setV(a, v); resume(a).catch(() => { $('audioStatus').textContent = 'Sound could not start. Press Sound to retry.'; }); }
+function stopAll(){ ALL.forEach(a => { clearInterval(ramps.get(a)); a.pause();a.currentTime=0; }); }
+function startTheme(volume = .34){ themeActive = true; clearInterval(ramps.get(THEME)); setV(THEME, volume); life.playMusic(THEME); }
+function primeTheme(){ THEME.currentTime = 0; setV(THEME,0); life.primeMusic(THEME); }
+function renderSound(){ const L = LEVELS[level], b = $('sound'); b.dataset.level = L.k; b.title = L.label; b.setAttribute('aria-label', L.label + ' (click to change)'); b.querySelector('span').textContent = L.k === 'on' ? 'Sound' : L.k === 'low' ? 'Low' : 'Muted'; }
+$('sound').onclick = () => { level = (level + 1) % LEVELS.length; ALL.forEach(a => setV(a, a._v)); $('audioStatus').textContent = ''; if ((themeActive || $('stage').dataset.beat === 'card') && level !== 2) startTheme($('stage').dataset.beat === 'card' ? .45 : THEME._v || .34); try { localStorage.setItem('lumara.revealSound', level); } catch (e) {} renderSound(); };
+renderSound();
+
+/* ---------- run control: Replay cancels the running sequence instead of stacking a second one ---------- */
+let runId = 0;
+function guard(id){ if (id !== runId) throw life.CANCEL; }
+const {sleep,tween,voice,setInterval,clearInterval,requestAnimationFrame} = life;
+function stream(fn, ms){ return setInterval(fn,ms); }
+function anim(el, frames, o = {}){ return life.anim(el,frames,{...o,duration:reduced?1:(o.duration || 500)}); }
+function hide(el){ el.getAnimations().forEach(a => a.cancel()); el.style.opacity = 0; }
+function show(el){ el.getAnimations().forEach(a => a.cancel()); el.style.opacity = 1; }
+const SHOTS = ['lucien','chant','seal1','seal2','seal3','vow','lunge','storm','finalArt'];
+function hideShots(){ SHOTS.forEach(k => hide($(k))); }
+const dipTo = (col, ms) => { $('flash').style.background = col; return anim($('flash'), [{ opacity:0 }, { opacity:1 }], { duration:ms }); };
+const dipFrom = ms => anim($('flash'), [{ opacity:1 }, { opacity:0 }], { duration:ms });
+// a voice line with its caption; without the clip the caption holds for `ms`
+function say(n, text, ms){
+  caption(text);
+  const line = VO[n] ? ducked(VO[n]) : sleep(ms);
+  // The vow starts before the three seal panels finish. Skip may cancel it
+  // before the sequence reaches its await, so mark that rejection handled.
+  line.catch(() => {});
+  return line;
+}
+function showShot(name){
+  if (name !== 'lucien') $('scene').style.opacity = 0;
+  SHOTS.forEach(k => { if(k !== name) hide($(k)); });
+  show($(name));
+}
+async function fadeShotOut(name, duration = 700){
+  await anim($(name), [{opacity:1},{opacity:0}], {duration});
+  // The caller guards its run before clearing the shot; Replay owns the next run.
+}
+function ducked(a){const id=runId;ramp(THEME,.07,.05,40);return voice(a).then(()=>{if(id===runId)ramp(THEME,.32,.02,80);});}
+function caption(t){ const c = $('caption'); c.textContent = t; c.style.opacity = t ? '.92' : '0'; }
+
+/* ---------- canvas world ---------- */
+let glints = null, zapsF = [], zapsB = [], fissures = [], threads = [], backlight = null, burn = null, orb = null, rift = null, slash = null, glint = null; let cz = null, star = null, cracks = [], shake = 0, shards = [], dust = null, dusts = [], spells = [], rings = [], casters = [], hexes = [], nova = null;
+const clouds = Array.from({ length: 26 }, () => ({ x:(Math.random() - .5) * 2, y:(Math.random() - .5) * 1.4, z:Math.random() }));
+const parts = [];
+function spawn(n, opts){ for (let i = 0; i < n; i++) parts.push(Object.assign({ x:Math.random() * W, y:H + 10, vx:(Math.random() - .5) * .6 * DPR, vy:-(.4 + Math.random() * 1.4) * DPR, s:(1 + Math.random() * 2.5) * DPR, life:1, col:'#bcd8ff' }, opts ? opts(i) : {})); }
+function makeCracks(){ cracks = []; for (let k = 0; k < 7; k++) { let x = W * .5, y = H * .2, pts = [[x, y]]; const ang = Math.PI / 2 + (Math.random() - .5) * 2.6; for (let i = 0; i < 9; i++) { x += Math.cos(ang + (Math.random() - .5)) * W * .035; y += Math.sin(ang + (Math.random() - .5)) * H * .03 - H * .02; pts.push([x, y]); } cracks.push({ pts, a:1, h:Math.random() * 360 }); } }
+
+// Dissolve an <img> into particles sampled from its own pixels; t=0 whole, t=1 fully dispersed into mist.
+function makeDust(el, colorShift){
+  const r = el.getBoundingClientRect(), off = document.createElement('canvas');
+  const w = Math.max(1, Math.round(r.width)), h = Math.max(1, Math.round(r.height)); off.width = w; off.height = h;
+  const c = off.getContext('2d'), cover = Math.max(w / el.naturalWidth, h / el.naturalHeight);
+  const iw = el.naturalWidth * cover, ih = el.naturalHeight * cover;
+  const position = getComputedStyle(el).objectPosition.split(' ').map(parseFloat);
+  c.filter = getComputedStyle(el).filter;
+  c.drawImage(el, (w - iw) * (position[0] / 100), (h - ih) * (position[1] / 100), iw, ih);
+  const data = c.getImageData(0, 0, w, h).data, step = Math.max(3, Math.round(Math.sqrt(w * h / 5200))), list = [];
+  for (let y = 0; y < h; y += step) for (let x = 0; x < w; x += step) { const i = (y * w + x) * 4; if (data[i + 3] < 60) continue;
+    const ang = Math.random() * Math.PI * 2, sp = .25 + Math.random();
+    list.push({ ox:(r.left + x) * DPR, oy:(r.top + y) * DPR, dx:Math.cos(ang) * sp * W * .22 + (x / w - .5) * W * .12, dy:-(Math.random() * .9 + .2) * H * .5 + Math.sin(ang) * H * .08,
+      col: colorShift ? `rgb(${data[i] * .5 + 70},${data[i + 1] * .6 + 110},255)` : `rgb(${data[i]},${data[i + 1]},${data[i + 2]})`, s:step * DPR * .9, delay:(1 - y / h) * .35 + Math.random() * .15 }); }
+  return { list, t:0, glow:colorShift };
+}
+function drawDust(ctx, d){
+  for (const p of d.list) { const k = Math.max(0, Math.min(1, (d.t - p.delay) / (1 - p.delay * .6))); const e = k * k * (3 - 2 * k);
+    ctx.globalAlpha = (1 - e * .85) * (1 - (p.fade || 0)) * (d.alpha ?? 1); ctx.fillStyle = d.annihilate && e > .1 ? (e < .3 ? '#ff502b' : '#130805') : e > .15 && d.glow ? '#9cc7ff' : p.col;
+    ctx.fillRect(p.ox + p.dx * e, p.oy + p.dy * e, p.s * (1 - e * .5), p.s * (1 - e * .5)); }
+  ctx.globalAlpha = 1;
+}
+function loop(t){
+  if(motionFrozen){ requestAnimationFrame(loop); return; }
+  g.clearRect(0, 0, W, H); g2.clearRect(0, 0, W, H);
+  const sx = shake && !reduced ? (Math.random() - .5) * shake : 0, sy = shake && !reduced ? (Math.random() - .5) * shake : 0; $('stage').style.transform = shake && !reduced ? `translate(${sx}px,${sy}px)` : '';
+  for (const c of cracks) { g.strokeStyle = `hsla(${c.h},100%,80%,${c.a})`; g.lineWidth = 2 * DPR; g.shadowColor = '#fff'; g.shadowBlur = 12 * DPR; g.beginPath(); c.pts.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.stroke(); g.shadowBlur = 0; c.a = Math.max(0, c.a - .004); }
+  if (cz) { const cx = W / 2, cy = H * .46;
+    for (const c of clouds) { c.z -= .012 * cz.flight; if (c.z < .05) { c.z = 1; c.x = (Math.random() - .5) * 2; c.y = (Math.random() - .5) * 1.4; }
+      const k = 1 / c.z, px = cx + c.x * W * .35 * k, py = cy + c.y * H * .35 * k, r = 60 * DPR * k, a = Math.min(.45, (1 - c.z)) * cz.flight;
+      const gr = g.createRadialGradient(px, py, 0, px, py, r); gr.addColorStop(0, `rgba(200,220,255,${a})`); gr.addColorStop(1, 'rgba(200,220,255,0)'); g.fillStyle = gr; g.beginPath(); g.arc(px, py, r, 0, Math.PI * 2); g.fill(); }
+    if (cz.rays > 0) { g.save(); g.translate(cx, cy); g.rotate(t / 2500); for (let i = 0; i < 18; i++) { g.rotate(Math.PI / 9); g.fillStyle = cz.stage >= 2 ? `hsla(${(t / 5 + i * 20) % 360},100%,70%,${.14 * cz.rays})` : `rgba(255,215,120,${.14 * cz.rays})`; g.beginPath(); g.moveTo(0, 0); g.lineTo(-W * .05, -H * 1.3); g.lineTo(W * .05, -H * 1.3); g.fill(); } g.restore(); }
+    if (cz.show) { const d = Math.min(W, H) * cz.s; g.save(); g.translate(cx, cy); g.rotate(cz.r); g.globalAlpha = cz.alpha;
+      g.shadowColor = cz.stage === 0 ? '#b48cff' : cz.stage === 1 ? '#f4cf7a' : `hsl(${t / 3 % 360},100%,70%)`; g.shadowBlur = 60 * DPR;
+      g.filter = cz.stage === 0 ? 'hue-rotate(25deg) saturate(1.8)' : cz.stage === 1 ? 'sepia(1) saturate(3.2) hue-rotate(-12deg) brightness(1.08)' : `hue-rotate(${(t / 4) % 360}deg) saturate(2.3) brightness(1.15)`;
+      if (crystalImg.complete) g.drawImage(crystalImg, -d / 2, -d / 2, d, d); g.filter = 'none'; g.restore(); } }
+  if (dust) drawDust(dust.behind ? g : g2, dust); for (const d of dusts) drawDust(g2, d);
+  // crimson backlight behind the shadow, so a pure-black silhouette reads
+  if (backlight) { const b = backlight, R = b.r * (1 + b.pulse * .14), a = b.a * (1 + b.pulse * .5), gr = g.createRadialGradient(b.x, b.y, 0, b.x, b.y, R);
+    gr.addColorStop(0, `rgba(210,200,255,${Math.min(1, .9 * a)})`); gr.addColorStop(.3, `rgba(110,80,230,${Math.min(1, .6 * a)})`); gr.addColorStop(1, 'rgba(40,20,120,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, W, H); }
+  // Jirasd: the burning front that eats the castle (the castle itself is masked to match)
+  if (burn && burn.r > 0) { g.save(); g.lineJoin = 'round';
+    const band = 150 * DPR, fg = g.createRadialGradient(burn.x, burn.y, Math.max(0, burn.r - band), burn.x, burn.y, burn.r + band * .5);
+    fg.addColorStop(0, 'rgba(40,0,0,0)'); fg.addColorStop(.35, 'rgba(140,12,0,.55)'); fg.addColorStop(.58, 'rgba(255,80,24,.85)'); fg.addColorStop(.66, 'rgba(255,214,160,.95)'); fg.addColorStop(.74, 'rgba(255,70,20,.6)'); fg.addColorStop(1, 'rgba(255,40,0,0)');
+    g.fillStyle = fg; g.fillRect(0, 0, W, H);
+    for (const [w, col, blur] of [[8, 'rgba(255,140,50,.7)', 18], [2, 'rgba(255,236,196,.9)', 6]]) {
+      g.strokeStyle = col; g.lineWidth = w * DPR; g.shadowColor = '#ff3a10'; g.shadowBlur = blur * DPR; g.beginPath();
+      for (let i = 0; i <= 140; i++) { const a = i / 140 * Math.PI * 2, j = Math.sin(a * 7 + t / 90) * .5 + Math.sin(a * 13 - t / 60) * .5, rr = burn.r + j * 12 * DPR;
+        const x = burn.x + Math.cos(a) * rr, y = burn.y + Math.sin(a) * rr; i ? g.lineTo(x, y) : g.moveTo(x, y); }
+      g.stroke(); }
+    g.restore(); }
+  // Venuzdonoa: the rift between the two halves of the world, drawn to match the Sever painting
+  if (rift) { const L = rift.L, gp = rift.gap * DPR, off = (p, s) => [p[0] + L.n[0] * gp * s, p[1] + L.n[1] * gp * s];
+    const a0 = off(L.e0, 1), a1 = off(L.e1, 1), b0 = off(L.e0, -1), b1 = off(L.e1, -1);
+    g.save(); g.globalAlpha = rift.a; const vg = g.createLinearGradient(...a0.map((v, i) => (v + b0[i]) / 2 + L.n[i] * gp), ...a0.map((v, i) => (v + b0[i]) / 2 - L.n[i] * gp));
+    vg.addColorStop(0, '#2a0508'); vg.addColorStop(.3, '#0a0414'); vg.addColorStop(.5, '#1b1036'); vg.addColorStop(.7, '#0a0414'); vg.addColorStop(1, '#2a0508'); g.fillStyle = vg; g.beginPath(); g.moveTo(...a0); g.lineTo(...a1); g.lineTo(...b1); g.lineTo(...b0); g.closePath(); g.fill();
+    for (const s of rift.stars) { g.globalAlpha = rift.a * s.b * (.6 + .4 * Math.sin(t / 300 + s.ph)); g.fillStyle = s.c;
+      g.fillRect(L.e0[0] + (L.e1[0] - L.e0[0]) * s.u + L.n[0] * s.o * gp, L.e0[1] + (L.e1[1] - L.e0[1]) * s.u + L.n[1] * s.o * gp, s.z, s.z); }
+    g.globalAlpha = rift.a; g.lineCap = 'round';
+    for (const [p0, p1] of [[a0, a1], [b0, b1]]) for (const [w, col, blur] of [[10, 'rgba(255,40,30,.6)', 30], [2.4, '#ffe2d6', 8]]) {
+      g.strokeStyle = col; g.lineWidth = w * DPR; g.shadowColor = '#ff2a1a'; g.shadowBlur = blur * DPR; g.beginPath(); g.moveTo(...p0); g.lineTo(...p1); g.stroke(); }
+    g.restore(); }
+  for (const c of casters) { c.rot += .02; g2.save(); g2.translate(c.x, c.y); g2.rotate(c.rot); g2.globalAlpha = c.a;
+    g2.strokeStyle = `hsl(${c.h},100%,62%)`; g2.shadowColor = `hsl(${c.h},100%,55%)`; g2.shadowBlur = 20 * DPR; g2.lineWidth = 2.2 * DPR; const R = c.r * DPR;
+    g2.beginPath(); g2.arc(0, 0, R, 0, Math.PI * 2); g2.stroke(); g2.beginPath(); g2.arc(0, 0, R * .72, 0, Math.PI * 2); g2.stroke();
+    g2.beginPath(); for (let k = 0; k < 6; k++) { const a0 = k / 6 * Math.PI * 2; const px = Math.cos(a0) * R * .72, py = Math.sin(a0) * R * .72; k ? g2.lineTo(px, py) : g2.moveTo(px, py); } g2.closePath(); g2.stroke();
+    for (let k = 0; k < 12; k++) { const a0 = k / 12 * Math.PI * 2; g2.fillStyle = `hsl(${c.h},100%,75%)`; g2.fillRect(Math.cos(a0) * R * .86 - 3 * DPR, Math.sin(a0) * R * .86 - 3 * DPR, 6 * DPR, 6 * DPR); }
+    if (c.crack > 0) { g2.strokeStyle = `rgba(255,255,255,${c.crack})`; g2.lineWidth = 1.5 * DPR; for (let k = 0; k < 5; k++) { const a0 = k * 1.3; g2.beginPath(); g2.moveTo(0, 0); g2.lineTo(Math.cos(a0) * R * 1.1, Math.sin(a0) * R * 1.1); g2.stroke(); } }
+    g2.restore(); }
+  for (const sp of spells) { const x = sp.x, y = sp.y; sp.trail.push([x, y]); if (sp.trail.length > 26) sp.trail.shift();
+    const hue = sp.h + (205 - sp.h) * sp.drain; // drains from red/violet to blue as it is erased
+    for (let i = 1; i < sp.trail.length; i++) { const [ax, ay] = sp.trail[i - 1], [bx, by] = sp.trail[i], k = i / sp.trail.length;
+      g2.strokeStyle = `hsla(${hue},100%,${55 + k * 20}%,${k * sp.o * .8})`; g2.lineWidth = sp.size * (.3 + k * .9) * DPR; g2.lineCap = 'round'; g2.shadowColor = `hsl(${hue},100%,60%)`; g2.shadowBlur = 24 * DPR; g2.beginPath(); g2.moveTo(ax, ay); g2.lineTo(bx, by); g2.stroke(); }
+    const R = sp.size * sp.scale * DPR, gr = g2.createRadialGradient(x, y, 0, x, y, R);
+    gr.addColorStop(0, `rgba(255,255,255,${sp.o})`); gr.addColorStop(.35, `hsla(${hue},100%,70%,${sp.o})`); gr.addColorStop(1, `hsla(${hue},100%,50%,0)`);
+    g2.fillStyle = gr; g2.beginPath(); g2.arc(x, y, R, 0, Math.PI * 2); g2.fill(); g2.shadowBlur = 0; }
+  for (let i = hexes.length - 1; i >= 0; i--) { const hx = hexes[i]; hx.t += .03; if (hx.t >= 1) { hexes.splice(i, 1); continue; }
+    g2.save(); g2.translate(hx.x, hx.y); g2.rotate(hx.rot); g2.globalAlpha = (1 - hx.t) * .9; g2.strokeStyle = '#cfe4ff'; g2.shadowColor = '#8fc4ff'; g2.shadowBlur = 18 * DPR; g2.lineWidth = 2 * DPR;
+    for (const [dx, dy] of [[0, 0], [1.5, .87], [-1.5, .87], [0, 1.74], [0, -1.74], [1.5, -.87], [-1.5, -.87]]) { const r = (14 + hx.t * 10) * DPR; g2.beginPath();
+      for (let k = 0; k < 6; k++) { const a0 = k / 6 * Math.PI * 2 + Math.PI / 6; const px = dx * r + Math.cos(a0) * r, py = dy * r + Math.sin(a0) * r; k ? g2.lineTo(px, py) : g2.moveTo(px, py); } g2.closePath(); g2.stroke(); }
+    g2.restore(); }
+  for (let i = rings.length - 1; i >= 0; i--) { const r = rings[i]; r.t += .035; if (r.t >= 1) { rings.splice(i, 1); continue; }
+    g2.save(); g2.globalAlpha = 1 - r.t; g2.strokeStyle = '#cfe4ff'; g2.shadowColor = '#8fc4ff'; g2.shadowBlur = 16 * DPR; g2.lineWidth = 2 * DPR;
+    for (let k = 0; k < 6; k++) { const a0 = k / 6 * Math.PI * 2 + r.rot, a1 = a0 + .7; g2.beginPath(); g2.arc(r.x, r.y, (14 + r.t * 46) * DPR, a0, a1); g2.stroke(); } g2.restore(); }
+  for (const s of shards) { s.a += s.w; const x = s.cx + Math.cos(s.a) * s.rx, y = s.cy + Math.sin(s.a) * s.ry; g2.save(); g2.translate(x, y); g2.rotate(s.a * 2); g2.globalAlpha = s.o;
+    g2.fillStyle = 'rgba(190,220,255,.85)'; g2.shadowColor = '#8fc4ff'; g2.shadowBlur = 14 * DPR; g2.beginPath(); g2.moveTo(0, -s.z); g2.lineTo(s.z * .45, 0); g2.lineTo(0, s.z); g2.lineTo(-s.z * .45, 0); g2.closePath(); g2.fill(); g2.restore(); }
+  for (let i = parts.length - 1; i >= 0; i--) { const p = parts[i]; p.x += p.vx; p.y += p.vy; p.life -= .0035;
+    if (p.life <= 0 || p.y < -40 || p.y > H + 40) { parts.splice(i, 1); continue; }
+    g2.globalAlpha = Math.min(1, p.life); g2.fillStyle = p.col; g2.shadowColor = p.col; g2.shadowBlur = 8 * DPR; g2.beginPath(); g2.arc(p.x, p.y, p.s, 0, Math.PI * 2); g2.fill(); g2.shadowBlur = 0; g2.globalAlpha = 1; }
+  drawZaps(g, zapsB);
+  if (fissures.length && rift) { const gp = rift.gap * DPR, G0 = rift.G * DPR; g.save(); g.lineCap = 'round'; g.lineJoin = 'round'; g.globalAlpha = rift.a * (.85 + Math.random() * .15);
+    for (const f of fissures) { const dx = L_off(rift.L, f.side, gp - G0), n = Math.max(2, Math.ceil(f.pts.length * f.grow));
+      for (const [w, col, blur] of [[5, 'rgba(255,36,24,.5)', 16], [2, '#0c0101', 0], [.8, '#ff8a66', 4]]) { g.strokeStyle = col; g.lineWidth = w * DPR; g.shadowColor = '#ff2a1a'; g.shadowBlur = blur * DPR;
+        g.beginPath(); f.pts.slice(0, n).forEach(([x, y], j) => j ? g.lineTo(x + dx[0], y + dx[1]) : g.moveTo(x + dx[0], y + dx[1]));
+        if (f.grow > .6) { g.moveTo(f.branch[0][0] + dx[0], f.branch[0][1] + dx[1]); g.lineTo(f.branch[0][0] + (f.branch[1][0] - f.branch[0][0]) * (f.grow - .6) / .4 + dx[0], f.branch[0][1] + (f.branch[1][1] - f.branch[0][1]) * (f.grow - .6) / .4 + dx[1]); }
+        g.stroke(); } }
+    g.restore(); }
+  // the golden threads of order: behind him, and each one snaps where the cut crosses it
+  for (const th of threads) { g.save(); g.lineCap = 'round';
+    const pieces = th.hit == null ? [[0, 1]] : [[0, th.hit * (1 - th.k * .6)], [th.hit + (1 - th.hit) * th.k * .6, 1]];
+    for (const [u0, u1] of pieces) { if (u1 <= u0) continue;
+      for (const [w, col, blur] of [[5, 'rgba(255,190,90,.3)', 16], [1.5, '#ffe7b0', 6]]) {
+        g.globalAlpha = th.a * (1 - th.k); g.strokeStyle = col; g.lineWidth = w * DPR; g.shadowColor = '#ffc860'; g.shadowBlur = blur * DPR; g.beginPath();
+        for (let i = 0; i <= 40; i++) { const [x, y] = qpt(th, u0 + (u1 - u0) * i / 40); i ? g.lineTo(x, y) : g.moveTo(x, y); }
+        g.stroke(); } }
+    if (th.hit == null && th.a > 0) { const [x, y] = qpt(th, (t / 2600 + th.ph) % 1), gr = g.createRadialGradient(x, y, 0, x, y, 16 * DPR);
+      gr.addColorStop(0, `rgba(255,248,220,${th.a})`); gr.addColorStop(1, 'rgba(255,220,150,0)'); g.globalAlpha = 1; g.shadowBlur = 0; g.fillStyle = gr; g.fillRect(x - 16 * DPR, y - 16 * DPR, 32 * DPR, 32 * DPR); }
+    g.restore(); }
+  // Jirasd's gathered flame
+  if (orb) { const R = orb.r * (1 + Math.sin(t / 45) * .06), gr = g2.createRadialGradient(orb.x, orb.y, 0, orb.x, orb.y, R);
+    gr.addColorStop(0, `rgba(255,244,236,${orb.a})`); gr.addColorStop(.16, `rgba(255,70,44,${orb.a})`); gr.addColorStop(.5, `rgba(160,0,0,${orb.a * .5})`); gr.addColorStop(1, 'rgba(60,0,0,0)');
+    g2.fillStyle = gr; g2.beginPath(); g2.arc(orb.x, orb.y, R, 0, Math.PI * 2); g2.fill(); }
+  // Venuzdonoa's cut: one tapered blade of light, thin at both ends, white-hot at the core
+  if (slash) { const L = slash.L, p = slash.p, at = u => [L.e0[0] + (L.e1[0] - L.e0[0]) * u, L.e0[1] + (L.e1[1] - L.e0[1]) * u];
+    g.save(); g.globalAlpha = slash.a;
+    for (const [hw, col, blur] of [[38, 'rgba(255,30,30,.35)', 50], [15, '#ff3b2e', 22], [5, '#fff6f0', 8]]) {
+      const w = hw * DPR * slash.w; g.fillStyle = col; g.shadowColor = '#ff2a1a'; g.shadowBlur = blur * DPR; g.beginPath();
+      for (let i = 0; i <= 60; i++) { const u = p * i / 60, [x, y] = at(u), h = w * Math.pow(Math.sin(Math.PI * u), .6); i ? g.lineTo(x + L.n[0] * h, y + L.n[1] * h) : g.moveTo(x, y); }
+      for (let i = 60; i >= 0; i--) { const u = p * i / 60, [x, y] = at(u), h = w * Math.pow(Math.sin(Math.PI * u), .6) * .55; g.lineTo(x - L.n[0] * h, y - L.n[1] * h); }
+      g.closePath(); g.fill(); }
+    if (p < 1) { const [x, y] = at(p), gr = g.createRadialGradient(x, y, 0, x, y, 70 * DPR); gr.addColorStop(0, '#fff'); gr.addColorStop(.3, 'rgba(255,120,90,.7)'); gr.addColorStop(1, 'rgba(255,40,30,0)');
+      g.shadowBlur = 0; g.fillStyle = gr; g.fillRect(x - 70 * DPR, y - 70 * DPR, 140 * DPR, 140 * DPR); }
+    g.restore(); }
+  drawZaps(g2, zapsF);
+  if (glints) for (const q of glints) { if (!q.a || q.x == null) continue; const R = 60 * DPR * q.a, gr = g2.createRadialGradient(q.x, q.y, 0, q.x, q.y, R); g2.save(); g2.globalCompositeOperation = 'lighter';
+    gr.addColorStop(0, 'rgba(255,255,245,.95)'); gr.addColorStop(.25, 'rgba(255,214,140,.6)'); gr.addColorStop(1, 'rgba(255,170,80,0)'); g2.fillStyle = gr; g2.fillRect(q.x - R, q.y - R, R * 2, R * 2);
+    g2.strokeStyle = 'rgba(255,240,210,.8)'; g2.lineWidth = 1.2 * DPR; g2.beginPath(); g2.moveTo(q.x - R * 1.4, q.y); g2.lineTo(q.x + R * 1.4, q.y); g2.moveTo(q.x, q.y - R); g2.lineTo(q.x, q.y + R); g2.stroke(); g2.restore(); }
+  // a glint running down the blade, hilt to tip
+  if (glint && glint.a > 0) { const { x, y } = glint, R = 46 * DPR * glint.a; g2.save(); g2.globalCompositeOperation = 'lighter';
+    const gr = g2.createRadialGradient(x, y, 0, x, y, R); gr.addColorStop(0, 'rgba(255,255,255,.95)'); gr.addColorStop(.25, 'rgba(255,215,140,.6)'); gr.addColorStop(1, 'rgba(255,120,60,0)');
+    g2.fillStyle = gr; g2.fillRect(x - R, y - R, R * 2, R * 2); g2.strokeStyle = 'rgba(255,245,220,.9)'; g2.lineWidth = 1.5 * DPR;
+    g2.beginPath(); g2.moveTo(x - R * 1.6, y); g2.lineTo(x + R * 1.6, y); g2.moveTo(x, y - R * 1.1); g2.lineTo(x, y + R * 1.1); g2.stroke(); g2.restore(); }
+  requestAnimationFrame(loop);
+}
+function orbit(el, n){ const r = el.getBoundingClientRect(); shards = Array.from({ length:n }, (_, i) => ({ cx:(r.left + r.width / 2) * DPR, cy:(r.top + r.height * .45) * DPR,
+  rx:r.width * DPR * (.55 + Math.random() * .25), ry:r.height * DPR * (.12 + Math.random() * .1), a:i / n * Math.PI * 2, w:.012 + Math.random() * .01, z:(8 + Math.random() * 12) * DPR, o:0 })); }
+
+function center(el, fy = .45){ const r = el.getBoundingClientRect(); return [(r.left + r.width / 2) * DPR, (r.top + r.height * fy) * DPR, r.width * DPR]; }
+// image pixel on a full-bleed (object-fit:cover) layer -> canvas pixel
+function artPoint(el, ix, iy){ const r = el.getBoundingClientRect(), s = (getComputedStyle(el).objectFit === 'contain' ? Math.min : Math.max)(r.width / el.naturalWidth, r.height / el.naturalHeight), [px, py] = getComputedStyle(el).objectPosition.split(' ').map(parseFloat);
+  return [(r.left + (r.width - el.naturalWidth * s) * px / 100 + ix * s) * DPR, (r.top + (r.height - el.naturalHeight * s) * py / 100 + iy * s) * DPR]; }
+// image pixel on a cutout (object-fit:contain) -> canvas pixel, following its live transform
+function cutPoint(el, ix, iy){ const r = el.getBoundingClientRect(), s = Math.min(r.width / el.naturalWidth, r.height / el.naturalHeight);
+  return [(r.left + (r.width - el.naturalWidth * s) / 2 + ix * s) * DPR, (r.top + (r.height - el.naturalHeight * s) / 2 + iy * s) * DPR]; }
+// jagged lightning path by midpoint displacement
+function zapPath(x0, y0, x1, y1, rough = .22, depth = 6){ let pts = [[x0, y0], [x1, y1]], off = Math.hypot(x1 - x0, y1 - y0) * rough;
+  for (let i = 0; i < depth; i++) { const np = [pts[0]]; for (let k = 0; k < pts.length - 1; k++) { const [ax, ay] = pts[k], [bx, by] = pts[k + 1], dx = bx - ax, dy = by - ay, l = Math.hypot(dx, dy) || 1, o = (Math.random() - .5) * off;
+    np.push([(ax + bx) / 2 - dy / l * o, (ay + by) / 2 + dx / l * o], [bx, by]); } pts = np; off /= 2; }
+  return pts; }
+function zap(x0, y0, x1, y1, o = {}){ const main = zapPath(x0, y0, x1, y1, o.rough, o.depth), paths = [main];
+  for (let b = 0; b < (o.branches ?? 1); b++) { const [bx, by] = main[Math.floor(main.length * (.2 + Math.random() * .6))], a = Math.atan2(y1 - y0, x1 - x0) + (Math.random() - .5) * 1.8, len = Math.hypot(x1 - x0, y1 - y0) * (.2 + Math.random() * .3);
+    paths.push(zapPath(bx, by, bx + Math.cos(a) * len, by + Math.sin(a) * len, .3, 4)); }
+  const life = o.life ?? (5 + Math.floor(Math.random() * 4)); return { paths, w:(o.w ?? 1.6) * DPR, life, max:life }; }
+// black lightning: red glow, black body, a thin red-hot seam
+function drawZaps(ctx, list){ for (let i = list.length - 1; i >= 0; i--) { const z = list[i]; if (--z.life < 0) { list.splice(i, 1); continue; }
+  ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.globalAlpha = Math.min(1, z.life / z.max * 1.6);
+  z.paths.forEach((pts, pi) => { const w = z.w * (pi ? .55 : 1);
+    for (const [k, col, blur] of [[5, 'rgba(140,110,255,.5)', 26], [2, '#dcd4ff', 0], [.6, '#ffffff', 4]]) {
+      ctx.strokeStyle = col; ctx.lineWidth = w * k; ctx.shadowColor = '#7a5cff'; ctx.shadowBlur = blur * DPR; ctx.beginPath(); pts.forEach(([x, y], j) => j ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.stroke(); } });
+  ctx.restore(); } }
+// cracks in reality, running out from both edges of the rift
+function makeFissures(L, gapPx){ return Array.from({ length:18 }, (_, i) => { const side = i % 2 ? 1 : -1, u = .04 + Math.random() * .92;
+  const ox = L.e0[0] + (L.e1[0] - L.e0[0]) * u, oy = L.e0[1] + (L.e1[1] - L.e0[1]) * u; let a = Math.atan2(L.n[1] * side, L.n[0] * side) + (Math.random() - .5) * 1.3, x = ox + L.n[0] * side * gapPx, y = oy + L.n[1] * side * gapPx;
+  const pts = [[x, y]], n = 5 + Math.floor(Math.random() * 5); for (let k = 0; k < n; k++) { a += (Math.random() - .5) * .9; const len = (18 + Math.random() * 34) * DPR; x += Math.cos(a) * len; y += Math.sin(a) * len; pts.push([x, y]); }
+  const m = pts[Math.floor(n / 2)], ba = a + (Math.random() < .5 ? 1 : -1) * (.6 + Math.random() * .6), bl = (30 + Math.random() * 60) * DPR;
+  return { side, pts, branch:[m, [m[0] + Math.cos(ba) * bl, m[1] + Math.sin(ba) * bl]], grow:0 }; }); }
+function qpt(th, u){ const v = 1 - u; return [v * v * th.p0[0] + 2 * v * u * th.c[0] + u * u * th.p1[0], v * v * th.p0[1] + 2 * v * u * th.c[1] + u * u * th.p1[1]]; }
+// The rift in sever-landscape.png, measured in its own pixels. The live cut is laid on it, so the flash into the painting continues the same slash.
+const RIFT = [[200, 590], [1100, 40]];
+function riftLine(){
+  let [a, b] = RIFT.map(p => artPoint($('severArt'), p[0], p[1]));
+  if (!isFinite(a[0] + a[1] + b[0] + b[1])) { a = [W * .05, H * .78]; b = [W * .7, H * .04]; }
+  const len = Math.hypot(b[0] - a[0], b[1] - a[1]), d = [(b[0] - a[0]) / len, (b[1] - a[1]) / len];
+  let t0 = -Infinity, t1 = Infinity;
+  [[0, W], [1, H]].forEach(([k, max]) => { if (Math.abs(d[k]) < 1e-6) return; const ta = -a[k] / d[k], tb = (max - a[k]) / d[k]; t0 = Math.max(t0, Math.min(ta, tb)); t1 = Math.min(t1, Math.max(ta, tb)); });
+  const m = 60 * DPR; t0 -= m; t1 += m;
+  let n = [d[1], -d[0]]; const e0 = [a[0] + d[0] * t0, a[1] + d[1] * t0], e1 = [a[0] + d[0] * t1, a[1] + d[1] * t1];
+  if (n[0] * (0 - e0[0]) + n[1] * (0 - e0[1]) < 0) n = [-n[0], -n[1]]; // n points to the top-left half
+  return { e0, e1, d, n };
+}
+// CSS clip-path for one side of the cut line (s = 1 top-left half, -1 bottom-right half)
+function sideClip(L, s){ const B = 5000 * DPR, ext = (p, k) => [p[0] + L.d[0] * B * k, p[1] + L.d[1] * B * k], far = p => [p[0] + L.n[0] * B * s, p[1] + L.n[1] * B * s];
+  const e0 = ext(L.e0, -1), e1 = ext(L.e1, 1); return `polygon(${[e0, e1, far(e1), far(e0)].map(p => `${p[0] / DPR}px ${p[1] / DPR}px`).join(',')})`; }
+function L_off(L, side, px){ return [L.n[0] * side * px, L.n[1] * side * px]; }
+function burnMask(el, x, y, r){ const m = r <= 0 ? 'none' : `radial-gradient(circle at ${x / DPR}px ${y / DPR}px, transparent ${r / DPR}px, #000 ${r / DPR + 70}px)`; el.style.maskImage = m; el.style.webkitMaskImage = m; }
+async function spellAt(id, from, hue, big = false){
+  const [cx, cy, w] = center($('azrenth'), .42), R = w * (big ? .55 : .45), ang = Math.atan2(cy - from[1], cx - from[0]);
+  const caster = { x:from[0], y:from[1], r:big ? 70 : 46, rot:0, a:0, h:hue, crack:0 }; casters.push(caster);
+  await tween(450, p => { caster.a = p; }); guard(id);
+  const stopX = cx - Math.cos(ang) * R, stopY = cy - Math.sin(ang) * R;
+  const sp = { x:from[0], y:from[1], o:1, h:hue, drain:0, size:big ? 30 : 18, scale:1, trail:[] }; spells.push(sp);
+  await tween(big ? 820 : 620, p => { const e = p * p; sp.x = from[0] + (stopX - from[0]) * e; sp.y = from[1] + (stopY - from[1]) * e; }); guard(id);
+  // stopped cold: the barrier flashes where it hit and the spell trembles
+  hexes.push({ x:stopX, y:stopY, t:0, rot:ang }); shake = big ? 8 : 3;
+  await tween(big ? 420 : 260, p => { sp.x = stopX + (Math.random() - .5) * 6 * DPR; sp.y = stopY + (Math.random() - .5) * 6 * DPR; }); guard(id); shake = 0;
+  // erased: drains from its colour to blue, shrinks, and is pulled apart into his hand
+  const hand = center($('azrenth'), .5);
+  spawn(big ? 80 : 36, () => ({ x:stopX, y:stopY, vx:(hand[0] - stopX) * (.012 + Math.random() * .01), vy:(hand[1] - stopY) * (.012 + Math.random() * .01), s:(1.5 + Math.random() * 2.5) * DPR, col:Math.random() < .75 ? '#9cc7ff' : '#ffffff', life:.6 }));
+  await tween(big ? 700 : 480, p => { sp.drain = p; sp.scale = 1 - p * .9; sp.o = 1 - p * .8; caster.crack = p; caster.a = 1 - p; }); guard(id);
+  spells.splice(spells.indexOf(sp), 1); casters.splice(casters.indexOf(caster), 1);
+}
+function reset(){
+  themeActive = false; g.clearRect(0,0,W,H);g2.clearRect(0,0,W,H);motionFrozen=false; beat('pull'); $('audioStatus').textContent=''; $('stage').style.filter='';
+  ['lucien'].forEach(k => { $(k).classList.remove('bob'); $(k).style.translate = ''; hide($(k)); }); ['halfA','halfB'].forEach(k => { const e = $(k); e.getAnimations().forEach(a => a.cancel()); e.style.opacity = 0; e.style.clipPath = ''; e.style.translate = ''; e.style.filter = ''; burnMask(e, 0, 0, 0); }); $('scene').style.opacity = ''; stopAll(); caption(''); cz = null; star = null; cracks = []; parts.length = 0; glints = null; zapsF = []; zapsB = []; fissures = []; threads = []; backlight = null; burn = null; orb = null; rift = null; slash = null; glint = null; shards = []; dust = null; dusts = []; spells = []; rings = []; casters = []; hexes = []; shake = 0;
+  SHOTS.forEach(k => { $(k).style.clipPath = ''; }); host.querySelectorAll('.layer,.cut,#card,#flash').forEach(e => { e.getAnimations().forEach(a => a.cancel()); e.style.opacity = ''; e.style.filter = ''; e.style.transform = ''; });
+  $('scene').style.opacity = 1;
+}
+
+async function run(){
+  const id = ++runId; reset(); requestAnimationFrame(loop);
+  const step = async p => { await p; guard(id); };
+  primeTheme();
+  // 1-5 · standard pull (shared by every character); S+ stops at the gold tell
+  $('scene').animate([{ transform:'scale(1.6) translateY(-6%)', filter:'brightness(.25) blur(6px)' }, { transform:'scale(1.05)', filter:'brightness(.32) blur(0)' }], { duration:3400, fill:'forwards', easing:'cubic-bezier(.3,.6,.2,1)' });
+  beat('pull');
+  cz = { s:.05, r:0, stage:0, alpha:1, show:true, flight:1, rays:0 };
+  caption('A Starlight crystal falls…'); play(SFX.pull_fall_whoosh); play(PULL, .6);
+  await step(tween(1500, p => { cz.s = .05 + .25 * p * p; cz.r += .06; }));
+  caption(''); cz.stage = 1; cz.rays = .6; shake = 4; $('flash').style.background = '#ffd98a'; anim($('flash'), [{ opacity:0 }, { opacity:.55, offset:.2 }, { opacity:0 }]);
+  await step(tween(900, p => { cz.s = .3 + .12 * p; cz.r += .05; })); shake = 0;
+  play(SFX.tell_splus); cz.rays = .9; shake = 6; beat('gold'); $('flash').style.background = '#ffe7a8'; anim($('flash'), [{ opacity:0 }, { opacity:.55, offset:.2 }, { opacity:0 }]);
+  await step(tween(900, p => { cz.s = .42 + .25 * p; cz.r += .04; })); shake = 3; cz.flight = .2;
+  await step(tween(1000, p => { cz.s = .67 + .3 * p; cz.r += .012 * (1 - p); })); shake = 0;
+  play(SFX.pull_flash_swell); cz.show = false; spawn(140, () => ({ x:W / 2, y:H * .46, vx:(Math.random() - .5) * 22 * DPR, vy:(Math.random() - .5) * 22 * DPR, s:(2 + Math.random() * 4) * DPR, col:`hsl(${38 + Math.random() * 16},100%,72%)` }));
+  $('flash').style.background = '#fff3d6'; await step(anim($('flash'), [{ opacity:0 }, { opacity:1, offset:.3 }, { opacity:0 }], { duration:800 }));
+
+  // 6 · the shadow under the moon: pure black against a silver-violet backlight, two heartbeats
+  beat('shadow');
+  setV(PULL,.16); cz = null; parts.length = 0;
+  const sil = $('lucien'); showShot('lucien');
+  $('scene').getAnimations().forEach(a => a.cancel()); $('scene').style.filter = 'brightness(.22) saturate(.7)';
+  const SH = 'brightness(0) drop-shadow(0 0 1px #e6ddff) drop-shadow(0 0 7px #a58cff) drop-shadow(0 0 30px #5b3cff)';
+  const [bx, by] = center(sil, .42); backlight = { x:bx, y:by, r:H * .62, a:0, pulse:0 };
+  await step(Promise.all([
+    anim(sil, [{ filter:SH, opacity:0, transform:'translateX(-50%) scale(.94)' }, { filter:SH, opacity:1, transform:'translateX(-50%) scale(.975)', offset:.4 }, { filter:SH, opacity:1, transform:'translateX(-50%) scale(1)' }], { duration:2400, easing:'cubic-bezier(.2,.7,.2,1)' }),
+    tween(2400, p => { backlight.a = Math.min(1, p * 1.6); })
+  ]));
+  for (let i = 0; i < 2; i++) {
+    anim(sil, [{ filter:SH, opacity:1, transform:'translateX(-50%) scale(1)' }, { filter:SH, opacity:1, transform:'translateX(-50%) scale(1.025)', offset:.35 }, { filter:SH, opacity:1, transform:'translateX(-50%) scale(1)' }], { duration:520, easing:'ease-out' });
+    await step(tween(520, p => { backlight.pulse = Math.sin(Math.min(1, p / .7) * Math.PI); })); backlight.pulse = 0;
+    await step(sleep(i ? 700 : 180));
+  }
+  beat('shadow-reveal');
+  ramp(PULL,0,.05,80,true); startTheme(.3);
+  await step(Promise.all([
+    anim(sil, [{ filter:SH, opacity:1, transform:'translateX(-50%) scale(1)' }, { filter:'brightness(1) drop-shadow(0 0 18px #8f78ff66)', opacity:1, transform:'translateX(-50%) scale(1)' }], { duration:2400, easing:'ease-in-out' }),
+    anim($('scene'), [{ filter:'brightness(.22) saturate(.7)' }, { filter:'brightness(.8)' }], { duration:2400, easing:'ease-in-out' }),
+    tween(2400, p => { backlight.a = 1 - p; })
+  ]));
+  backlight = null;
+
+  // 7 · arrival on the moonlit terrace
+  beat('arrival');
+  const motes = stream(() => spawn(2, () => ({ x:Math.random() * W, y:H + 10, vy:-(0.4 + Math.random() * 1.1) * DPR, col:Math.random() < .6 ? '#cfc4ff' : '#ffe2a0', life:.9 })), 90);
+  await step(say('reveal', '“…So it was you who called me. On such a quiet night, too.”', 4300));
+  await step(say('reveal_2', '“Lucien Valmaire. People call me ‘the Great Moon.’”', 4300)); caption('');
+
+  // 8 · the chant: rune circles bloom around his hands
+  beat('chant');
+  await step(dipTo('#000', 450)); showShot('chant');
+  anim($('chant'), [{ transform:'scale(1)' }, { transform:'scale(1.06)' }], { duration:5200, easing:'linear' });
+  await step(dipFrom(450));
+  const [ox, oy] = artPoint($('chant'), 905, 470);
+  const runes = stream(() => { zapsF.push(zap(ox, oy, ox + (Math.random() - .5) * 260 * DPR, oy + (Math.random() - .5) * 220 * DPR, { w:.9, branches:1, depth:5 }));
+    spawn(3, () => ({ x:ox + (Math.random() - .5) * 200 * DPR, y:oy + (Math.random() - .5) * 200 * DPR, vx:(Math.random() - .5) * 1.4 * DPR, vy:-(0.3 + Math.random()) * DPR, s:(1 + Math.random() * 2) * DPR, col:Math.random() < .6 ? '#d8ceff' : '#ffe2a0', life:.6 }));
+    if (Math.random() < .4) crackle(.15); }, reduced ? 400 : 120);
+  await step(sleep(2600)); clearInterval(runes);
+
+  // 9 · three seals: flat palm, curved claw, ring — each panel lights with a crack of lightning
+  beat('seals'); caption('');
+  await step(dipTo('#000', 350)); hideShots(); $('scene').style.opacity = 0; // the seals sit on black; the terrace never shows through a fading panel
+  const vs = say('vow_seal', '“…I bind my vow, here.”', 2400);
+  for (let i = 1; i <= 3; i++) {
+    const s = $('seal' + i), edges = [0, 557, 1117, 1672]; const xl = artPoint(s, edges[i - 1], 0)[0] / DPR, xr = artPoint(s, edges[i], 0)[0] / DPR;
+    s.style.clipPath = `polygon(${xl}px 0, ${xr}px 0, ${xr}px 100%, ${xl}px 100%)`; show(s); anim(s, [{ opacity:0, filter:'brightness(3)' }, { opacity:1, filter:'brightness(1)' }], { duration:420 });
+    if (i === 1) await step(dipFrom(200));
+    const [px, py] = artPoint(s, [280, 840, 1400][i - 1], 330);
+    for (let k = 0; k < 4; k++) zapsF.push(zap(px, py, px + (Math.random() - .5) * 360 * DPR, py + (Math.random() - .5) * 300 * DPR, { w:1.4, branches:2, life:9 }));
+    crackle(.6); shake = reduced ? 0 : 5; $('flash').style.background = '#d9ceff'; anim($('flash'), [{ opacity:.45 }, { opacity:0 }], { duration:260 });
+    await step(sleep(300)); shake = 0; await step(sleep(i < 3 ? 420 : 250));
+  }
+  await step(vs);
+
+  // 10 · the Vow: his hand before his face, the fingertips flare
+  beat('vow');
+  $('flash').style.background = '#fff'; await step(anim($('flash'), [{ opacity:0 }, { opacity:1 }], { duration:140 }));
+  hideShots(); showShot('vow'); anim($('vow'), [{ transform:'scale(1)' }, { transform:'scale(1.07)' }], { duration:3200, easing:'ease-out' });
+  anim($('flash'), [{ opacity:1 }, { opacity:0 }], { duration:500 });
+  glints = [[400, 238], [540, 150], [655, 228], [745, 365]].map(([ix, iy], i) => ({ ix, iy, a:0, d:i * .12 }));
+  await step(tween(reduced ? 1 : 1700, p => { glints.forEach(g0 => { [g0.x, g0.y] = artPoint($('vow'), g0.ix, g0.iy); g0.a = Math.max(0, Math.min(1, (p - g0.d) * 2)); }); }));
+  await step(sleep(500)); glints = null;
+
+  // 11 · the release: he drops into a lunge and the lightning leaves his hand
+  beat('lunge');
+  $('flash').style.background = '#fff'; await step(anim($('flash'), [{ opacity:0 }, { opacity:1 }], { duration:120 }));
+  showShot('lunge'); play(SFX.slash, .7); anim($('flash'), [{ opacity:1 }, { opacity:0 }], { duration:420 });
+  const sf = say('sig_full', '“Moon, hear my vow — lightning, link a hundredfold. Rain down — Hundredfold Chain!”', 9000);
+  const [hx, hy] = artPoint($('lunge'), 545, 200);
+  let charge = 0;
+  const arcs = stream(() => { for (let k = 0; k < 1 + Math.round(charge * 2); k++) { const a = (150 + Math.random() * 80) * Math.PI / 180, r = (200 + Math.random() * 500 * (.4 + charge)) * DPR;
+      zapsF.push(zap(hx, hy, hx + Math.cos(a) * r, hy + Math.sin(a) * r, { w:1.2 + charge * 1.8, branches:2, life:7 + Math.floor(Math.random() * 5) })); }
+    shake = reduced ? 0 : 1.5 + charge * 4; if (Math.random() < .55) crackle(.2 + charge * .45); }, reduced ? 400 : 70);
+  await step(Promise.race([sf, tween(9000, p => { charge = p; })]));
+  await step(sf); clearInterval(arcs); shake = 0;
+
+  // 12 · Hundredfold Chain: dozens of stacked lightning blades at once
+  beat('storm');
+  $('flash').style.background = '#fff'; await step(anim($('flash'), [{ opacity:0 }, { opacity:1 }], { duration:110 }));
+  showShot('storm'); caption(''); play(SFX.shatter, .8); ramp(THEME, .5, .04, 40);
+  anim($('storm'), [{ transform:'scale(1.06)' }, { transform:'scale(1)' }], { duration:2600, easing:'cubic-bezier(.2,.7,.2,1)' });
+  anim($('flash'), [{ opacity:1 }, { opacity:0 }], { duration:500 });
+  const [cx0, cy0] = artPoint($('storm'), 880, 235);
+  const storm = stream(() => { for (let k = 0; k < (reduced ? 1 : 5); k++) { const a = Math.random() * Math.PI * 2, r = (300 + Math.random() * 900) * DPR;
+      zapsF.push(zap(cx0, cy0, cx0 + Math.cos(a) * r, cy0 + Math.sin(a) * r, { w:1.8 + Math.random() * 1.6, branches:3, life:6 + Math.floor(Math.random() * 5), rough:.2 })); }
+    crackle(.55); }, 60);
+  await step(tween(2600, p => { shake = reduced ? 0 : 14 * (1 - p); }));
+  clearInterval(storm); shake = 0;
+  await step(sleep(700)); clearInterval(motes);
+
+  // 13 · white flash → the Great Moon, name card
+  $('flash').style.background = '#fff';
+  await step(anim($('flash'), [{ opacity:0 }, { opacity:1 }], { duration:220, easing:'ease-in' }));
+  zapsF = []; parts.length = 0; caption('');
+  beat('card'); showShot('finalArt'); startTheme(.45);
+  anim($('finalArt'), [{ transform:'scale(1)' }, { transform:'scale(1.035)' }], { duration:6000, easing:'ease-out' });
+  await step(anim($('flash'), [{ opacity:1 }, { opacity:0 }], { duration:1100, easing:'ease-out' }));
+  await step(anim($('card'), [{ opacity:0, transform:'translateX(-20px)' }, { opacity:1, transform:'translateX(0)' }], { duration:1000 }));
+}
+
+life.onCancel=()=>{ runId++; stopAll(); activeCrackles.forEach(src=>{try{src.stop()}catch(e){}}); activeCrackles.clear(); reset(); $('stage').style.transform=''; };
+const engine = {
+  replay(){ initSfx(); return life.replay(run); },
+  skip(){ life.cancel(); beat('card'); motionFrozen=true; showShot('finalArt'); $('card').style.opacity=1; $('card').style.transform='none'; startTheme(.45); onFinished(); },
+  dispose(){ life.dispose(); window.removeEventListener('resize',size); }
+};
+$('stage').ondblclick = event => { if (!event.target.closest('button')) engine.skip(); };
+return engine;
+}
