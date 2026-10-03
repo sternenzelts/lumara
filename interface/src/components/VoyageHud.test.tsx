@@ -46,4 +46,8 @@ describe('VoyageHud', () => {
     await act(async () => el.querySelector<HTMLButtonElement>('.voyage-action')!.click());
     expect(props.onOpen).toHaveBeenCalled();
   });
+  it('hides the bottom action button when the stage opens from the map instead', async () => {
+    const { el } = await render({ actionLabel: null });
+    expect(el.querySelector('.voyage-action')).toBeNull();
+  });
 });

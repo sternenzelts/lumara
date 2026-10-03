@@ -142,7 +142,7 @@ export function RetroScreen() {
   const brief = VOYAGE_BRIEFING[(session.stage === 'completed' ? 'rewards' : session.stage) as keyof typeof VOYAGE_BRIEFING];
   return <>{backdrop}
     <VoyageHud progress={stageProgress(session.stage, settings, hasPrev)} paused={session.status === 'paused'} warden={warden} busy={busy} canBack={prev !== null}
-      nextLabel={session.stage === 'rewards' ? 'Finish voyage' : 'Next stage'} actionLabel={session.stage === 'fragment_drop' ? 'My thoughts' : brief.title} onBack={back} onNext={advance} onOpen={() => setWindowOpen(true)} onPauseToggle={togglePause}
+      nextLabel={session.stage === 'rewards' ? 'Finish voyage' : 'Next stage'} actionLabel={session.stage === 'fragment_drop' ? 'My thoughts' : session.stage === 'vote' && settings.movement ? null : brief.title} onBack={back} onNext={advance} onOpen={() => setWindowOpen(true)} onPauseToggle={togglePause}
       onLobby={() => run(() => backend.updateSession(session.id, { stage: 'register', timerEndsAt: null, currentFragmentId: null }), 'The party is back in the lobby.')} />
     <VoyageWindow title={brief.title} open={windowOpen} onClose={() => setWindowOpen(false)} variant={session.stage === 'vow_review' ? 'vow-review' : undefined}>
       {remaining !== null && <span className="timer" aria-label={`${remaining} seconds remaining`}><Clock3 size={15} />{Math.floor(remaining / 60)}:{String(remaining % 60).padStart(2, '0')}</span>}
