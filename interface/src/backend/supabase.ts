@@ -33,27 +33,37 @@ export function createSupabaseBackend(sb: SupabaseClient, me: Me): Backend {
     return toPlayer(p, pulls, grants);
   };
 
-  // One shared live channel: cues (broadcast) and walking positions (presence).
+  // One shared live channel. Presence (rate-limited by Supabase) only says who is online and is sent once per join;
+  // walking positions travel as broadcast 'pos' messages: up to 4/s while moving, a heartbeat every 3 s otherwise.
   const cueSubs = new Map<string, Set<(d: unknown, from: UserId) => void>>();
   const peerSubs = new Set<(p: Record<UserId, Presence>) => void>();
-  let peers: Record<UserId, Presence> = {}; let lastSent = 0;
+  const positions: Record<UserId, Presence> = {}; let online = new Set<UserId>();
+  let peers: Record<UserId, Presence> = {}; let lastSent = 0; let lastKey = '';
   let joined = false; let lastPresence: Presence | null = null;
-  // The first join can fail ("transport failure"); a failed channel never recovers on its own, so rebuild it.
+  const publishPeers = () => {
+    peers = Object.fromEntries(Object.entries(positions).filter(([id]) => id !== me.id && online.has(id)));
+    peerSubs.forEach(fn => fn({ ...peers }));
+  };
+  const sendPos = (p: Presence) => { lastSent = Date.now(); lastKey = JSON.stringify(p); void liveCh!.send({ type: 'broadcast', event: 'pos', payload: { from: me.id, p } }); };
   const openLive = () => {
     const ch = sb.channel('lumara-live', { config: { broadcast: { self: false }, presence: { key: me.id } } });
     (['pull_reveal', 'reaction', 'stage_cue', 'skill', 'say'] as const).forEach(event =>
       ch.on('broadcast' as any, { event }, ({ payload }: any) => cueSubs.get(event)?.forEach(fn => fn(payload.data, payload.from))));
+    ch.on('broadcast' as any, { event: 'pos' }, ({ payload }: any) => {
+      if (!payload?.from || payload.from === me.id) return;
+      positions[payload.from] = payload.p; online.add(payload.from); publishPeers();
+    });
     ch.on('presence' as any, { event: 'sync' }, () => {
-      const state = ch.presenceState() as Record<string, any[]>;
-      peers = Object.fromEntries(Object.entries(state).filter(([k, v]) => k !== me.id && v.length).map(([k, v]) => [k, v[v.length - 1]]));
-      peerSubs.forEach(fn => fn({ ...peers }));
+      online = new Set(Object.entries(ch.presenceState() as Record<string, unknown[]>).filter(([, v]) => v.length).map(([k]) => k));
+      for (const id of Object.keys(positions)) if (!online.has(id)) delete positions[id];
+      publishPeers();
     });
     ch.subscribe((status: string) => {
       if (liveCh !== ch && liveCh) return;
-      if (status === 'SUBSCRIBED') { joined = true; if (lastPresence) void ch.track(lastPresence); return; }
-      if (status !== 'CHANNEL_ERROR' && status !== 'TIMED_OUT') return;
+      if (status === 'SUBSCRIBED') { joined = true; void ch.track({ at: Date.now() }); if (lastPresence) sendPos(lastPresence); return; }
+      if (status !== 'CHANNEL_ERROR' && status !== 'TIMED_OUT' && status !== 'CLOSED') return;
       joined = false;   // the client usually rejoins by itself; rebuild only if it is still down a while later
-      setTimeout(() => { if (joined || liveCh !== ch) return; void sb.removeChannel(ch); liveCh = openLive(); }, 8000);
+      setTimeout(() => { if (joined || liveCh !== ch) return; void sb.removeChannel(ch); liveCh = openLive(); }, status === 'CLOSED' ? 2000 : 8000);
     });
     return ch;
   };
@@ -98,7 +108,11 @@ export function createSupabaseBackend(sb: SupabaseClient, me: Me): Backend {
 
     emit(topic: CueTopic, data: unknown) { cueSubs.get(topic)?.forEach(fn => fn(data, me.id)); if (joined) void liveCh!.send({ type: 'broadcast', event: topic, payload: { data, from: me.id } }); },
     on(topic, cb) { let s = cueSubs.get(topic); if (!s) cueSubs.set(topic, s = new Set()); s.add(cb); return () => { s!.delete(cb); }; },
-    setPresence(p) { lastPresence = p; if (!joined || Date.now() - lastSent < 95) return; lastSent = Date.now(); void liveCh!.track(p); },
+    setPresence(p) {
+      lastPresence = p; if (!joined) return;
+      const gap = Date.now() - lastSent;
+      if (p.moving ? gap >= 250 : (gap >= 3000 || (JSON.stringify(p) !== lastKey && gap >= 250))) sendPos(p);
+    },
     onPeers(cb) { peerSubs.add(cb); cb({ ...peers }); return () => { peerSubs.delete(cb); }; },
   };
   return backend;

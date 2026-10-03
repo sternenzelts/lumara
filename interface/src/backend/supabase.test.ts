@@ -5,7 +5,7 @@ import { connect, resume, start } from './supabaseAuth';
 function fakeClient(tables: Record<string, any[]>) {
   const handlers: { table: string; cb: () => void }[] = []; let status: (s: string) => void = () => {};
   const query = (t: string) => { const q: any = { _rows: tables[t] || [], select: () => q, eq: (k: string, v: any) => { q._rows = q._rows.filter((r: any) => r[k] === v); return q; }, neq: (k: string, v: any) => { q._rows = q._rows.filter((r: any) => r[k] !== v); return q; }, in: (k: string, v: any[]) => { q._rows = q._rows.filter((r: any) => v.includes(r[k])); return q; }, order: () => q, then: (res: any) => res({ data: q._rows, error: null }) }; return q; };
-  const channel: any = { on: (_: string, f: any, cb: () => void) => { handlers.push({ table: f.table, cb }); return channel; }, subscribe: (cb?: (s: string) => void) => { if (cb) { status = cb; cb('SUBSCRIBED'); } return channel; }, unsubscribe: vi.fn() };
+  const channel: any = { track: vi.fn(), send: vi.fn(), presenceState: () => ({}), on: (_: string, f: any, cb: () => void) => { handlers.push({ table: f.table, cb }); return channel; }, subscribe: (cb?: (s: string) => void) => { if (cb) { status = cb; cb('SUBSCRIBED'); } return channel; }, unsubscribe: vi.fn() };
   return { client: { from: query, channel: () => channel, removeChannel: vi.fn(), rpc: vi.fn(async () => ({ data: [], error: null })) } as any, fire: (t: string) => handlers.filter(h => h.table === t).forEach(h => h.cb()), resubscribe: () => status('SUBSCRIBED'), tables };
 }
 const me = { id: 'u1', name: 'Ana', isAdmin: false };
@@ -55,12 +55,32 @@ describe('supabase cues and presence', () => {
     const b = createSupabaseBackend(client, me); const got: any[] = []; b.on('skill', (d, from) => got.push([d, from]));
     b.emit('skill', { x: 1 }); expect(got).toEqual([[{ x: 1 }, 'u1']]); expect(sent[0]).toMatchObject({ type: 'broadcast', event: 'skill' });
   });
-  it('onPeers excludes your own presence', () => {
-    let sync = () => {}; const ch: any = { on: (_t: string, f: any, cb: any) => { if (f.event === 'sync') sync = cb; return ch; }, subscribe: () => ch, send: vi.fn(), track: vi.fn(),
-      presenceState: () => ({ u1: [{ x: 1, y: 1 }], u2: [{ x: 0.5, y: 0.5, facing: 'left', characterId: 'wren', moving: false }] }) };
+  it('peers come from position broadcasts of online players, never yourself', () => {
+    const h: Record<string, (x: any) => void> = {};
+    let state: Record<string, any[]> = {};
+    const ch: any = { on: (_t: string, f: any, cb: any) => { h[f.event] = cb; return ch; }, subscribe: (cb?: any) => { cb?.('SUBSCRIBED'); return ch; }, send: vi.fn(), track: vi.fn(), presenceState: () => state };
     const b = createSupabaseBackend({ channel: () => ch, removeChannel: vi.fn(), from: () => ({}), rpc: vi.fn() } as any, me);
-    const cb = vi.fn(); b.onPeers(cb); sync(); expect(Object.keys(cb.mock.lastCall![0])).toEqual(['u2']);
+    const cb = vi.fn(); b.onPeers(cb);
+    state = { u1: [{}], u2: [{}] }; h.sync({});
+    h.pos({ payload: { from: 'u2', p: { name: 'Bo', x: 0.5, y: 0.5, facing: 'left', characterId: 'wren', moving: false } } });
+    h.pos({ payload: { from: 'u1', p: { x: 1, y: 1 } } });
+    expect(Object.keys(cb.mock.lastCall![0])).toEqual(['u2']); expect(cb.mock.lastCall![0].u2.name).toBe('Bo');
+    state = { u1: [{}] }; h.sync({});
+    expect(cb.mock.lastCall![0]).toEqual({});
   });
+  it('tracks presence once per join and throttles position messages', () => {
+    vi.useFakeTimers(); vi.setSystemTime(10_000);
+    const ch: any = { on: () => ch, subscribe: (cb?: any) => { cb?.('SUBSCRIBED'); return ch; }, send: vi.fn(), track: vi.fn(), presenceState: () => ({}) };
+    const b = createSupabaseBackend({ channel: () => ch, removeChannel: vi.fn(), from: () => ({}), rpc: vi.fn() } as any, me);
+    const still = { x: 0.5, y: 0.5, facing: 'left' as const, characterId: 'wren', moving: false };
+    for (let i = 0; i < 20; i++) { b.setPresence(still); vi.advanceTimersByTime(120); }   // 2.4 s standing still
+    expect(ch.track).toHaveBeenCalledTimes(1);
+    expect(ch.send.mock.calls.filter((c: any) => c[0].event === 'pos')).toHaveLength(1);
+    for (let i = 0; i < 9; i++) { b.setPresence({ ...still, x: 0.5 + i / 100, moving: true }); vi.advanceTimersByTime(120); }   // ~1 s walking
+    expect(ch.send.mock.calls.filter((c: any) => c[0].event === 'pos').length).toBeLessThanOrEqual(6);
+    vi.useRealTimers();
+  });
+
 });
 
 describe('start button for new visitors', () => {
@@ -91,7 +111,7 @@ describe('live channel recovery', () => {
     vi.advanceTimersByTime(8100);
     expect(made).toHaveLength(2); expect(client.removeChannel).toHaveBeenCalledWith(made[0]);
     made[1].cb('SUBSCRIBED');
-    expect(made[1].track).toHaveBeenCalledWith(expect.objectContaining({ characterId: 'wren' }));
+    expect(made[1].send).toHaveBeenCalledWith(expect.objectContaining({ event: 'pos', payload: expect.objectContaining({ p: expect.objectContaining({ characterId: 'wren' }) }) }));
     vi.useRealTimers();
   });
 });
