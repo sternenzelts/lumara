@@ -4,12 +4,12 @@
 export type Pt = { x: number; y: number };
 export type FieldKind = 'decel' | 'cadenza' | 'niflheim' | 'stasis' | 'lantern' | 'soar' | 'skyfall' | 'wall' | 'aegis' | 'thunder' | 'guide' | 'dawn';
 /** One cast effect on the map. pos = caster's map position at cast; to = Frost Cadenza's aim point. */
-export interface FieldFx { id: string; userId: string; kind: FieldKind; at: number; until: number; pos: Pt; to?: Pt; targetId?: string; /** Chrono Stasis cut short (Venuzdonoa). */ cutAt?: number }
+export interface FieldFx { id: string; userId: string; kind: FieldKind; at: number; until: number; pos: Pt; to?: Pt; targetId?: string; /** Chrono Stasis cut short (Venuzdonoa, or Ayaka ending it). */ cutAt?: number; /** Ayaka ended her own time-stop early (gentle release, no sword slash). */ ended?: boolean }
 
 export const DECEL = { ms: 4000, radius: 180, slow: 0.5 };
 export const CADENZA = { ms: 2000, hitMs: 550, stunMs: 1000, range: 360, pickRadius: 160 };
 export const NIFLHEIM = { ms: 3800, poseAtMs: 450, seatedMs: 3200 };
-export const STASIS = { ms: 5000, tickMs: 1100, releaseMs: 4100 };
+export const STASIS = { ms: 12000, tickMs: 1100, releaseMs: 11100 };   // 10 s of stopped time
 export const LANTERN = { ms: 4000, radius: 180 };
 export const SOAR = { ms: 2600, pickupMs: 450, landMs: 1500, range: 420 };
 export const SKYFALL = { ms: 1900, landMs: 900, range: 300 };
@@ -87,4 +87,9 @@ export function pickCadenzaTarget(from: Pt, cursor: Pt | null, players: (Pt & { 
   const goal = cursor ?? { x: from.x + facing.x * 200 / size.w, y: from.y + facing.y * 200 / size.h };
   const d = px(goal, from, size), k = d > CADENZA.range ? CADENZA.range / d : 1;
   return { to: { x: from.x + (goal.x - from.x) * k, y: from.y + (goal.y - from.y) * k } };
+}
+
+/** Ayaka presses her ultimate again: her own running Chrono Stasis releases now. */
+export function endStasis(field: FieldFx[], userId: string, t: number): FieldFx[] {
+  return field.map(f => f.kind === 'stasis' && f.userId === userId && !f.cutAt && t < f.at + STASIS.releaseMs ? { ...f, cutAt: t, ended: true, until: Math.min(f.until, t + 800) } : f);
 }

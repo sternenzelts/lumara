@@ -61,6 +61,7 @@ export default function AdminSettings() {
           <label>Featured character<select value={draft.featuredCharacterId} onChange={e => change('featuredCharacterId', e.target.value)}>{CHARACTERS.filter(c => c.grade !== 'A').map(c => <option key={c.id} value={c.id}>{c.name} · {c.grade}</option>)}</select><small>All three S++ wish banners remain available.</small></label>
         </div>
         <div className="settings-toggles">
+          <label>Skill cooldowns<select value={draft.skillCooldown ?? 'normal'} onChange={e => change('skillCooldown', e.target.value as NonNullable<Settings['skillCooldown']>)}><option value="normal">Normal</option><option value="half">Half (every cooldown halved)</option><option value="none">None (cast any skill any time)</option></select><small>Applies to every player at once. None also lifts the once-per-voyage limit on ultimates.</small></label>
           <Toggle label="Character movement" description="Companion scene preference. Sanctuary keeps Seren as your guide." checked={draft.movement} onChange={v => change('movement', v)} />
           <Toggle label="Skip Vow review" description="Go from the opening pull directly to writing thoughts." checked={draft.skipVowReview} onChange={v => change('skipVowReview', v)} />
         </div>

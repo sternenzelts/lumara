@@ -64,9 +64,9 @@ export function SkyLayer({ field, size }: { field: FieldFx[]; size: { w: number;
   })}</>;
 }
 
-/** Chrono Stasis: the golden clock ticks once, the world turns to stone-grey for 3 s, then shatters back into colour. */
+/** Chrono Stasis: the golden clock ticks once, the world turns to stone-grey for 10 s (Ayaka can release it early), then shatters back into colour. */
 export function StasisOverlay({ fx }: { fx: FieldFx }) {
-  return <div key={fx.id} className={`ult-overlay cine-stasis ${fx.cutAt ? 'cut' : ''}`} aria-hidden="true">
+  return <div key={fx.id} className={`ult-overlay cine-stasis ${fx.ended ? 'ended' : fx.cutAt ? 'cut' : ''}`} aria-hidden="true">
     <i className="st-veil" />
     <i className="st-clock" style={bg(skillFor('stasis')?.vfx?.clock)} />
     <i className="st-flash" /><i className="st-flash release" />

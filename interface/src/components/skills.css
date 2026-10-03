@@ -283,19 +283,19 @@
 .fx-puff{width:190px;height:190px;transform:translate(-50%,-70%);border-radius:50%;background:radial-gradient(closest-side,#ffffffee,#dff8ffaa 45%,transparent);opacity:0;animation:frost-puff .55s ease-out .32s forwards}
 .fx-puff.late{animation-delay:3.08s}
 @keyframes frost-puff{0%{opacity:0;scale:.3}25%{opacity:.95;scale:.9}100%{opacity:0;scale:1.6}}
-/* Chrono Stasis (5 s): clock forms and spins → 1.1 s TICK, world greys, everyone else frozen → 4.1 s clock shatters, colour snaps back */
-.cine-stasis .st-veil{position:absolute;inset:0;background:radial-gradient(ellipse at center,#9fd8ff10 30%,#0b1c2ccc 100%);opacity:0;animation:st-veil 5s forwards}
-@keyframes st-veil{0%{opacity:0}20%{opacity:.35}22%{opacity:1}80%{opacity:1}84%,100%{opacity:0}}
-.cine-stasis .st-clock{position:absolute;left:50%;top:44%;width:min(66vmin,560px);aspect-ratio:320/334;transform:translate(-50%,-50%);background-repeat:no-repeat;background-size:700% 100%;mix-blend-mode:screen;animation:st-clock-frames 5s step-end forwards,st-clock-life 5s ease forwards}
-@keyframes st-clock-frames{0%{background-position-x:0}7%{background-position-x:16.667%}10%{background-position-x:33.333%}13%{background-position-x:50%}16%{background-position-x:33.333%}18%{background-position-x:50%}20%{background-position-x:33.333%}22%{background-position-x:66.667%}82%{background-position-x:83.333%}85%,100%{background-position-x:100%}}
-@keyframes st-clock-life{0%{opacity:0;scale:.7;rotate:-25deg}8%{opacity:1;scale:1;rotate:0deg}21%{scale:1}22%{scale:1.07}25%{scale:1}32%{opacity:.5}80%{opacity:.5;scale:1.02}82%{opacity:1;scale:1.05}94%{opacity:0;scale:1.4}100%{opacity:0;scale:1.4}}
-.cine-stasis .st-flash{position:absolute;inset:0;background:radial-gradient(circle at 50% 44%,#fff8e0,#ffe2908c 35%,transparent 70%);opacity:0;animation:st-flash 5s forwards}
+/* Chrono Stasis (12 s): clock forms and spins → 1.1 s TICK, world greys, everyone else frozen for 10 s → 11.1 s clock shatters, colour snaps back */
+.cine-stasis .st-veil{position:absolute;inset:0;background:radial-gradient(ellipse at center,#9fd8ff10 30%,#0b1c2ccc 100%);opacity:0;animation:st-veil 12s forwards}
+@keyframes st-veil{0%{opacity:0}8.33%{opacity:.35}9.17%{opacity:1}89.72%{opacity:1}93.33%,100%{opacity:0}}
+.cine-stasis .st-clock{position:absolute;left:50%;top:44%;width:min(66vmin,560px);aspect-ratio:320/334;transform:translate(-50%,-50%);background-repeat:no-repeat;background-size:700% 100%;mix-blend-mode:screen;animation:st-clock-frames 12s step-end forwards,st-clock-life 12s ease forwards}
+@keyframes st-clock-frames{0%{background-position-x:0}2.92%{background-position-x:16.667%}4.17%{background-position-x:33.333%}5.42%{background-position-x:50%}6.67%{background-position-x:33.333%}7.5%{background-position-x:50%}8.33%{background-position-x:33.333%}9.17%{background-position-x:66.667%}92.5%{background-position-x:83.333%}93.75%,100%{background-position-x:100%}}
+@keyframes st-clock-life{0%{opacity:0;scale:.7;rotate:-25deg}3.33%{opacity:1;scale:1;rotate:0deg}8.75%{scale:1}9.17%{scale:1.07}13.33%{scale:1}23.06%{opacity:.5}89.72%{opacity:.5;scale:1.02}92.5%{opacity:1;scale:1.05}97.5%{opacity:0;scale:1.4}100%{opacity:0;scale:1.4}}
+.cine-stasis .st-flash{position:absolute;inset:0;background:radial-gradient(circle at 50% 44%,#fff8e0,#ffe2908c 35%,transparent 70%);opacity:0;animation:st-flash 12s forwards}
 .cine-stasis .st-flash.release{background:radial-gradient(circle at 50% 44%,#ffffff,#bfefffaa 40%,transparent 75%);animation-name:st-flash-release}
-@keyframes st-flash{0%,21.5%{opacity:0}22%{opacity:.9}27%,100%{opacity:0}}
-@keyframes st-flash-release{0%,81.5%{opacity:0}82.5%{opacity:.85}90%,100%{opacity:0}}
-.sanctuary-scene.stasis .world-map,.sanctuary-scene.stasis .lamp-glow,.sanctuary-scene.stasis .scene-character:not(.stasis-caster),.sanctuary-scene.stasis .scene-sky,.sanctuary-scene.stasis .scene-mist{animation:st-gray 5s linear forwards}
+@keyframes st-flash{0%,8.96%{opacity:0}9.17%{opacity:.9}16.11%,100%{opacity:0}}
+@keyframes st-flash-release{0%,91.81%{opacity:0}92.71%{opacity:.85}95.83%,100%{opacity:0}}
+.sanctuary-scene.stasis .world-map,.sanctuary-scene.stasis .lamp-glow,.sanctuary-scene.stasis .scene-character:not(.stasis-caster),.sanctuary-scene.stasis .scene-sky,.sanctuary-scene.stasis .scene-mist{animation:st-gray 12s linear forwards}
 .sanctuary-scene.stasis .lamp-glow:not(.lit){animation:none}
-@keyframes st-gray{0%,21.5%{filter:none}22%,80%{filter:grayscale(1) brightness(.82) contrast(1.08)}84%{filter:brightness(1.35) saturate(1.3)}90%,100%{filter:none}}
+@keyframes st-gray{0%,8.96%{filter:none}9.17%,89.72%{filter:grayscale(1) brightness(.82) contrast(1.08)}93.33%{filter:brightness(1.35) saturate(1.3)}95.83%,100%{filter:none}}
 .sanctuary-scene.stasis .scene-character.stasis-caster{z-index:1500!important;filter:drop-shadow(0 0 10px #ffe7a0aa)}
 .sanctuary-scene.time-stopped .cloud-band,.sanctuary-scene.time-stopped .scene-character:not(.stasis-caster) *{animation-play-state:paused!important}
 /* Pause motion must not freeze skills; reduced motion gets still frames */
@@ -308,7 +308,7 @@
    During the stop a summoned sword stays in colour and glows (its owner can cut it); the cut snaps colour back
    and the clock is slashed away while Azrenth's Sever cinematic plays. */
 .sanctuary-scene.stasis .scene-character.time-resist{animation:none}
-.sanctuary-scene.stasis .scene-character.time-resist>:not(.kit-weapon){animation:st-gray 5s linear forwards}
+.sanctuary-scene.stasis .scene-character.time-resist>:not(.kit-weapon){animation:st-gray 12s linear forwards}
 .sanctuary-scene.stasis .scene-character.time-resist .kit-weapon{filter:drop-shadow(0 0 10px #ff2a3c) drop-shadow(0 0 26px #ff2a3cbb) brightness(1.25) saturate(1.3)}
 .sanctuary-scene.time-stopped .scene-character.time-resist .kit-weapon,.sanctuary-scene.time-stopped .scene-character.time-resist>:not(.kit-weapon){animation-play-state:running!important}   /* the grey-out itself must not pause */
 .game-still .sanctuary-scene.stasis .scene-character.time-resist>*{animation-play-state:running!important}
@@ -383,3 +383,11 @@
 .sanctuary-scene.reduce .cine-dawn i{animation-duration:.6s}
 .ult-overlay.cine-dawn{position:fixed;inset:0;z-index:2147483000;pointer-events:none}
 .game-still .cine-dawn i{animation-play-state:running!important}
+/* Chrono Stasis ended early by Ayaka (press 4 again): the clock shatters and colour returns, no sword slash */
+.cine-stasis.ended .st-veil{animation:st-veil-out .5s ease forwards}
+.cine-stasis.ended .st-clock{animation:st-clock-end .7s ease-out forwards;background-position-x:100%}
+.cine-stasis.ended .st-flash{animation:none;opacity:0}
+.cine-stasis.ended .st-flash.release{animation:st-flash-end .7s ease-out forwards}
+.cine-stasis.ended::after{display:none}
+@keyframes st-clock-end{0%{opacity:1;scale:1.05}100%{opacity:0;scale:1.4}}
+@keyframes st-flash-end{0%{opacity:.85}100%{opacity:0}}

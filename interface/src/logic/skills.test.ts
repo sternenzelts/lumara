@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest';
 import { KITS } from '../data/kits';
-import { canCast, cast, cooldownLeft, emptySkillState } from './skills';
+import { canCast, cast, cooldownLeft, emptySkillState, loadSkillState } from './skills';
 
 const kit = KITS.mahesvara;
 const disassemble = kit.skills.find(s => s.id === 'disassemble')!;
@@ -33,4 +33,29 @@ describe('cooldowns', () => {
     expect(canCast(ultimate, st, 91000, 's1', 'mahesvara')).toBe(true);
   });
 
+});
+
+describe('admin cooldown setting', () => {
+  it('half halves every timed cooldown', () => {
+    const st = cast(disassemble, emptySkillState(), 1000, 's1', 'mahesvara');
+    expect(canCast(disassemble, st, 5000, 's1', 'mahesvara', 'half')).toBe(false);
+    expect(canCast(disassemble, st, 6000, 's1', 'mahesvara', 'half')).toBe(true);
+    expect(cooldownLeft(disassemble, st, 3500, 's1', 'mahesvara', 'half')).toBeCloseTo(0.5);
+  });
+  it('none lets every skill be cast again at once, including a once-per-voyage ultimate', () => {
+    const voyageUlt = { ...ultimate, cooldownMs: 'voyage' as const };
+    let st = cast(disassemble, emptySkillState(), 1000, 's1', 'mahesvara');
+    st = cast(voyageUlt, st, 1000, 's1', 'mahesvara');
+    expect(canCast(disassemble, st, 1001, 's1', 'mahesvara', 'none')).toBe(true);
+    expect(canCast(voyageUlt, st, 1001, 's1', 'mahesvara', 'none')).toBe(true);
+    expect(cooldownLeft(voyageUlt, st, 1001, 's1', 'mahesvara', 'none')).toBe(0);
+  });
+});
+
+describe('cooldowns survive a page refresh', () => {
+  it('a cast is saved in this browser and loaded again for the same character', () => {
+    cast(disassemble, emptySkillState(), 1000, 's1', 'mahesvara');
+    expect(loadSkillState('mahesvara')).toEqual({ [disassemble.id]: 1000 });
+    expect(loadSkillState('ayaka')).toEqual({});
+  });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AEGIS, CADENZA, GUIDE, DECEL, LANTERN, THUNDER, WALL, wallBlocks, NIFLHEIM, SOAR, STASIS, canCastWhileHeld, inLantern, soarTarget, cutStasis, isHeld, pickCadenzaTarget, slowFactor, type FieldFx } from './fieldEffects';
+import { AEGIS, CADENZA, GUIDE, DECEL, LANTERN, THUNDER, WALL, wallBlocks, NIFLHEIM, SOAR, STASIS, canCastWhileHeld, inLantern, soarTarget, cutStasis, endStasis, isHeld, pickCadenzaTarget, slowFactor, type FieldFx } from './fieldEffects';
 
 const size = { w: 2000, h: 1000 };   // 1 map unit = 2000 px across, 1000 px down
 const fx = (f: Partial<FieldFx> & Pick<FieldFx, 'kind'>): FieldFx => ({ id: 'x', userId: 'ayaka-player', at: 0, until: 99999, pos: { x: 0.5, y: 0.5 }, ...f });
@@ -37,11 +37,11 @@ describe('isHeld', () => {
     expect(isHeld('ayaka-player', [throne], NIFLHEIM.seatedMs + 1)).toBe(false);
     expect(isHeld('ana', [throne], 500)).toBe(false);
   });
-  it('Chrono Stasis freezes everyone but Ayaka from the tick for 3 s', () => {
+  it('Chrono Stasis freezes everyone but Ayaka from the tick for 10 s', () => {
     const stop = fx({ kind: 'stasis' });
     expect(isHeld('ana', [stop], STASIS.tickMs - 1)).toBe(false);
     expect(isHeld('ana', [stop], STASIS.tickMs + 1)).toBe(true);
-    expect(STASIS.releaseMs - STASIS.tickMs).toBe(3000);
+    expect(STASIS.releaseMs - STASIS.tickMs).toBe(10000);
     expect(isHeld('ana', [stop], STASIS.releaseMs + 1)).toBe(false);
     expect(isHeld('ayaka-player', [stop], STASIS.tickMs + 1)).toBe(false);
   });
@@ -145,5 +145,19 @@ describe('Seren', () => {
   });
   it('and cancels Ayaka\'s slow', () => {
     expect(slowFactor('ana', { x: 0.5, y: 0.5 }, [fx({ id: 'd', kind: 'decel' }), guide], 100, size)).toBe(GUIDE.boost);
+  });
+});
+
+describe('endStasis (Ayaka presses 4 again)', () => {
+  const stop = (o: Partial<FieldFx> = {}): FieldFx => ({ id: 's', userId: 'aya', kind: 'stasis', at: 0, until: STASIS.ms, pos: { x: 0.5, y: 0.5 }, ...o });
+  it('releases her own time-stop at once and marks it ended (not cut by a sword)', () => {
+    const t = STASIS.tickMs + 2000;
+    const [f] = endStasis([stop()], 'aya', t);
+    expect(f.cutAt).toBe(t); expect(f.ended).toBe(true);
+    expect(isHeld('ana', [f], t + 1)).toBe(false);
+  });
+  it("cannot end someone else's time-stop", () => {
+    const [f] = endStasis([stop()], 'ana', STASIS.tickMs + 2000);
+    expect(f.cutAt).toBeUndefined();
   });
 });

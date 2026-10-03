@@ -26,7 +26,7 @@ const raf = (cb: (t: number) => void) => requestAnimationFrame(cb);
 const GUN_HEIGHT = 60;   // px above the feet where shots leave his gun
 
 /** The Sanctuary: Jay's painted map at 2× zoom with a camera that follows your character. Positions are map fractions. */
-export default function Scene({ backend, me, player, vows, movement, frozen = false, activeCharacterId, stage, sessionId = 'sanctuary', onOpenVows }: { sessionId?: string; backend: Backend; me: Me; player: Player | null; vows: Vow[]; movement: boolean; frozen?: boolean; activeCharacterId?: string | null; stage?: Stage; onOpenVows?: () => void }) {
+export default function Scene({ backend, me, player, vows, movement, cooldownMode, frozen = false, activeCharacterId, stage, sessionId = 'sanctuary', onOpenVows }: { sessionId?: string; backend: Backend; me: Me; player: Player | null; vows: Vow[]; movement: boolean; cooldownMode?: 'normal' | 'half' | 'none'; frozen?: boolean; activeCharacterId?: string | null; stage?: Stage; onOpenVows?: () => void }) {
   const reduced = useReducedMotion();
   const [position, setPosition] = useState(() => ({ ...resolveMove({ x: MAP.floor.cx, y: MAP.floor.cy }, { x: MAP.floor.cx - 0.12 + [...me.id].reduce((sum, letter) => sum + letter.charCodeAt(0), 0) % 24 / 100, y: MAP.floor.cy + 0.16 }), facing: 'right' as Presence['facing'], dir: 'down' as WalkDir, moving: false }));
   const [peers, setPeers] = useState<Record<string, Presence>>({});
@@ -102,7 +102,7 @@ export default function Scene({ backend, me, player, vows, movement, frozen = fa
     const to = resolveMove(p, { x: p.x + v.x / Math.hypot(v.x, v.y) * hop, y: p.y + v.y / Math.hypot(v.x, v.y) * hop * MAP.aspect });
     const state = { ...p, ...to }; here.current = state; setPosition(state);
   };
-  const { kit, cooldowns, locked, castSkill, casting, shake, field, fieldRef } = useSkills({ backend, me, characterId, sessionId, enabled, aim, onCast });
+  const { kit, cooldowns, locked, castSkill, casting, shake, field, fieldRef } = useSkills({ backend, me, characterId, sessionId, enabled, aim, onCast, cooldownMode });
   const { bubbles, poke } = useChatter({ backend, me, characterId, peers, enabled, stage, vows, sessionId });
   // Clicking a character makes them talk (instead of walking there). Feet are at the map position; bodies rise ~150 px.
   const characterAt = (cx: number, cy: number) => {

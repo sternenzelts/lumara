@@ -1,16 +1,16 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import type { Backend, Me } from '../backend/types';
 import { KITS, type Kit, type Skill } from '../data/kits';
-import { canCast, cast, cooldownLeft, emptySkillState } from '../logic/skills';
+import { canCast, cast, cooldownLeft, loadSkillState, type CooldownMode } from '../logic/skills';
 import { readSerenMuted } from '../logic/voice';
-import { canCastWhileHeld, cutStasis, type FieldFx, type Pt } from '../logic/fieldEffects';
+import { STASIS, canCastWhileHeld, cutStasis, endStasis, type FieldFx, type Pt } from '../logic/fieldEffects';
 
 /** What one character is doing right now: a skill pose/effect and/or true form. */
 export type Dir = 'down' | 'right' | 'up' | 'left';
 export interface Casting { kit: Kit; skill?: Skill; dir?: Dir; angle?: number; at?: number; until?: number; trueUntil?: number; descending?: boolean }
 /** Where a cast is aimed: facing / mouse angle, plus caster position and (Frost Cadenza) the target. */
 export interface Aim { dir: Dir; angle?: number; pos?: Pt; to?: Pt; targetId?: string }
-interface SkillCue extends Aim { userId: string; characterId: string; skillId: string }
+interface SkillCue extends Aim { userId: string; characterId: string; skillId: string; /** Ayaka ends her own Chrono Stasis early. */ end?: boolean }
 
 const TRUE_ENTER_MS = 800;   // power pose before the flight starts
 const DESCEND_MS = 1000;
@@ -24,9 +24,11 @@ function play(src?: string) {
  * Cosmetic skills (spec §10). Your casts go out as a 'skill' cue; every tab — including yours — applies cues,
  * so you and your teammates see the same pose + effect on the caster.
  */
-export function useSkills({ backend, me, characterId, sessionId, enabled, aim, onCast }: { backend: Backend; me: Me; characterId: string | null; sessionId: string; enabled: boolean; aim: (skill: Skill) => Aim; onCast?: (skill: Skill, aimed: Aim) => void }) {
+export function useSkills({ backend, me, characterId, sessionId, enabled, aim, onCast, cooldownMode = 'normal' }: { backend: Backend; me: Me; characterId: string | null; sessionId: string; enabled: boolean; aim: (skill: Skill) => Aim; onCast?: (skill: Skill, aimed: Aim) => void; cooldownMode?: CooldownMode }) {
   const kit: Kit | undefined = characterId ? KITS[characterId] : undefined;
-  const [state, setState] = useState(emptySkillState);
+  // Cooldowns are saved per character in this browser, so a refresh doesn't hand back a fresh ultimate.
+  const [state, setState] = useState(() => characterId ? loadSkillState(characterId) : {});
+  useEffect(() => { setState(characterId ? loadSkillState(characterId) : {}); }, [characterId]);
   const [casting, setCasting] = useState<Record<string, Casting>>({});
   const castingRef = useRef(casting); castingRef.current = casting;
   // Screen shake (+ phone vibration for the ultimate): 'small' when someone changes form, 'big' for Return to Dust.
@@ -61,6 +63,7 @@ export function useSkills({ backend, me, characterId, sessionId, enabled, aim, o
   useEffect(() => backend.on('skill', data => {
     const cue = data as SkillCue; const skill = KITS[cue.characterId]?.skills.find(s => s.id === cue.skillId); if (!skill) return;
     const t = Date.now();
+    if (cue.end) { setField(f => endStasis(f, cue.userId, t)); return; }
     if (cue.userId !== me.id) { play(skill.voice); }
     const kit = KITS[cue.characterId];
     if (skill.counters === 'stasis') setField(f => cutStasis(f, t));   // Venuzdonoa severs stopped time for everyone
@@ -87,13 +90,16 @@ export function useSkills({ backend, me, characterId, sessionId, enabled, aim, o
     });
   }), [backend, me.id]);
 
+  /** Ayaka's own time-stop is still running: pressing her ultimate again releases it. */
+  const myStasisRunning = (t: number) => fieldRef.current.some(f => f.kind === 'stasis' && f.userId === me.id && !f.cutAt && t < f.at + STASIS.releaseMs);
   const inTrueForm = (id: string) => { const x = castingRef.current[id]; return !!(x?.trueUntil && !x.descending); };
   const castSkill = (skill: Skill) => {
     if (!enabled || !characterId) return;
     const t = Date.now();
+    if (skill.field?.kind === 'stasis' && myStasisRunning(t)) { backend.emit('skill', { userId: me.id, characterId, skillId: skill.id, dir: 'down', end: true } satisfies SkillCue); return; }
     if (!canCastWhileHeld(me.id, skill, fieldRef.current, t)) return;   // frozen / stunned / seated: no casting (except a time-stop counter)
     if (skill.requiresTrueForm && !inTrueForm(me.id)) return;
-    if (!canCast(skill, stateRef.current, t, sessionId, characterId)) return;
+    if (!canCast(skill, stateRef.current, t, sessionId, characterId, cooldownMode)) return;
     setState(s => cast(skill, s, t, sessionId, characterId));
     if (skill.effect === 'transform' && inTrueForm(me.id)) play(KITS[characterId]?.revertVoice);
     else { play(skill.voice); play(skill.sfx); }
@@ -115,7 +121,7 @@ export function useSkills({ backend, me, characterId, sessionId, enabled, aim, o
     window.addEventListener('keydown', down); return () => window.removeEventListener('keydown', down);
   }, [enabled, kit]);
 
-  const cooldowns = Object.fromEntries((kit?.skills || []).map(s => [s.id, characterId ? cooldownLeft(s, state, now, sessionId, characterId) : 0]));
+  const cooldowns = Object.fromEntries((kit?.skills || []).map(s => [s.id, !characterId || (s.field?.kind === 'stasis' && myStasisRunning(now)) ? 0 : cooldownLeft(s, state, now, sessionId, characterId, cooldownMode)]));
   const locked = Object.fromEntries((kit?.skills || []).map(s => [s.id, !!s.requiresTrueForm && !inTrueForm(me.id)]));
   return { kit, cooldowns, locked, castSkill, casting, shake, field, fieldRef, now };
 }

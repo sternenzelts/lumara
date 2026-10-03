@@ -20,6 +20,8 @@ export interface Player { userId: UserId; displayCharacterId: string | null; own
 export interface Settings {
   pullMode: 'fresh' | 'keep' | 'choose'; rates: { sPlusPlus: number; sPlus: number };
   pity: { enabled: boolean; sPlus: number; sPlusPlus: number }; featuredCharacterId: string; movement: boolean; skipVowReview: boolean;
+  /** Admin: skill cooldowns for everyone. Missing on settings saved before this existed = 'normal'. */
+  skillCooldown?: 'normal' | 'half' | 'none';
   starlight: { start: number; attend: number; perVote: number; perVow: number; pullCost: number };
   stardust: { dupeA: number; dupeSPlus: number; dupeSPlusPlus: number; costA: number; costSPlus: number; costSPlusPlus: number };
 }
