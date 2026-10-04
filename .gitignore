@@ -2,6 +2,7 @@
 /*
 !/.gitignore
 !/.github/
+!/.gitattributes
 !/website/
 !/interface/
 !/*.md
@@ -14,4 +15,3 @@ qa-screenshots/
 .env
 .env.*
 !.env.example
-/.github/

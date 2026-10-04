@@ -47,19 +47,20 @@ export default function BackgroundMusic() {
     const voice = (event: Event) => { ducked.current = !!(event as CustomEvent<boolean>).detail; element.volume = ducked.current ? .05 : .25; };
     const activate = (event: Event) => {
       if (!autoPending.current || requested.current) return;
+      if (document.querySelector('.entry-gate:not(.leaving)')) return;
       if (event instanceof KeyboardEvent && event.key !== 'Enter' && event.key !== ' ') return;
       if (event.target instanceof Element && event.target.closest('.background-music')) return;
       void begin(true);
     };
-    // The entry screen's tap: start (or deliberately skip) the music.
-    const enter = (event: Event) => { const music = !!(event as CustomEvent<boolean>).detail; if (!music) { autoPending.current = false; try { localStorage.setItem('lumara.music', 'off'); } catch { /* storage off */ } return; } autoPending.current = false; try { localStorage.setItem('lumara.music', 'on'); } catch { /* storage off */ } void begin(false); };
+    // Entry is complete only after the visitor skips or finishes the optional trailer.
+    const enter = (event: Event) => { const music = !!(event as CustomEvent<boolean>).detail; if (!music) { autoPending.current = false; stop(); try { localStorage.setItem('lumara.music', 'off'); } catch { /* storage off */ } return; } autoPending.current = false; try { localStorage.setItem('lumara.music', 'on'); } catch { /* storage off */ } void begin(false); };
     window.addEventListener('lumara-enter', enter);
     window.addEventListener('lumara-voice', voice);
     document.addEventListener('visibilitychange', hide);
     document.addEventListener('pointerdown', activate, true);
     document.addEventListener('keydown', activate, true);
     document.addEventListener('touchstart', activate, true);
-    if (autoPending.current) void begin(true);
+    if (autoPending.current && !document.querySelector('.entry-gate:not(.leaving)')) void begin(true);
     return () => {
       requested.current = false;
       element.pause();

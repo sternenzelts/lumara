@@ -284,3 +284,9 @@ The existing icy blue, ivory, silver, and antique-gold world is preserved. A dar
 The focal motion is a short light sweep across the chosen S++ scene, accompanied by a bounded image reveal. Manual selection interrupts the previous scene and voice; no slideshow changes a character while the visitor is reading. Existing cutout form rotation remains local, pausable, and visibility-aware. Voice buttons provide immediate playback state and subtitles; reduced motion removes spatial effects without affecting sound controls.
 
 The atlas pairs a current painted map with a selected region painting and face portraits. On phones the map controls become named accessible icon buttons and the region panel sits underneath. All map coordinates come from the supplied region data. Beacon lighting is an explicitly illustrative preview.
+
+## Optional entry trailer
+
+The existing full-screen title scene leads to a short trailer invitation after Tap to enter. The same painted world, Seren, Marcellus lettering, ivory text, and restrained gold carry the invitation. Watch trailer is the primary action; Skip trailer is immediately available. The invitation darkens the artwork to protect its centered question and uses stacked actions on phones.
+
+Playback recedes into a dark cinema with the real Lumara/ANIMA trailer, native controls, and a persistent Skip trailer action. The landscape video is contained without cropping; the header and actions fit phone and short landscape viewports. A native modal protects focus and keeps underlying page controls inert. Background music waits until the visitor enters the website, preventing overlapping songs. Completion, skip, and Escape enter the site; session persistence keeps the introduction from repeating on reload. Loading and playback failures retain retry and skip controls. Reduced motion removes the entry exit delay.

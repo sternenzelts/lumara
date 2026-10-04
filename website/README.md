@@ -14,7 +14,15 @@ The selected S++ companion cycles between two supplied cutouts every three secon
 
 The artwork viewer remains manually controlled and includes the selected companion's splash versions. Additional viewer artwork is configured through `extraArt`; showcase cutouts and paired backgrounds use `forms` in the roster data. Opening a viewer starts from the main splash.
 
-To replace the opening artwork with an animated video later, add a local muted, looping, playsInline video to the world-plane while preserving its still image fallback and respecting the motion setting. No video is currently supplied or promised.
+## Entry trailer
+
+On a fresh visit, **Tap to enter** opens **Watch the trailer?** with **Watch trailer** and **Skip trailer**. Watching starts the reviewed 90-second Lumara/ANIMA trailer with sound, inline native playback controls, and a visible skip action. Finishing, skipping, or pressing Escape continues into the website. Entry is remembered for the browser-tab session, so reloading after entry goes straight to Lumara.
+
+The video is mounted without a source and uses `preload="none"`; its source is assigned only when Watch is pressed. Background Kenka stays paused throughout the welcome screen, invitation, and trailer, then follows the existing entry music behavior. If playback is blocked or fails, native controls, retry, and skip remain available. The native modal keeps the website behind it inert. Closing pauses the video, cancels pending playback, and restores page scrolling and focus. Reduced motion removes the exit delay.
+
+`public/video/lumara-anima-trailer.mp4` is the full-quality reviewed master, byte-for-byte (`../trailer/output/lumara-anima-trailer-v4-reviewed.mp4`, 177 MB, 1920 x 1080, 30 fps, ~15.5 Mbps, H.264/AAC with faststart). It is stored in **Git LFS** (over GitHub's 100 MB file limit); the Pages workflow checks out with `lfs: true`, and `npm run build` exempts it from the size limits but fails if it is still an LFS pointer. Its poster and source notes are in the same folder.
+
+Verification: the final production build passed TypeScript and static asset checks (232 files, 62.27 MiB). `node .impeccable/verify-trailer-entry.cjs` passed 108 browser checks across seven scenarios: real playback/completion, desktop and mobile skip, Escape, source-error recovery, blocked-play recovery, and session reload. Desktop 1440 x 900 and mobile 390 x 844 screenshots were reviewed. Results are in `.impeccable/review/trailer-entry-checks.json`; these are local Chrome checks with mobile/touch emulation.
 
 Only optional Google Fonts load externally; all artwork and bundled JavaScript are local. All shipping rasters include provenance, and `npm run build` checks static output limits.
 
