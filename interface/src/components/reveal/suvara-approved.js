@@ -8,6 +8,7 @@ const life=createPlayback(host,onFinished);
 const $ = id => host.querySelector('#'+id);
 const fx = $('fx'), g = fx.getContext('2d'), fx2 = $('fx2'), g2 = fx2.getContext('2d');
 const DPR = Math.min(devicePixelRatio, 1.5);
+// 'Reduce motion' PCs still get the full reveal (Jay, 2026-10-04); it only calms shake and particle counts.
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 let motionFrozen = false;
 function beat(name){ $('stage').dataset.beat = name; }
@@ -52,7 +53,7 @@ let runId = 0;
 function guard(id){ if(id !== runId) throw life.CANCEL; }
 const {sleep,tween,voice,setInterval,clearInterval,requestAnimationFrame} = life;
 function stream(fn,ms){ return setInterval(fn,ms); }
-function anim(el,frames,o={}){ return life.anim(el,frames,{...o,duration:reduced?1:(o.duration || 500)}); }
+function anim(el,frames,o={}){ return life.anim(el,frames,{...o,duration:(o.duration || 500)}); }
 function hide(el){ el.getAnimations().forEach(a => a.cancel()); el.style.opacity = 0; }
 function show(el){ el.getAnimations().forEach(a => a.cancel()); el.style.opacity = 1; }
 const SHOTS = ['suvara','arrival','prayer','blade1','blade2','blade3','dawnbreak','finalArt'];

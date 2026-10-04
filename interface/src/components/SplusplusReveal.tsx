@@ -1,6 +1,6 @@
+import { canPlayReveal } from '../hooks';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { characterById, type CharacterDef } from '../data/characters';
-import { useReducedMotion } from '../hooks';
 import GenericReveal from './GenericReveal';
 import { createRuntime as ayaka } from './reveal/ayaka-approved.js';
 import { createRuntime as mahesvara } from './reveal/mahesvara-approved.js';
@@ -31,7 +31,7 @@ function ApprovedReveal({ character, onDone, autoAdvance = false, onSkip }: Reve
   const host = useRef<HTMLDivElement>(null);
   const done = useRef(onDone); done.current = onDone;
   const skip = useRef(onSkip); skip.current = onSkip;
-  const reduced = useReducedMotion();
+  const reduced = !canPlayReveal();   // only a browser that can't draw skips; 'reduce motion' PCs still get the full reveal (Jay, 2026-10-04)
   const [readyToAdvance, setReadyToAdvance] = useState(false);
   useEffect(() => { if (readyToAdvance) host.current?.focus({ preventScroll: true }); }, [readyToAdvance]);
   const reveal = reveals[character.id as keyof typeof reveals];

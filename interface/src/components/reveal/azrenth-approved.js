@@ -8,6 +8,7 @@ const life=createPlayback(host,onFinished);
 const $ = id => host.querySelector('#'+id);
 const fx = $('fx'), g = fx.getContext('2d'), fx2 = $('fx2'), g2 = fx2.getContext('2d');
 const DPR = Math.min(devicePixelRatio, 1.5);
+// 'Reduce motion' PCs still get the full reveal (Jay, 2026-10-04); it only calms shake and particle counts.
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 let motionFrozen = false;
 function beat(name){ $('stage').dataset.beat = name; }
@@ -52,7 +53,7 @@ let runId = 0;
 function guard(id){ if (id !== runId) throw life.CANCEL; }
 const {sleep,tween,voice,setInterval,clearInterval,requestAnimationFrame} = life;
 function stream(fn, ms){ return setInterval(fn,ms); }
-function anim(el, frames, o = {}){ return life.anim(el,frames,{...o,duration:reduced?1:(o.duration || 500)}); }
+function anim(el, frames, o = {}){ return life.anim(el,frames,{...o,duration:(o.duration || 500)}); }
 function hide(el){ el.getAnimations().forEach(a => a.cancel()); el.style.opacity = 0; }
 function show(el){ el.getAnimations().forEach(a => a.cancel()); el.style.opacity = 1; }
 const SHOTS = ['azrenth','jirasd','sword','severArt','finalArt'];
@@ -367,14 +368,14 @@ async function run(){
     if (Math.random() < .5) crackle(.18 + power * .4);
   }, reduced ? 400 : 60);
   const jv = ducked(VO.jirasd);
-  await step(tween(reduced ? 1 : 1900, p => { power = p; orb.r = (10 + 60 * p * p) * DPR; orb.a = Math.min(1, p * 1.5); shake = reduced ? 0 : 1 + 4 * p; }));
+  await step(tween(1900, p => { power = p; orb.r = (10 + 60 * p * p) * DPR; orb.a = Math.min(1, p * 1.5); shake = reduced ? 0 : 1 + 4 * p; }));
   await step(jv);
   clearInterval(charge); clearInterval(storm); $('jirasd').style.translate = '';
   play(SFX.pull_flash_swell,.6);
   beat('jirasd-cast'); caption('');
   const target = [W * .2, H * .42];
   // the strike: one bolt of black lightning, flickering, hand to castle
-  for (let i = 0; i < (reduced ? 1 : 6); i++) { zapsF.push(zap(handX, jy, target[0], target[1], { w:3.4, branches:4, life:3, rough:.18 })); crackle(.9); shake = reduced ? 0 : 12;
+  for (let i = 0; i < 6; i++) { zapsF.push(zap(handX, jy, target[0], target[1], { w:3.4, branches:4, life:3, rough:.18 })); crackle(.9); shake = reduced ? 0 : 12;
     if (orb) { orb.x = handX + (target[0] - handX) * i / 5; orb.y = jy + (target[1] - jy) * i / 5; orb.r = (70 - 40 * i / 5) * DPR; }
     await step(sleep(55)); }
   orb = null;
@@ -388,7 +389,7 @@ async function run(){
   const ash = stream(() => { if (!burn) return; spawn(reduced ? 2 : 10, () => { const a = Math.random() * Math.PI * 2;
     return { x:burn.x + Math.cos(a) * burn.r, y:burn.y + Math.sin(a) * burn.r, vx:Math.cos(a) * (1 + Math.random() * 2) * DPR, vy:-(1 + Math.random() * 2.5) * DPR, s:(1 + Math.random() * 2.2) * DPR, col:Math.random() < .5 ? '#1a0604' : '#ff5a24', life:.7 }; });
     if (Math.random() < .45) { const a = Math.random() * Math.PI * 2, r0 = burn.r * (.2 + Math.random() * .5); zapsB.push(zap(burn.x + Math.cos(a) * r0, burn.y + Math.sin(a) * r0, burn.x + Math.cos(a) * burn.r, burn.y + Math.sin(a) * burn.r, { w:1.6, branches:1 })); if (Math.random() < .4) crackle(.3); } }, 40);
-  await step(tween(reduced ? 1 : 2400, p => { const e = 1 - Math.pow(1 - p, 2); burn.r = e * maxR; burnMask(intact, burn.x, burn.y, burn.r); shake = reduced ? 0 : 6 * (1 - p); }));
+  await step(tween(2400, p => { const e = 1 - Math.pow(1 - p, 2); burn.r = e * maxR; burnMask(intact, burn.x, burn.y, burn.r); shake = reduced ? 0 : 6 * (1 - p); }));
   clearInterval(ash); burn = null; shake = 0; intact.style.opacity = 0; burnMask(intact, 0, 0, 0);
   await step(sleep(1400));
   await step(anim($('jirasd'),[{opacity:1},{opacity:0}],{duration:800})); hide($('jirasd'));
@@ -406,7 +407,7 @@ async function run(){
   await step(sleep(500));
   // a glint runs down the blade, hilt to tip
   glint = { x:0, y:0, a:0 };
-  await step(tween(reduced ? 1 : 1000, p => { [glint.x, glint.y] = cutPoint(sw, 285 + (960 - 285) * p, 355 + (1040 - 355) * p); glint.a = Math.sin(p * Math.PI); }));
+  await step(tween(1000, p => { [glint.x, glint.y] = cutPoint(sw, 285 + (960 - 285) * p, 355 + (1040 - 355) * p); glint.a = Math.sin(p * Math.PI); }));
   glint = null;
   await step(vs);
   // silence: the theme stops and the world holds its breath
@@ -420,7 +421,7 @@ async function run(){
   const L = riftLine();
   $('flash').getAnimations().forEach(a => a.cancel()); $('flash').style.opacity = 0;
   slash = { L, p:0, a:1, w:1 }; play(SFX.slash, .9);
-  await step(tween(reduced ? 1 : 130, p => { slash.p = 1 - Math.pow(1 - p, 2); })); slash.p = 1;
+  await step(tween(130, p => { slash.p = 1 - Math.pow(1 - p, 2); })); slash.p = 1;
   threads.forEach(th => { let prev = null; for (let i = 0; i <= 80; i++) { const [x, y] = qpt(th, i / 80), s = (x - L.e0[0]) * L.n[0] + (y - L.e0[1]) * L.n[1];
     if (prev !== null && Math.sign(s) !== Math.sign(prev)) { th.hit = i / 80; break; } prev = s; } });
   $('flash').style.background = '#fff'; anim($('flash'), [{ opacity:.85 }, { opacity:0 }], { duration:280, easing:'ease-out' });
@@ -433,7 +434,7 @@ async function run(){
   // gravity fails: debris rises out of the broken world
   spawn(reduced ? 20 : 110, () => ({ x:Math.random() * W, y:H * (.45 + Math.random() * .55), vx:(Math.random() - .5) * 1.2 * DPR, vy:-(1.5 + Math.random() * 4) * DPR, s:(1.5 + Math.random() * 3.5) * DPR, col:Math.random() < .55 ? '#2a0a0a' : '#ff4a2a', life:1 }));
   const G = Math.min(innerWidth, innerHeight) * .05; rift.G = G; fissures = makeFissures(L, G * DPR);
-  await step(tween(reduced ? 1 : 1000, p => { const e = 1 - Math.pow(1 - p, 3); rift.gap = G * e;
+  await step(tween(1000, p => { const e = 1 - Math.pow(1 - p, 3); rift.gap = G * e;
     hA.style.translate = `${L.n[0] * G * e}px ${L.n[1] * G * e}px`; hB.style.translate = `${-L.n[0] * G * e}px ${-L.n[1] * G * e}px`;
     slash.w = 1 - e * .6; slash.a = 1 - e * .7; shake = reduced ? 0 : 4 + 14 * (1 - p); threads.forEach(th => th.k = e); fissures.forEach(f => f.grow = Math.min(1, e * 1.25)); }));
   threads = [];

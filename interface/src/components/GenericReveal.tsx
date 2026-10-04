@@ -1,7 +1,7 @@
-﻿import { useEffect, useRef, useState } from 'react';
+﻿import { canPlayReveal } from '../hooks';
+import { useEffect, useRef, useState } from 'react';
 import { Volume2, Volume1, VolumeX } from 'lucide-react';
 import { characterById, type CharacterDef } from '../data/characters';
-import { useReducedMotion } from '../hooks';
 import { createAyakaRuntime, type AyakaRuntime } from './reveal/ayaka-runtime.js';
 import './ayaka-reveal.css';
 const ART = `${import.meta.env.BASE_URL}art/ayaka/`;
@@ -17,7 +17,7 @@ export default function AyakaReveal({ onDone, character = characterById('ayaka')
     const timer = setTimeout(() => done.current(), 1400);
     return () => clearTimeout(timer);
   }, [finished, autoAdvance, character.grade]);
-  const reduced = useReducedMotion();
+  const reduced = !canPlayReveal();   // only a browser that can't draw skips; 'reduce motion' PCs still get the full reveal (Jay, 2026-10-04)
   const isAyaka = character.id === 'ayaka';
   const pose = isAyaka ? `${ART}reveal-timestop.webp` : character.art.cutout || character.art.splash;
   const theme = isAyaka ? `${ART}reveal-theme.mp3` : character.id === 'mahesvara' ? `${import.meta.env.BASE_URL}art/mahesvara/reveal-theme.mp3` : undefined;

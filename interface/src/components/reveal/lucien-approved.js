@@ -8,6 +8,7 @@ const life=createPlayback(host,onFinished);
 const $ = id => host.querySelector('#'+id);
 const fx = $('fx'), g = fx.getContext('2d'), fx2 = $('fx2'), g2 = fx2.getContext('2d');
 const DPR = Math.min(devicePixelRatio, 1.5);
+// 'Reduce motion' PCs still get the full reveal (Jay, 2026-10-04); it only calms shake and particle counts.
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 let motionFrozen = false;
 function beat(name){ $('stage').dataset.beat = name; }
@@ -51,7 +52,7 @@ let runId = 0;
 function guard(id){ if (id !== runId) throw life.CANCEL; }
 const {sleep,tween,voice,setInterval,clearInterval,requestAnimationFrame} = life;
 function stream(fn, ms){ return setInterval(fn,ms); }
-function anim(el, frames, o = {}){ return life.anim(el,frames,{...o,duration:reduced?1:(o.duration || 500)}); }
+function anim(el, frames, o = {}){ return life.anim(el,frames,{...o,duration:(o.duration || 500)}); }
 function hide(el){ el.getAnimations().forEach(a => a.cancel()); el.style.opacity = 0; }
 function show(el){ el.getAnimations().forEach(a => a.cancel()); el.style.opacity = 1; }
 const SHOTS = ['lucien','chant','seal1','seal2','seal3','vow','lunge','storm','finalArt'];
@@ -376,7 +377,7 @@ async function run(){
   hideShots(); showShot('vow'); anim($('vow'), [{ transform:'scale(1)' }, { transform:'scale(1.07)' }], { duration:3200, easing:'ease-out' });
   anim($('flash'), [{ opacity:1 }, { opacity:0 }], { duration:500 });
   glints = [[400, 238], [540, 150], [655, 228], [745, 365]].map(([ix, iy], i) => ({ ix, iy, a:0, d:i * .12 }));
-  await step(tween(reduced ? 1 : 1700, p => { glints.forEach(g0 => { [g0.x, g0.y] = artPoint($('vow'), g0.ix, g0.iy); g0.a = Math.max(0, Math.min(1, (p - g0.d) * 2)); }); }));
+  await step(tween(1700, p => { glints.forEach(g0 => { [g0.x, g0.y] = artPoint($('vow'), g0.ix, g0.iy); g0.a = Math.max(0, Math.min(1, (p - g0.d) * 2)); }); }));
   await step(sleep(500)); glints = null;
 
   // 11 · the release: he drops into a lunge and the lightning leaves his hand
@@ -399,7 +400,7 @@ async function run(){
   anim($('storm'), [{ transform:'scale(1.06)' }, { transform:'scale(1)' }], { duration:2600, easing:'cubic-bezier(.2,.7,.2,1)' });
   anim($('flash'), [{ opacity:1 }, { opacity:0 }], { duration:500 });
   const [cx0, cy0] = artPoint($('storm'), 880, 235);
-  const storm = stream(() => { for (let k = 0; k < (reduced ? 1 : 5); k++) { const a = Math.random() * Math.PI * 2, r = (300 + Math.random() * 900) * DPR;
+  const storm = stream(() => { for (let k = 0; k < 5; k++) { const a = Math.random() * Math.PI * 2, r = (300 + Math.random() * 900) * DPR;
       zapsF.push(zap(cx0, cy0, cx0 + Math.cos(a) * r, cy0 + Math.sin(a) * r, { w:1.8 + Math.random() * 1.6, branches:3, life:6 + Math.floor(Math.random() * 5), rough:.2 })); }
     crackle(.55); }, 60);
   await step(tween(2600, p => { shake = reduced ? 0 : 14 * (1 - p); }));
