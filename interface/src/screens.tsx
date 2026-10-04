@@ -143,7 +143,8 @@ export function RetroScreen() {
   return <>{backdrop}
     <VoyageHud progress={stageProgress(session.stage, settings, hasPrev)} paused={session.status === 'paused'} warden={warden} busy={busy} canBack={prev !== null}
       nextLabel={session.stage === 'rewards' ? 'Finish voyage' : 'Next stage'} actionLabel={session.stage === 'fragment_drop' ? 'My thoughts' : session.stage === 'vote' && settings.movement ? null : brief.title} onBack={back} onNext={advance} onOpen={() => setWindowOpen(true)} onPauseToggle={togglePause}
-      onLobby={() => run(() => backend.updateSession(session.id, { stage: 'register', timerEndsAt: null, currentFragmentId: null }), 'The party is back in the lobby.')} />
+      onLobby={() => run(() => backend.updateSession(session.id, { stage: 'register', timerEndsAt: null, currentFragmentId: null }), 'The party is back in the lobby.')}
+      onCancel={() => run(async () => { await backend.cancelSession(session.id); navigate('sanctuary'); }, 'The voyage was cancelled. Start a fresh one when you are ready.')} />
     <VoyageWindow title={brief.title} open={windowOpen} onClose={() => setWindowOpen(false)} variant={session.stage === 'vow_review' ? 'vow-review' : undefined}>
       {remaining !== null && <span className="timer" aria-label={`${remaining} seconds remaining`}><Clock3 size={15} />{Math.floor(remaining / 60)}:{String(remaining % 60).padStart(2, '0')}</span>}
       {session.status === 'paused' && !warden ? <Empty title="A moment to catch our breath."><p>Your Warden has paused the voyage. This screen will follow when the party is ready.</p></Empty> : <>

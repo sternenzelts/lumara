@@ -123,4 +123,21 @@ describe('local demo contract', () => {
     let fragments: Fragment[] = []; const stop = jay.watchFragments(s.id, list => { fragments = list; });
     expect(fragments).toHaveLength(1); stop();
   });
+  it('cancels a voyage as if it never happened, and only the Warden or an admin can', async () => {
+    const jay = createLocalBackend('jay'), ana = createLocalBackend('ana');
+    const s = await jay.createSession('Oops'); await ana.join(s.id);
+    await jay.updateSession(s.id, { stage: 'fragment_drop' }); await ana.addFragment(s.id, 'A thought', 'spark');
+    await jay.updateSession(s.id, { stage: 'vote' }); let frags: Fragment[] = []; ana.watchFragments(s.id, v => { frags = v; })(); const [f] = frags;
+    await ana.castVote(s.id, f.id);
+    await jay.updateSession(s.id, { stage: 'rewards' }); await ana.appendMyPull({ characterId: 'wren', grade: 'A', source: 'opening', duplicate: false, at: 1, sessionId: s.id });
+    await expect(ana.cancelSession(s.id)).rejects.toThrow();
+    await jay.cancelSession(s.id);
+    let active: Session | null | undefined; ana.watchActiveSession(v => { active = v; })();
+    let all: Session[] = []; ana.watchSessions(v => { all = v; })();
+    let p: Player | null = null; ana.watchPlayer('ana', v => { p = v; })();
+    expect(active).toBeNull(); expect(all.some(x => x.id === s.id)).toBe(false);
+    expect((p as Player | null)?.pulls.some(x => x.sessionId === s.id)).toBe(false);
+    expect((p as Player | null)?.owned.wren ?? 0).toBe(0);
+    expect(await jay.createSession('Fresh start')).toMatchObject({ sprintName: 'Fresh start' });
+  });
 });

@@ -41,6 +41,7 @@ const backend: Backend = {
   watchVotes: (_id, cb) => { cb([]); return () => {}; },
   myFragmentIds: async () => [], myVotes: async () => [],
   updateVow: async (id, patch) => { const vow = vows.find(v => v.id === id); if (vow) Object.assign(vow, patch); notify(); },
+  cancelSession: async () => {},
   updateSession: async (_id, patch) => {
     // Keep this direct preview on review; pause/resume remains usable.
     session = { ...session, ...patch, stage: 'vow_review' }; notify();

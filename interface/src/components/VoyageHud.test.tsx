@@ -50,4 +50,20 @@ describe('VoyageHud', () => {
     const { el } = await render({ actionLabel: null });
     expect(el.querySelector('.voyage-action')).toBeNull();
   });
+  it('cancels the voyage only after the Warden confirms', async () => {
+    const onCancel = vi.fn();
+    const { el } = await render({ onCancel });
+    await act(async () => button(el, 'Cancel voyage')!.click());
+    expect(onCancel).not.toHaveBeenCalled();
+    expect(el.querySelector('[role=alertdialog]')?.textContent).toContain('as if it never happened');
+    await act(async () => button(el, 'Keep voyage')!.click());
+    expect(el.querySelector('[role=alertdialog]')).toBeNull();
+    await act(async () => button(el, 'Cancel voyage')!.click());
+    await act(async () => [...el.querySelectorAll('[role=alertdialog] button')].find(b => b.textContent?.includes('Cancel voyage'))!.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+  it('shows no cancel control to players', async () => {
+    const { el } = await render({ warden: false, onCancel: vi.fn() });
+    expect(button(el, 'Cancel voyage')).toBeUndefined();
+  });
 });

@@ -101,6 +101,7 @@ export function createSupabaseBackend(sb: SupabaseClient, me: Me): Backend {
 
     createSession: async name => toSession(await call('create_session', { p_name: name })),
     updateSession: async (id, patch) => { await call('set_session', { p_session: id, p_patch: patch }); },
+    cancelSession: async id => { await call('cancel_session', { p_session: id }); },
     join: async sid => { await call('join_session', { p_session: sid }); },
     setMyCharacter: async (sid, c) => { await call('set_my_character', { p_session: sid, p_character: c }); },
     addFragment: async (sid, text, category) => toFragment(await call('add_fragment', { p_session: sid, p_text: text, p_category: category })),

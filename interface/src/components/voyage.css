@@ -112,3 +112,12 @@
 
 .vow-row.pending-kept{outline:1px dashed #e7ca8b99;outline-offset:2px}
 .vow-review-content .vow-confirm{position:sticky;bottom:0;z-index:3;margin-top:14px;box-shadow:0 -10px 24px #061423cc}
+/* Cancel voyage (Warden only) */
+.voyage-warden .voyage-cancel{color:#ffd2d6}
+.voyage-confirm{position:fixed;z-index:60;left:50%;top:50%;transform:translate(-50%,-50%);width:min(400px,calc(100vw - 32px));padding:20px 22px 18px;color:#e9eef3;background:#0f2135f5;border:1px solid #e8a3ab;outline:1px solid #e8a3ab33;outline-offset:4px;box-shadow:0 24px 60px #061423b3}
+.voyage-confirm h3{margin:0 0 8px;font:400 22px Marcellus,serif;color:#fff4dc}
+.voyage-confirm p{margin:0 0 16px;font:13px/1.6 Manrope,sans-serif;color:#c4d7e3}
+.voyage-confirm>div{display:flex;justify-content:flex-end;gap:10px}
+.voyage-confirm button{min-height:40px;padding:8px 16px;color:#fff4dc;background:#1b3348;border:1px solid #d8bf8277;font:600 13px Manrope,sans-serif;cursor:pointer}
+.voyage-confirm button.danger{color:#2b0c10;background:linear-gradient(180deg,#ffc9cf,#e88f99);border-color:#ffd6db}
+.voyage-confirm button:focus-visible{outline:2px solid #fff4dc;outline-offset:2px}

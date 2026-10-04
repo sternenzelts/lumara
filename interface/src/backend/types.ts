@@ -35,6 +35,8 @@ export interface Backend {
   watchActiveSession(cb: (s: Session | null) => void): Unsubscribe;
   watchSessions(cb: (all: Session[]) => void): Unsubscribe;
   updateSession(id: string, patch: Partial<Omit<Session, 'id'>>): Promise<void>;
+  /** Warden/admin: delete the voyage and everything in it (thoughts, votes, vows, attendance, its free wishes), as if it never happened. */
+  cancelSession(id: string): Promise<void>;
   join(sessionId: string): Promise<void>;
   setMyCharacter(sessionId: string, characterId: string): Promise<void>;
   watchAttendance(sessionId: string, cb: (a: Attendance[]) => void): Unsubscribe;

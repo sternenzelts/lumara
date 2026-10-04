@@ -109,6 +109,20 @@ export function createLocalBackend(playerId = new URLSearchParams(location.searc
     watchActiveSession(cb) { return watch(s => s.sessions.filter(x => x.status !== 'ended').sort((a, b) => b.createdAt - a.createdAt)[0] || null, cb); },
     watchSessions(cb) { return watch(s => [...s.sessions].sort((a, b) => b.createdAt - a.createdAt), cb); },
     async updateSession(sid, patch) { await mutate(s => { const session = requireWarden(s, sid); Object.assign(session, patch); }); },
+    async cancelSession(sid) {
+      await mutate(s => {
+        requireWarden(s, sid);
+        for (const p of s.players) {
+          for (const pull of p.pulls.filter(x => x.source === 'opening' && x.sessionId === sid)) {
+            const left = (p.owned[pull.characterId] || 0) - 1;
+            if (left > 0) p.owned[pull.characterId] = left; else { delete p.owned[pull.characterId]; if (p.displayCharacterId === pull.characterId) p.displayCharacterId = null; }
+          }
+          p.pulls = p.pulls.filter(x => !(x.source === 'opening' && x.sessionId === sid));
+        }
+        s.sessions = s.sessions.filter(x => x.id !== sid); s.attendance = s.attendance.filter(x => x.sessionId !== sid);
+        s.fragments = s.fragments.filter(x => x.sessionId !== sid); s.votes = s.votes.filter(x => x.sessionId !== sid); s.vows = s.vows.filter(x => x.sessionId !== sid);
+      });
+    },
     async join(sid) {
       await mutate(s => {
         if (!s.sessions.some(x => x.id === sid && x.status !== 'ended')) throw new Error('No active retro with that code. Check the code with your Warden.');
