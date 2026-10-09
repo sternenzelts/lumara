@@ -7,7 +7,7 @@ import type { Backend, Player, Session, Vow } from '../backend/types';
 import '../styles.css';
 
 // Standalone development entry: sample sessions and outcomes live only in this page's memory.
-const previous: Session = { id: 'sample-prior', sprintName: 'Previous voyage · sample', stage: 'completed', status: 'ended', wardenId: 'jay', currentFragmentId: null, timerEndsAt: null, createdAt: 1 };
+const previous: Session = { id: 'sample-prior', sprintName: 'Previous voyage · sample', stage: 'completed', status: 'ended', wardenId: 'jay', currentFragmentId: null, timerEndsAt: null, createdAt: 1, partyLocked: false, speaker: null };
 let session: Session = { ...previous, id: 'sample-review', sprintName: 'Vow review · sample preview', stage: 'vow_review', status: 'active', createdAt: 2 };
 const player: Player = { userId: 'jay', nickname: 'Jay', introSeen: true, displayCharacterId: 'mahesvara', owned: { mahesvara: 1 }, pulls: [] };
 const vows: Vow[] = [
@@ -49,7 +49,7 @@ const backend: Backend = {
   on: noSubscription,
   onPeers: cb => { cb({}); return () => {}; },
   emit() {}, setPresence() {},
-  createSession: unsupported, join: unsupported, setMyCharacter: unsupported,
+  createSession: unsupported, join: unsupported, removePlayer: unsupported, setMyCharacter: unsupported,
   addFragment: unsupported, deleteMyFragment: unsupported, castVote: unsupported, removeMyVote: unsupported,
   addVow: unsupported, grantCurrency: unsupported, appendMyPull: unsupported, setMyDisplayCharacter: unsupported,
   setMyNickname: unsupported, markIntroSeen: unsupported, saveSettings: unsupported,

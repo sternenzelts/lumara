@@ -37,6 +37,7 @@ export function createLocalBackend(playerId = new URLSearchParams(location.searc
     copy.settings.starlight = { ...DEFAULT_SETTINGS.starlight, ...copy.settings.starlight };
     if (oldEconomy) copy.settings.starlight.pullCost = 200;
     copy.players = copy.players.map(p => ({ ...p, nickname: p.nickname ?? null, introSeen: p.introSeen ?? false }));
+    copy.sessions = copy.sessions.map(x => ({ ...x, partyLocked: x.partyLocked ?? false, speaker: x.speaker ?? null }));
     return copy;
   };
   const readPrivate = (): PrivateStore => {
@@ -102,7 +103,7 @@ export function createLocalBackend(playerId = new URLSearchParams(location.searc
     async createSession(sprintName) {
       if (!identity.isAdmin) throw new Error('Ask Jay to start a retro.');
       if (!sprintName.trim()) throw new Error('Give this voyage a name.');
-      const session: Session = { id: uid(), sprintName: sprintName.trim().slice(0, 80), stage: 'register', status: 'active', wardenId: id, currentFragmentId: null, timerEndsAt: null, createdAt: Date.now() };
+      const session: Session = { id: uid(), sprintName: sprintName.trim().slice(0, 80), stage: 'register', status: 'active', wardenId: id, currentFragmentId: null, timerEndsAt: null, createdAt: Date.now(), partyLocked: false, speaker: null };
       await mutate(s => { if (s.sessions.some(x => x.status !== 'ended')) throw new Error('A retro is already in progress. Join it from the Sanctuary.'); s.sessions.push(session); });
       await backend.join(session.id); return session;
     },
@@ -125,12 +126,28 @@ export function createLocalBackend(playerId = new URLSearchParams(location.searc
     },
     async join(sid) {
       await mutate(s => {
-        if (!s.sessions.some(x => x.id === sid && x.status !== 'ended')) throw new Error('No active retro with that code. Check the code with your Warden.');
-        if (!s.attendance.some(x => x.sessionId === sid && x.userId === id)) s.attendance.push({ userId: id, sessionId: sid, joinedAt: Date.now(), votesCast: 0, characterId: null });
+        const session = s.sessions.find(x => x.id === sid && x.status !== 'ended');
+        if (!session) throw new Error('No active retro with that code. Check the code with your Warden.');
+        if (!s.attendance.some(x => x.sessionId === sid && x.userId === id)) {   // members may always reconnect
+          if (session.partyLocked) throw new Error('The party is locked. Ask your Warden to unlock it.');
+          if (session.stage !== 'register') throw new Error('This voyage has already started. Join the next one.');
+          s.attendance.push({ userId: id, sessionId: sid, joinedAt: Date.now(), votesCast: 0, characterId: null });
+        }
         player(s);
       });
     },
-    async setMyCharacter(sid, characterId) { await mutate(s => { const a = s.attendance.find(x => x.sessionId === sid && x.userId === id); if (!a) throw new Error('Join the retro first.'); if (!player(s).owned[characterId]) throw new Error('Choose a character from your collection.'); a.characterId = characterId; }); },
+    async removePlayer(sid, userId) {
+      await mutate(s => {
+        const session = requireWarden(s, sid);
+        if (session.status === 'ended') throw new Error('This voyage has ended.');
+        if (userId === session.wardenId) throw new Error('The Warden can’t be removed from their own party.');
+        s.attendance = s.attendance.filter(x => !(x.sessionId === sid && x.userId === userId));
+      });
+    },
+    async setMyCharacter(sid, characterId) { await mutate(s => {
+      if (s.sessions.find(x => x.id === sid && x.status !== 'ended')?.stage !== 'register') throw new Error('Companions are locked once the voyage starts.');
+      const a = s.attendance.find(x => x.sessionId === sid && x.userId === id); if (!a) throw new Error('Join the retro first.');
+      if (!player(s).owned[characterId]) throw new Error('Choose a character from your collection.'); a.characterId = characterId; }); },
     watchAttendance(sid, cb) { return watch(s => s.attendance.filter(x => x.sessionId === sid), cb); },
     async addFragment(sid, text, category) {
       if (!text.trim()) throw new Error('Write a thought before sending it.');

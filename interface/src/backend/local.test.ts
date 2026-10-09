@@ -1,13 +1,57 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createLocalBackend, DEFAULT_SETTINGS } from './local';
-import type { Attendance, Fragment, Player, Session, Vote } from './types';
+import type { Attendance, Fragment, Player, Session, Stage, Vote } from './types';
+
+/** Test shortcut: move a voyage's stage directly in the demo store (skips the Warden and check-in rules). */
+const setStage = (sid: string, stage: Stage) => {
+  const s = JSON.parse(localStorage.getItem('lumara.demo.v1')!); s.sessions.find((x: Session) => x.id === sid).stage = stage;
+  localStorage.setItem('lumara.demo.v1', JSON.stringify(s));
+};
 
 beforeEach(() => {
   localStorage.clear();
   vi.stubGlobal('BroadcastChannel', class { postMessage() {} addEventListener() {} });
 });
 describe('local demo contract', () => {
+  it('a locked party refuses newcomers but lets members re-enter', async () => {
+    const jay = createLocalBackend('jay'), ana = createLocalBackend('ana'), bob = createLocalBackend('bob');
+    const s = await jay.createSession('Locked'); await ana.join(s.id);
+    await jay.updateSession(s.id, { partyLocked: true });
+    await expect(bob.join(s.id)).rejects.toThrow('locked');
+    await ana.join(s.id);   // the voyage gate calls join again; must not throw
+    await jay.updateSession(s.id, { partyLocked: false }); await bob.join(s.id);
+  });
+  it('only the Warden removes players, never themselves, and the removed can rejoin when unlocked', async () => {
+    const jay = createLocalBackend('jay'), ana = createLocalBackend('ana');
+    const s = await jay.createSession('Remove'); await ana.join(s.id);
+    await expect(ana.removePlayer(s.id, 'jay')).rejects.toThrow('Only the Warden');
+    await expect(jay.removePlayer(s.id, 'jay')).rejects.toThrow('can’t be removed');
+    await jay.removePlayer(s.id, 'ana');
+    let att: Attendance[] = []; jay.watchAttendance(s.id, a => att = a);
+    expect(att.map(a => a.userId)).toEqual(['jay']);
+    await ana.join(s.id); jay.watchAttendance(s.id, a => att = a);
+    expect(att.map(a => a.userId).sort()).toEqual(['ana', 'jay']);
+  });
+  it('reads sessions saved before lock/speaker existed as unlocked with no speaker', async () => {
+    localStorage.setItem('lumara.demo.v1', JSON.stringify({ sessions: [{ id: 'old', sprintName: 'Old', stage: 'hall', status: 'active', wardenId: 'jay', currentFragmentId: null, timerEndsAt: null, createdAt: 1 }], attendance: [], fragments: [], votes: [], vows: [], players: [] }));
+    let s: Session | null = null; createLocalBackend('jay').watchActiveSession(x => s = x);
+    expect(s).toMatchObject({ partyLocked: false, speaker: null });
+  });
+  it('once the voyage starts: newcomers refused, members reconnect, companions lock, removed players stay out; the lobby reopens', async () => {
+    const jay = createLocalBackend('jay'), ana = createLocalBackend('ana'), bob = createLocalBackend('bob');
+    const s = await jay.createSession('Started'); await ana.join(s.id);
+    await ana.appendMyPull({ at: 1, characterId: 'wren', grade: 'A', source: 'banner', duplicate: false });
+    await ana.setMyCharacter(s.id, 'wren');
+    setStage(s.id, 'fragment_drop');
+    await expect(bob.join(s.id)).rejects.toThrow('already started');
+    await ana.join(s.id);   // reconnect through the voyage gate
+    await expect(ana.setMyCharacter(s.id, 'wren')).rejects.toThrow('locked');
+    await jay.removePlayer(s.id, 'ana');
+    await expect(ana.join(s.id)).rejects.toThrow('already started');
+    setStage(s.id, 'register');   // Return to lobby
+    await ana.join(s.id); await bob.join(s.id); await ana.setMyCharacter(s.id, 'wren');
+  });
   it('persists admin currency gifts and rejects invalid amounts and ordinary players', async () => {
     const jay = createLocalBackend('jay'), ana = createLocalBackend('ana'); await ana.setMyNickname('Moon');
     await jay.grantCurrency('ana','starlight',500); await jay.grantCurrency('ana','stardust',60);

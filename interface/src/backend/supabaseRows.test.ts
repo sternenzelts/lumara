@@ -2,9 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { toPlayer, toSession, toVow } from './supabaseRows';
 
 describe('row mappers', () => {
+  it('maps party_locked and speaker on sessions', () => {
+    const speaker = { currentId: 'u1', spoken: [], skipped: ['u2'] };
+    expect(toSession({ id: 's', sprint_name: 'S', stage: 'hall', status: 'active', warden_id: 'w', created_at: 1, party_locked: true, speaker })).toMatchObject({ partyLocked: true, speaker });
+  });
   it('maps a session row to a Session', () => {
     expect(toSession({ id: 's1', sprint_name: 'Sprint 9', stage: 'vote', status: 'active', warden_id: 'u1', current_fragment_id: null, timer_ends_at: null, created_at: 5 }))
-      .toEqual({ id: 's1', sprintName: 'Sprint 9', stage: 'vote', status: 'active', wardenId: 'u1', currentFragmentId: null, timerEndsAt: null, createdAt: 5 });
+      .toEqual({ id: 's1', sprintName: 'Sprint 9', stage: 'vote', status: 'active', wardenId: 'u1', currentFragmentId: null, timerEndsAt: null, createdAt: 5, partyLocked: false, speaker: null });
   });
   it('builds a Player with pulls and grants, and old-shape defaults', () => {
     const p = toPlayer({ user_id: 'u1', nickname: null, intro_seen: false, display_character_id: null, owned: { wren: 1 } },

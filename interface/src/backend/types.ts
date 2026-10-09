@@ -2,9 +2,12 @@ export type UserId = string;
 export type Unsubscribe = () => void;
 export interface Me { id: UserId; name: string; isAdmin: boolean }
 export type Stage = 'register' | 'opening_pull' | 'vow_review' | 'fragment_drop' | 'vote' | 'hall' | 'vow_altar' | 'rewards' | 'completed';
+/** Resonance Hall speaker turns (feature 3). */
+export interface SpeakerState { currentId: UserId | null; spoken: UserId[]; skipped: UserId[] }
 export interface Session {
   id: string; sprintName: string; stage: Stage; status: 'active' | 'paused' | 'ended';
   wardenId: UserId; currentFragmentId: string | null; timerEndsAt: number | null; createdAt: number;
+  /** Warden: while on, nobody new can join (members can still re-enter). */ partyLocked: boolean; speaker: SpeakerState | null;
 }
 export type FragmentCategory = 'radiance' | 'fracture' | 'spark' | 'wildcard';
 export interface Fragment { id: string; sessionId: string; text: string; category: FragmentCategory; createdAt: number }
@@ -38,6 +41,8 @@ export interface Backend {
   /** Warden/admin: delete the voyage and everything in it (thoughts, votes, vows, attendance, its free wishes), as if it never happened. */
   cancelSession(id: string): Promise<void>;
   join(sessionId: string): Promise<void>;
+  /** Warden/admin: take a player out of the party (attendance only; anonymous thoughts and votes stay). */
+  removePlayer(sessionId: string, userId: UserId): Promise<void>;
   setMyCharacter(sessionId: string, characterId: string): Promise<void>;
   watchAttendance(sessionId: string, cb: (a: Attendance[]) => void): Unsubscribe;
   addFragment(sessionId: string, text: string, category: FragmentCategory): Promise<Fragment>;

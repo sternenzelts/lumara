@@ -30,6 +30,10 @@ describe('supabase backend reads', () => {
   });
 });
 describe('supabase writes and sign-in', () => {
+  it('removePlayer calls remove_player with the right names', async () => {
+    const f = fakeClient({}); await createSupabaseBackend(f.client, me).removePlayer('s1', 'u2');
+    expect(f.client.rpc).toHaveBeenCalledWith('remove_player', { p_session: 's1', p_user: 'u2' });
+  });
   it('castVote calls the RPC with the right names and surfaces its error text', async () => {
     const f = fakeClient({}); f.client.rpc = vi.fn(async () => ({ data: null, error: { message: 'You have used all three votes. Remove one to vote elsewhere.' } }));
     await expect(createSupabaseBackend(f.client, me).castVote('s1', 'f1')).rejects.toThrow('three votes');
