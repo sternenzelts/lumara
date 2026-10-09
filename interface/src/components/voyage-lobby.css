@@ -36,3 +36,9 @@
   .lobby-side{order:3;position:sticky;bottom:0;padding:12px 0 16px;background:#0a1a2cf2}
   .lobby-party .character-art,.lobby-party .silhouette{height:150px}
 }
+.lobby-lock{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:8px 14px;border:1px solid #d8bf8299;background:#10233acc;color:#e9cf8f;font:inherit;font-size:13px;cursor:pointer}
+.lobby-lock[aria-pressed="true"]{background:#d8bf8226;color:#fff4dc}
+.lobby-lock:focus-visible{outline:2px solid #fff4dc;outline-offset:4px}
+.lobby-party li{position:relative}
+.lobby-remove{position:absolute;top:4px;right:4px;width:26px;height:26px;display:grid;place-items:center;border:1px solid #d8bf8266;border-radius:50%;background:#0a1a2ccc;color:#fff4dc;cursor:pointer;opacity:.75}
+.lobby-remove:hover,.lobby-remove:focus-visible{opacity:1;outline:2px solid #fff4dc;outline-offset:2px}

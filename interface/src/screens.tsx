@@ -19,6 +19,7 @@ import { previousStep, stageProgress, voyageSteps, VOYAGE_BRIEFING } from './log
 import WishLineups from './components/WishLineups';
 import VoteBoard from './components/VoteBoard';
 import ThoughtPicker from './components/ThoughtPicker';
+import PartyControls from './components/PartyControls';
 import TutorialWish from './components/TutorialWish';
 
 const STAGES: { id: Stage; label: string; plain: string }[] = [
@@ -135,17 +136,21 @@ export function RetroScreen() {
   const togglePause = () => run(() => backend.updateSession(session.id, { status: session.status === 'paused' ? 'active' : 'paused', timerEndsAt: null }));
   const copyCode = () => run(async () => { if (!navigator.clipboard) { tell(`Retro code: ${session.id.slice(0, 8)}`); return; } await navigator.clipboard.writeText(session.id.slice(0, 8)); }, 'Retro code copied.');
   const lobby = !joined || session.stage === 'register';
+  const members = attendance.map(a => ({ userId: a.userId, name: profiles[a.userId]?.name || a.userId, characterId: a.characterId || (a.userId === me.id ? player?.displayCharacterId || null : null), warden: a.userId === session.wardenId, you: a.userId === me.id }));
+  const toggleLock = () => run(() => backend.updateSession(session.id, { partyLocked: !session.partyLocked }), session.partyLocked ? 'The party is open again.' : 'Party locked. Nobody new can join.');
+  const removePlayer = (userId: string) => run(() => backend.removePlayer(session.id, userId), `${profiles[userId]?.name || 'They'} left the party. They can rejoin unless it’s locked.`);
   const backdrop = <div className={`voyage-backdrop ${lobby ? 'lobby-dim' : ''}`}><Scene backend={backend} me={me} player={player} vows={vows} fragments={fragments} movement={settings.movement} cooldownMode={settings.skillCooldown} frozen={lobby || journalOpen} stage={lobby ? undefined : session.stage} sessionId={session.id} activeCharacterId={ownAttendance?.characterId || player?.displayCharacterId} editThought={editThought} onEditDone={() => setEditThought(null)} onFragmentSaved={(message, error) => tell(message, error)} onOpenVows={() => { setWindowOpen(false); setJournalOpen(true); }} onOpenVote={session.stage === 'vote' ? () => setWindowOpen(true) : undefined} /></div>;
   if (lobby) return <>{backdrop}<VoyageLobby sprintName={session.sprintName} code={session.id.slice(0, 8)} steps={voyageSteps(settings, hasPrev)}
-    members={attendance.map(a => ({ userId: a.userId, name: profiles[a.userId]?.name || a.userId, characterId: a.characterId || (a.userId === me.id ? player?.displayCharacterId || null : null), warden: a.userId === session.wardenId, you: a.userId === me.id }))}
-    joined={joined} warden={warden} busy={busy} paused={session.status === 'paused'}
+    members={members}
+    joined={joined} warden={warden} busy={busy} paused={session.status === 'paused'} locked={session.partyLocked} onToggleLock={warden ? toggleLock : undefined} onRemove={warden ? removePlayer : undefined}
     onJoin={() => run(() => backend.join(session.id))} onEnter={advance} onCopyCode={copyCode} /></>;
   const brief = VOYAGE_BRIEFING[(session.stage === 'completed' ? 'rewards' : session.stage) as keyof typeof VOYAGE_BRIEFING];
   return <>{backdrop}
     <VoyageHud progress={stageProgress(session.stage, settings, hasPrev)} paused={session.status === 'paused'} warden={warden} busy={busy} canBack={prev !== null}
       nextLabel={session.stage === 'rewards' ? 'Finish voyage' : 'Next stage'} actionLabel={session.stage === 'fragment_drop' ? 'My thoughts' : session.stage === 'vote' && settings.movement ? null : brief.title} onBack={back} onNext={advance} onOpen={() => setWindowOpen(true)} onPauseToggle={togglePause}
       onLobby={() => run(() => backend.updateSession(session.id, { stage: 'register', timerEndsAt: null, currentFragmentId: null }), 'The party is back in the lobby.')}
-      onCancel={() => run(async () => { await backend.cancelSession(session.id); navigate('sanctuary'); }, 'The voyage was cancelled. Start a fresh one when you are ready.')} />
+      onCancel={() => run(async () => { await backend.cancelSession(session.id); navigate('sanctuary'); }, 'The voyage was cancelled. Start a fresh one when you are ready.')}
+      partyControls={warden ? <PartyControls members={members} busy={busy} onRemove={removePlayer} /> : undefined} />
     <VoyageWindow title={brief.title} open={windowOpen} onClose={() => setWindowOpen(false)} variant={session.stage === 'vow_review' ? 'vow-review' : undefined}>
       {remaining !== null && <span className="timer" aria-label={`${remaining} seconds remaining`}><Clock3 size={15} />{Math.floor(remaining / 60)}:{String(remaining % 60).padStart(2, '0')}</span>}
       {session.status === 'paused' && !warden ? <Empty title="A moment to catch our breath."><p>Your Warden has paused the voyage. This screen will follow when the party is ready.</p></Empty> : <>

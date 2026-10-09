@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { ArrowLeft, ArrowRight, DoorOpen, Pause, Play, ScrollText, Undo2 } from 'lucide-react';
 
 /** Sanctuary HUD during a voyage: where the party is, the stage action, and the Warden's pace controls. */
-export default function VoyageHud({ progress, paused, warden, busy, canBack, nextLabel, actionLabel, onBack, onNext, onOpen, onPauseToggle, onLobby, onCancel }: {
+export default function VoyageHud({ progress, paused, warden, busy, canBack, nextLabel, actionLabel, onBack, onNext, onOpen, onPauseToggle, onLobby, onCancel, partyControls }: {
   progress: { title: string; index: number; total: number } | null; paused: boolean;
   warden: boolean; busy: boolean; canBack: boolean; nextLabel: string; /** null hides the button (the stage opens from the map instead). */ actionLabel: string | null;
   onBack: () => void; onNext: () => void; onOpen: () => void; onPauseToggle?: () => void; onLobby?: () => void; /** Warden/admin: wipe this voyage as if it never happened. */ onCancel?: () => void;
+  /** Warden: the in-voyage Party panel. */ partyControls?: ReactNode;
 }) {
   const [confirming, setConfirming] = useState(false);
   return <div className="voyage-hud">
@@ -13,6 +14,7 @@ export default function VoyageHud({ progress, paused, warden, busy, canBack, nex
     {!progress && paused && <p className="voyage-stage-label"><em>Paused</em></p>}
     {actionLabel && <button className="voyage-action" onClick={onOpen}><ScrollText size={18} />{actionLabel}</button>}
     {warden ? <div className="voyage-warden" role="group" aria-label="Warden controls">
+      {partyControls}
       {onCancel && <button disabled={busy} onClick={() => setConfirming(true)} aria-label="Cancel voyage" className="voyage-cancel"><Undo2 size={16} /><span className="voyage-btn-text">Cancel voyage</span></button>}
       {onLobby && <button disabled={busy} onClick={onLobby} aria-label="Return to lobby"><DoorOpen size={16} /><span className="voyage-btn-text">Return to lobby</span></button>}
       <button disabled={busy || !canBack} onClick={onBack}><ArrowLeft size={16} />Back</button>

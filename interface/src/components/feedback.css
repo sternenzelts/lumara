@@ -8,3 +8,10 @@
 .thought-picker button{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid #d8bf8299;background:transparent;color:#e9cf8f;font:inherit;font-size:12.5px;cursor:pointer}
 .thought-picker button:hover{background:#d8bf821f}
 .thought-picker button:focus-visible{outline:2px solid #fff4dc;outline-offset:2px}
+.party-controls{position:relative;display:inline-flex}
+.party-controls-panel{position:absolute;bottom:calc(100% + 8px);right:0;z-index:30;width:260px;display:grid;gap:8px;padding:12px;border:1px solid #d8bf8299;background:#0a1a2cf2;color:#fff4dc}
+.party-controls-panel p{margin:0;font-size:12.5px;color:#b9c6d2}
+.party-controls-panel ul{list-style:none;margin:0;padding:0;display:grid;gap:4px;max-height:220px;overflow:auto}
+.party-controls-panel li{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:14px}
+.party-controls-panel li small{color:#d8bf82}
+.party-controls-panel li button{padding:3px 9px;border:1px solid #d8bf8266;background:transparent;color:#e9cf8f;font:inherit;font-size:12px;cursor:pointer}

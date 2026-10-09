@@ -15,6 +15,12 @@ async function render(p: Partial<Parameters<typeof VoyageHud>[0]> = {}) {
 const button = (el: HTMLElement, name: string) => [...el.querySelectorAll('button')].find(b => b.textContent?.includes(name));
 
 describe('VoyageHud', () => {
+  it('puts the party controls in the Warden group', async () => {
+    const { el } = await render({ partyControls: <button>Party</button> });
+    expect(el.querySelector('.voyage-warden')?.textContent).toContain('Party');
+    const teammate = await render({ warden: false, partyControls: <button>Party</button> });
+    expect(teammate.el.textContent).not.toContain('Party');
+  });
   it('shows where the party is', async () => {
     const { el } = await render();
     expect(el.querySelector('.voyage-stage-label')?.textContent).toContain('Vow review · 2 of 7');
