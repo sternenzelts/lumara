@@ -2,7 +2,7 @@ import { bannerReturnTarget, characterFromHash } from './logic/bannerNavigation'
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import gsap from 'gsap';
 import { ArrowLeft, ArrowRight, BookOpen, Check, CheckCircle2, ChevronRight, Clock3, Compass, Copy, Flame, Gem, Pause, Pencil, Play, Plus, ShieldCheck, Sparkles, Trash2, UsersRound } from 'lucide-react';
-import type { FragmentCategory, Stage, Vow, VowStatus } from './backend/types';
+import type { CheckIn, FragmentCategory, Stage, Vow, VowStatus } from './backend/types';
 import { CHARACTERS, GAME_NAME, characterById, type CharacterDef } from './data/characters';
 import { SANCTUARY_BACKGROUND } from './data/art';
 import { CATEGORIES } from './data/categories';
@@ -20,6 +20,7 @@ import WishLineups from './components/WishLineups';
 import VoteBoard from './components/VoteBoard';
 import ThoughtPicker from './components/ThoughtPicker';
 import PartyControls from './components/PartyControls';
+import CheckInPanel from './components/CheckInPanel';
 import TutorialWish from './components/TutorialWish';
 
 const STAGES: { id: Stage; label: string; plain: string }[] = [
@@ -116,6 +117,8 @@ export function RetroScreen() {
   const [now, setNow] = useState(Date.now()); const hallRef = useRef<HTMLDivElement>(null); const reduced = useReducedMotion();
   const [windowOpen, setWindowOpen] = useState(!['fragment_drop', 'vote'].includes(session?.stage ?? ''));
   const [journalOpen, setJournalOpen] = useState(false);
+  const [myCheck, setMyCheck] = useState<CheckIn | null>(null);
+  useEffect(() => { let live = true; if (!session || session.stage !== 'register') return; backend.myCheckIn(session.id).then(c => { if (live) setMyCheck(c); }).catch(() => {}); return () => { live = false; }; }, [backend, session?.id, session?.stage]);
   useEffect(() => { setWindowOpen(!['fragment_drop', 'vote'].includes(session?.stage ?? '')); setJournalOpen(false); setEditThought(null); }, [session?.id, session?.stage]);
   useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer); }, []);
   useEffect(() => { let live = true; if (!session) { setOwnIds([]); setOwnVotes([]); return; } Promise.all([backend.myFragmentIds(session.id), backend.myVotes(session.id)]).then(([ids, myVotes]) => { if (live) { setOwnIds(ids); setOwnVotes(myVotes); } }).catch(e => tell(String(e), true)); return () => { live = false; }; }, [backend, session?.id, fragments, votes]);
@@ -136,13 +139,14 @@ export function RetroScreen() {
   const togglePause = () => run(() => backend.updateSession(session.id, { status: session.status === 'paused' ? 'active' : 'paused', timerEndsAt: null }));
   const copyCode = () => run(async () => { if (!navigator.clipboard) { tell(`Retro code: ${session.id.slice(0, 8)}`); return; } await navigator.clipboard.writeText(session.id.slice(0, 8)); }, 'Retro code copied.');
   const lobby = !joined || session.stage === 'register';
-  const members = attendance.map(a => ({ userId: a.userId, name: profiles[a.userId]?.name || a.userId, characterId: a.characterId || (a.userId === me.id ? player?.displayCharacterId || null : null), warden: a.userId === session.wardenId, you: a.userId === me.id }));
+  const members = attendance.map(a => ({ userId: a.userId, name: profiles[a.userId]?.name || a.userId, characterId: a.characterId || (a.userId === me.id ? player?.displayCharacterId || null : null), warden: a.userId === session.wardenId, you: a.userId === me.id, ready: a.checkinDone }));
   const toggleLock = () => run(() => backend.updateSession(session.id, { partyLocked: !session.partyLocked }), session.partyLocked ? 'The party is open again.' : 'Party locked. Nobody new can join.');
   const removePlayer = (userId: string) => run(() => backend.removePlayer(session.id, userId), `${profiles[userId]?.name || 'They'} left the party. They can rejoin unless it’s locked.`);
   const backdrop = <div className={`voyage-backdrop ${lobby ? 'lobby-dim' : ''}`}><Scene backend={backend} me={me} player={player} vows={vows} fragments={fragments} movement={settings.movement} cooldownMode={settings.skillCooldown} frozen={lobby || journalOpen} stage={lobby ? undefined : session.stage} sessionId={session.id} activeCharacterId={ownAttendance?.characterId || player?.displayCharacterId} editThought={editThought} onEditDone={() => setEditThought(null)} onFragmentSaved={(message, error) => tell(message, error)} onOpenVows={() => { setWindowOpen(false); setJournalOpen(true); }} onOpenVote={session.stage === 'vote' ? () => setWindowOpen(true) : undefined} /></div>;
   if (lobby) return <>{backdrop}<VoyageLobby sprintName={session.sprintName} code={session.id.slice(0, 8)} steps={voyageSteps(settings, hasPrev)}
     members={members}
-    joined={joined} warden={warden} busy={busy} paused={session.status === 'paused'} locked={session.partyLocked} onToggleLock={warden ? toggleLock : undefined} onRemove={warden ? removePlayer : undefined}
+    joined={joined} warden={warden} busy={busy} paused={session.status === 'paused'} locked={session.partyLocked} started={session.stage !== 'register'} onToggleLock={warden ? toggleLock : undefined} onRemove={warden ? removePlayer : undefined}
+    checkIn={joined ? <CheckInPanel owned={ownedCharacters} companionId={ownAttendance?.characterId ?? null} saved={myCheck} busy={busy} onSave={(c, sat, growth) => run(async () => { if (c !== ownAttendance?.characterId) await backend.setMyCharacter(session.id, c); await backend.saveMyCheckIn(session.id, sat, growth); setMyCheck(await backend.myCheckIn(session.id)); }, 'Checked in. You’re ready to sail.')} /> : undefined}
     onJoin={() => run(() => backend.join(session.id))} onEnter={advance} onCopyCode={copyCode} /></>;
   const brief = VOYAGE_BRIEFING[(session.stage === 'completed' ? 'rewards' : session.stage) as keyof typeof VOYAGE_BRIEFING];
   return <>{backdrop}

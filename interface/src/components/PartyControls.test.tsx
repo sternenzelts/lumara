@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import PartyControls from './PartyControls';
 
 afterEach(() => { document.body.innerHTML = ''; vi.unstubAllGlobals(); });
-const members = [{ userId: 'jay', name: 'Jay', characterId: null, warden: true, you: true }, { userId: 'ana', name: 'Ana', characterId: 'wren', warden: false, you: false }];
+const members = [{ userId: 'jay', name: 'Jay', characterId: null, warden: true, you: true, ready: true }, { userId: 'ana', name: 'Ana', characterId: 'wren', warden: false, you: false, ready: true }];
 describe('PartyControls', () => {
   it('removes a teammate (never the Warden) and says joining is closed', async () => {
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);

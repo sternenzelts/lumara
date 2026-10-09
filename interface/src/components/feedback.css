@@ -15,3 +15,24 @@
 .party-controls-panel li{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:14px}
 .party-controls-panel li small{color:#d8bf82}
 .party-controls-panel li button{padding:3px 9px;border:1px solid #d8bf8266;background:transparent;color:#e9cf8f;font:inherit;font-size:12px;cursor:pointer}
+.checkin-panel,.peer-panel{display:grid;gap:12px;color:#fff4dc}
+.checkin-panel header h3,.peer-panel header h3{margin:0;font-family:'Marcellus',serif;font-weight:400;font-size:20px}
+.checkin-panel header p,.peer-panel header p{margin:2px 0 0;font-size:12.5px;color:#b9c6d2}
+.checkin-panel fieldset{margin:0;padding:0;border:0;display:grid;gap:6px}
+.checkin-panel legend{font-family:'Marcellus',serif;font-size:16px;color:#e9cf8f}
+.checkin-panel fieldset p{margin:0;font-size:13px;color:#d9e2ea}
+.checkin-scale{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.checkin-scale button{display:grid;justify-items:center;gap:2px;padding:8px 4px;border:1px solid #d8bf8244;background:#10233acc;color:#d9e2ea;font:inherit;cursor:pointer;transition:transform .15s var(--ease,ease),border-color .15s}
+.checkin-scale button strong{font-family:'Marcellus',serif;font-size:20px;font-weight:400;color:#fff4dc}
+.checkin-scale button span{font-size:11px;line-height:1.2;text-align:center}
+.checkin-scale button:hover{border-color:#d8bf82aa}
+.checkin-scale button.on{border-color:#f3dca0;background:linear-gradient(180deg,#e9cf8f33,#c9a45a26);transform:translateY(-2px);box-shadow:0 0 14px #e9cf8f44}
+.checkin-scale button:focus-visible,.feedback-save:focus-visible{outline:2px solid #fff4dc;outline-offset:2px}
+.feedback-save{justify-self:start;min-height:42px;padding:0 20px;border:1px solid #f3dca0;background:linear-gradient(180deg,#e9cf8f,#c9a45a);color:#1b2a3a;font:inherit;font-weight:700;cursor:pointer}
+.feedback-save:disabled{opacity:.5;cursor:not-allowed}
+@media (max-width:560px){.checkin-scale button span{font-size:10px}}
+.checkin-companions{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+.checkin-companions button{flex:0 0 auto;display:grid;justify-items:center;gap:2px;width:76px;padding:6px 4px;border:1px solid #d8bf8244;background:#10233acc;color:#d9e2ea;font:inherit;font-size:12px;cursor:pointer}
+.checkin-companions button.on{border-color:#f3dca0;box-shadow:0 0 14px #e9cf8f44;color:#fff4dc}
+.checkin-companions .character-art,.checkin-companions .silhouette{height:64px;width:auto;object-fit:contain}
+.checkin-companions button:focus-visible{outline:2px solid #fff4dc;outline-offset:2px}

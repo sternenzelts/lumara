@@ -157,11 +157,12 @@ describe('opening gate', () => {
     expect(store.attendance.some((a: { userId: string; sessionId: string }) => a.userId === 'late' && a.sessionId === 's1')).toBe(false);
     expect(store.players.find((p: { userId: string }) => p.userId === 'late')).toMatchObject({ nickname: 'Owl', introSeen: true });
   });
-  it('sends a late joiner to the voyage lobby mid-voyage', async () => {
+  it('shows a late joiner the voyage lobby mid-voyage, with joining closed', async () => {
     const session = { id: 's1', sprintName: 'Sprint 9', stage: 'fragment_drop', status: 'active', wardenId: 'jay', currentFragmentId: null, timerEndsAt: null, createdAt: 1 };
     seedPlayer('ana', 'Moon', true, { players: [{ userId: 'ana', nickname: 'Moon', introSeen: true, owned: { wren: 1 }, pulls: [], displayCharacterId: 'wren' }], sessions: [session] });
     await start('ana', '#retro');
     expect(container.querySelector('.voyage-lobby')).toBeTruthy();
-    expect([...container.querySelectorAll('button')].some(b => b.textContent?.includes('Join the party'))).toBe(true);
+    const join = [...container.querySelectorAll('button')].find(b => b.textContent?.includes('Voyage under way'));
+    expect(join?.disabled).toBe(true);
   });
 });

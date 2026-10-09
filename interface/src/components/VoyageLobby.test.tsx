@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Stage } from '../backend/types';
 import VoyageLobby, { type LobbyMember } from './VoyageLobby';
 
-const members: LobbyMember[] = [{ userId: 'jay', name: 'Jay', characterId: 'seren', warden: true, you: true }];
+const members: LobbyMember[] = [{ userId: 'jay', name: 'Jay', characterId: 'seren', warden: true, you: true, ready: true }];
 afterEach(() => { document.body.innerHTML = ''; vi.unstubAllGlobals(); });
 
 async function render(p: Partial<Parameters<typeof VoyageLobby>[0]> = {}) {
@@ -47,10 +47,32 @@ describe('VoyageLobby', () => {
   });
   it('lets the Warden remove a teammate but not themselves', async () => {
     const onRemove = vi.fn();
-    const { el } = await render({ onRemove, members: [...members, { userId: 'ana', name: 'Ana', characterId: 'wren', warden: false, you: false }] });
+    const { el } = await render({ onRemove, members: [...members, { userId: 'ana', name: 'Ana', characterId: 'wren', warden: false, you: false, ready: true }] });
     expect(el.querySelector('[aria-label="Remove Jay from the party"]')).toBeNull();
     await act(async () => el.querySelector<HTMLButtonElement>('[aria-label="Remove Ana from the party"]')!.click());
     expect(onRemove).toHaveBeenCalledWith('ana');
+  });
+  it('keeps Enter the Sanctuary closed until everyone has checked in', async () => {
+    const { el } = await render({ members: [...members, { userId: 'ana', name: 'Ana', characterId: 'wren', warden: false, you: false, ready: false }] });
+    expect(button(el, 'Enter the Sanctuary')!.disabled).toBe(true);
+    expect(el.textContent).toContain('Waiting for 1 to check in');
+  });
+  it('shows the Warden every ✓ and a player only their own', async () => {
+    const party = [{ userId: 'jay', name: 'Jay', characterId: null, warden: true, you: false, ready: true }, { userId: 'ana', name: 'Ana', characterId: 'wren', warden: false, you: true, ready: true }];
+    const asWarden = await render({ members: party.map(m => ({ ...m, you: m.userId === 'jay' })) });
+    expect(asWarden.el.querySelectorAll('.lobby-ready')).toHaveLength(2);
+    const asPlayer = await render({ members: party, warden: false });
+    expect([...asPlayer.el.querySelectorAll('.lobby-ready')].map(x => x.getAttribute('aria-label'))).toEqual(['Ana is checked in']);
+  });
+  it('tells a newcomer or a removed player that the voyage is under way', async () => {
+    const { el } = await render({ joined: false, warden: false, started: true });
+    const join = button(el, 'Voyage under way')!;
+    expect(join.disabled).toBe(true);
+  });
+  it('renders the check-in slot', async () => {
+    const { el } = await render({ checkIn: <p>check-in here</p> });
+    expect(el.textContent).toContain('check-in here');
+    expect(el.querySelector('.lobby-briefing')).toBeNull();   // the check-in takes the briefing's place
   });
   it('tells a joined teammate to wait for the Warden', async () => {
     const { el } = await render({ warden: false });

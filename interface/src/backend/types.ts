@@ -13,6 +13,8 @@ export type FragmentCategory = 'radiance' | 'fracture' | 'spark' | 'wildcard';
 export interface Fragment { id: string; sessionId: string; text: string; category: FragmentCategory; createdAt: number }
 export interface Vote { id: string; sessionId: string; fragmentId: string }
 export interface Attendance { userId: UserId; sessionId: string; joinedAt: number; votesCast: number; characterId: string | null; /** Checked in at the lobby (✓). */ checkinDone: boolean }
+export type PeerTrait = 'collab' | 'owner' | 'comm' | 'impact' | 'growth';
+export type PeerScores = Record<PeerTrait, number>;
 export interface CheckIn { sessionId: string; userId: UserId; sat: number; growth: number }
 /** Team check-in as % of 5 (null when nobody checked in); n of `of` party members checked in. */
 export interface CheckInSummary { sat: number | null; growth: number | null; n: number; of: number }

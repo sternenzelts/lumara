@@ -42,3 +42,15 @@
 .lobby-party li{position:relative}
 .lobby-remove{position:absolute;top:4px;right:4px;width:26px;height:26px;display:grid;place-items:center;border:1px solid #d8bf8266;border-radius:50%;background:#0a1a2ccc;color:#fff4dc;cursor:pointer;opacity:.75}
 .lobby-remove:hover,.lobby-remove:focus-visible{opacity:1;outline:2px solid #fff4dc;outline-offset:2px}
+.lobby-checkin{padding:16px 18px;border:1px solid #d8bf8255;background:#0a1a2cd9}
+.lobby-checkin .checkin-panel{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 24px}
+.lobby-checkin .checkin-panel>header,.lobby-checkin .checkin-panel>fieldset:first-of-type,.lobby-checkin .checkin-actions{grid-column:1/-1}
+/* While the party checks in, the party line steps back a little so the whole panel fits above it. */
+.voyage-lobby:has(.lobby-checkin) .lobby-party .character-art,.voyage-lobby:has(.lobby-checkin) .lobby-party .silhouette{height:clamp(96px,16vh,180px)}
+.voyage-lobby:has(.lobby-checkin) h1{margin-bottom:10px}
+.lobby-checkin .checkin-companions button{width:64px;padding:4px 2px}
+.lobby-checkin .checkin-companions .character-art,.lobby-checkin .checkin-companions .silhouette{height:46px}
+.lobby-checkin .checkin-scale button{padding:6px 2px}
+.lobby-checkin .checkin-scale button strong{font-size:17px}
+@media (max-width:760px),(orientation:portrait){.lobby-checkin{padding:14px}.lobby-checkin .checkin-panel{grid-template-columns:1fr}}
+.lobby-ready{position:absolute;top:4px;left:4px;width:24px;height:24px;display:grid;place-items:center;border-radius:50%;background:#e9cf8f;color:#1b2a3a;font-weight:700;font-size:14px;box-shadow:0 0 10px #e9cf8f88}
