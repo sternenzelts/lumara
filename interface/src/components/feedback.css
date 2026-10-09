@@ -1,0 +1,10 @@
+/* Vow Altar side panels: thoughts to turn into Vows, self check-in, peer feedback. Same navy-and-gold frame as the voyage window. */
+.thought-picker{margin-top:18px;border-top:1px solid #d8bf8255;padding-top:12px}
+.thought-picker h4{margin:0 0 8px;font-family:'Marcellus',serif;font-weight:400;font-size:17px;color:#fff4dc}
+.thought-picker ol{list-style:none;margin:0;padding:0;display:grid;gap:8px;max-height:260px;overflow:auto;scrollbar-width:thin}
+.thought-picker li{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:4px 10px;padding:8px 10px;border:1px solid #d8bf8233;background:#10233acc}
+.thought-picker li p{grid-column:1/-1;margin:0;font-size:14px;line-height:1.45;color:#e4ebf1}
+.thought-votes{font-size:12px;color:#b9c6d2}
+.thought-picker button{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid #d8bf8299;background:transparent;color:#e9cf8f;font:inherit;font-size:12.5px;cursor:pointer}
+.thought-picker button:hover{background:#d8bf821f}
+.thought-picker button:focus-visible{outline:2px solid #fff4dc;outline-offset:2px}
