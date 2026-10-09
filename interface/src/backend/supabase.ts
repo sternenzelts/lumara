@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Backend, CueTopic, Me, Player, Presence, Settings, UserId, Unsubscribe } from './types';
+import type { Backend, CheckInSummary, CueTopic, Me, Player, Presence, Settings, UserId, Unsubscribe } from './types';
 import { createSmoother } from './peerSmoothing';
-import { toAttendance, toFragment, toPlayer, toSession, toSettings, toVote, toVow } from './supabaseRows';
+import { toAttendance, toCheckIn, toFragment, toPlayer, toSession, toSettings, toVote, toVow } from './supabaseRows';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /** Online backend: reads re-fetch on Realtime changes (and on reconnect); writes go through server RPCs that enforce the rules. */
@@ -96,6 +96,9 @@ export function createSupabaseBackend(sb: SupabaseClient, me: Me): Backend {
       return ps.map(p => toPlayer(p, pulls.filter(x => x.user_id === p.user_id), grants.filter(x => x.user_id === p.user_id)));
     }, cb),
     watchSettings: (cb: (s: Settings) => void) => live(['settings'], async () => toSettings((await rows(sb.from('settings').select('*')))[0]), cb),
+    watchCheckIns: (sid, cb) => live(['checkins', 'attendance', 'sessions'], async () => (await rows(sb.from('checkins').select('*').eq('session_id', sid))).map(toCheckIn), cb),
+    async myCheckIn(sid) { const [r] = await rows(sb.from('checkins').select('*').eq('session_id', sid).eq('user_id', me.id)); return r ? toCheckIn(r) : null; },
+    async checkInSummary(sid) { return ((await call('checkin_summary', { p_session: sid })) ?? null) as CheckInSummary | null; },
     async myFragmentIds(sid) { return ((await call('my_fragment_ids', { p_session: sid })) ?? []) as string[]; },
     async myVotes(sid) { return ((await call('my_votes', { p_session: sid })) ?? []) as string[]; },
 
@@ -104,6 +107,7 @@ export function createSupabaseBackend(sb: SupabaseClient, me: Me): Backend {
     cancelSession: async id => { await call('cancel_session', { p_session: id }); },
     join: async sid => { await call('join_session', { p_session: sid }); },
     removePlayer: async (sid, userId) => { await call('remove_player', { p_session: sid, p_user: userId }); },
+    saveMyCheckIn: async (sid, sat, growth) => { await call('save_checkin', { p_session: sid, p_sat: sat, p_growth: growth }); },
     setMyCharacter: async (sid, c) => { await call('set_my_character', { p_session: sid, p_character: c }); },
     addFragment: async (sid, text, category) => toFragment(await call('add_fragment', { p_session: sid, p_text: text, p_category: category })),
     deleteMyFragment: async (_sid, fid) => { await call('delete_my_fragment', { p_fragment: fid }); },

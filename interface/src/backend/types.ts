@@ -12,7 +12,10 @@ export interface Session {
 export type FragmentCategory = 'radiance' | 'fracture' | 'spark' | 'wildcard';
 export interface Fragment { id: string; sessionId: string; text: string; category: FragmentCategory; createdAt: number }
 export interface Vote { id: string; sessionId: string; fragmentId: string }
-export interface Attendance { userId: UserId; sessionId: string; joinedAt: number; votesCast: number; characterId: string | null }
+export interface Attendance { userId: UserId; sessionId: string; joinedAt: number; votesCast: number; characterId: string | null; /** Checked in at the lobby (✓). */ checkinDone: boolean }
+export interface CheckIn { sessionId: string; userId: UserId; sat: number; growth: number }
+/** Team check-in as % of 5 (null when nobody checked in); n of `of` party members checked in. */
+export interface CheckInSummary { sat: number | null; growth: number | null; n: number; of: number }
 export type VowStatus = 'open' | 'fulfilled' | 'not_yet' | 'carried' | 'dropped';
 export interface Vow { id: string; sessionId: string; text: string; ownerId: UserId | null; status: VowStatus; createdAt: number }
 export type Grade = 'S++' | 'S+' | 'A';
@@ -45,6 +48,13 @@ export interface Backend {
   removePlayer(sessionId: string, userId: UserId): Promise<void>;
   setMyCharacter(sessionId: string, characterId: string): Promise<void>;
   watchAttendance(sessionId: string, cb: (a: Attendance[]) => void): Unsubscribe;
+  /** Self Check-In (feature 1): 1–5 each, in the lobby only, after picking a companion; editable until the voyage starts. */
+  saveMyCheckIn(sessionId: string, sat: number, growth: number): Promise<void>;
+  myCheckIn(sessionId: string): Promise<CheckIn | null>;
+  /** Team averages; null before Homecoming (stage rewards/completed). */
+  checkInSummary(sessionId: string): Promise<CheckInSummary | null>;
+  /** Warden/admin, from Homecoming: every player's answers. Everyone else (and earlier) gets []. */
+  watchCheckIns(sessionId: string, cb: (rows: CheckIn[]) => void): Unsubscribe;
   addFragment(sessionId: string, text: string, category: FragmentCategory): Promise<Fragment>;
   deleteMyFragment(sessionId: string, fragmentId: string): Promise<void>;
   myFragmentIds(sessionId: string): Promise<string[]>;

@@ -1,11 +1,20 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createLocalBackend, DEFAULT_SETTINGS } from './local';
-import type { Attendance, Fragment, Player, Session, Stage, Vote } from './types';
+import type { Attendance, CheckIn, Fragment, Player, Session, Stage, Vote } from './types';
 
 /** Test shortcut: move a voyage's stage directly in the demo store (skips the Warden and check-in rules). */
 const setStage = (sid: string, stage: Stage) => {
   const s = JSON.parse(localStorage.getItem('lumara.demo.v1')!); s.sessions.find((x: Session) => x.id === sid).stage = stage;
+  localStorage.setItem('lumara.demo.v1', JSON.stringify(s));
+};
+/** Test shortcut: everyone in the party has picked a companion and checked in (the lobby's start rule). */
+const checkInEveryone = (sid: string) => {
+  const s = JSON.parse(localStorage.getItem('lumara.demo.v1')!); s.checkins ??= [];
+  for (const a of s.attendance.filter((x: Attendance) => x.sessionId === sid)) {
+    a.characterId ??= 'wren'; a.checkinDone = true;
+    if (!s.checkins.some((c: CheckIn) => c.sessionId === sid && c.userId === a.userId)) s.checkins.push({ sessionId: sid, userId: a.userId, sat: 4, growth: 4 });
+  }
   localStorage.setItem('lumara.demo.v1', JSON.stringify(s));
 };
 
@@ -14,6 +23,41 @@ beforeEach(() => {
   vi.stubGlobal('BroadcastChannel', class { postMessage() {} addEventListener() {} });
 });
 describe('local demo contract', () => {
+  it('lobby check-in: companion first, start waits for everyone, locks at the start, answers hidden until Homecoming', async () => {
+    const jay = createLocalBackend('jay'), ana = createLocalBackend('ana'), bob = createLocalBackend('bob');
+    const s = await jay.createSession('Check'); await ana.join(s.id); await bob.join(s.id);
+    for (const b of [jay, ana, bob]) await b.appendMyPull({ at: 1, characterId: 'wren', grade: 'A', source: 'banner', duplicate: false });
+    await expect(ana.saveMyCheckIn(s.id, 4, 5)).rejects.toThrow('companion');
+    for (const b of [jay, ana, bob]) await b.setMyCharacter(s.id, 'wren');
+    for (const bad of [[0, 3], [3, 6], [2.5, 3]]) await expect(ana.saveMyCheckIn(s.id, bad[0], bad[1])).rejects.toThrow('1 to 5');
+    await ana.saveMyCheckIn(s.id, 4, 5); await bob.saveMyCheckIn(s.id, 2, 3); await bob.saveMyCheckIn(s.id, 3, 3);
+    expect(await bob.myCheckIn(s.id)).toMatchObject({ sat: 3, growth: 3 });
+    let att: Attendance[] = []; ana.watchAttendance(s.id, a => att = a);
+    expect(att.find(a => a.userId === 'ana')?.checkinDone).toBe(true); expect(att.find(a => a.userId === 'jay')?.checkinDone).toBe(false);
+    await expect(jay.updateSession(s.id, { stage: 'fragment_drop' })).rejects.toThrow('check in');
+    await jay.updateSession(s.id, { partyLocked: true });   // other lobby changes still work
+    let seen: unknown[] = []; jay.watchCheckIns(s.id, r => seen = r); expect(seen).toEqual([]);   // no answers in the lobby
+    await jay.saveMyCheckIn(s.id, 5, 5); await jay.updateSession(s.id, { stage: 'fragment_drop' });
+    await expect(bob.saveMyCheckIn(s.id, 5, 5)).rejects.toThrow('moved on');
+    jay.watchCheckIns(s.id, r => seen = r); expect(seen).toEqual([]);   // nor mid-voyage
+    expect(await ana.checkInSummary(s.id)).toBeNull();
+    await jay.updateSession(s.id, { stage: 'rewards' });
+    jay.watchCheckIns(s.id, r => seen = r); expect(seen).toHaveLength(3);
+    ana.watchCheckIns(s.id, r => seen = r); expect(seen).toEqual([]);
+    expect(await ana.checkInSummary(s.id)).toEqual({ sat: 80, growth: 87, n: 3, of: 3 });
+    await jay.removePlayer(s.id, 'bob');
+    expect(await ana.checkInSummary(s.id)).toEqual({ sat: 90, growth: 100, n: 2, of: 2 });
+    await jay.cancelSession(s.id);
+    expect(JSON.parse(localStorage.getItem('lumara.demo.v1')!).checkins).toEqual([]);
+  });
+  it('removing a player who never checked in unblocks the start', async () => {
+    const jay = createLocalBackend('jay'), ana = createLocalBackend('ana');
+    const s = await jay.createSession('Away'); await ana.join(s.id);
+    await jay.appendMyPull({ at: 1, characterId: 'wren', grade: 'A', source: 'banner', duplicate: false });
+    await jay.setMyCharacter(s.id, 'wren'); await jay.saveMyCheckIn(s.id, 3, 3);
+    await expect(jay.updateSession(s.id, { stage: 'fragment_drop' })).rejects.toThrow('check in');
+    await jay.removePlayer(s.id, 'ana'); await jay.updateSession(s.id, { stage: 'fragment_drop' });
+  });
   it('a locked party refuses newcomers but lets members re-enter', async () => {
     const jay = createLocalBackend('jay'), ana = createLocalBackend('ana'), bob = createLocalBackend('bob');
     const s = await jay.createSession('Locked'); await ana.join(s.id);
@@ -96,7 +140,7 @@ describe('local demo contract', () => {
     const jay = createLocalBackend('jay'); const ana = createLocalBackend('ana');
     const session = await jay.createSession('Sprint 12');
     let watched: Session | null = null; const stop = ana.watchActiveSession(s => { watched = s; });
-    await ana.join(session.id);
+    await ana.join(session.id); checkInEveryone(session.id);
     await jay.updateSession(session.id, { stage: 'fragment_drop' });
     expect((watched as Session | null)?.stage).toBe('fragment_drop');
     await expect(ana.updateSession(session.id, { stage: 'vote' })).rejects.toThrow('Warden');
@@ -105,7 +149,7 @@ describe('local demo contract', () => {
   });
   it('keeps author and voter identity out of public objects and owns deletes privately', async () => {
     const jay = createLocalBackend('jay'); const ana = createLocalBackend('ana'); const s = await jay.createSession('Privacy');
-    await ana.join(s.id); await jay.updateSession(s.id, { stage: 'fragment_drop' });
+    await ana.join(s.id); checkInEveryone(s.id); await jay.updateSession(s.id, { stage: 'fragment_drop' });
     const thought = await ana.addFragment(s.id, 'Protect focus time', 'spark');
     expect(Object.keys(thought).sort()).toEqual(['category', 'createdAt', 'id', 'sessionId', 'text']);
     expect(await jay.myFragmentIds(s.id)).toEqual([]); expect(await ana.myFragmentIds(s.id)).toEqual([thought.id]);
@@ -119,7 +163,7 @@ describe('local demo contract', () => {
   });
   it('supports three stacked votes and only removes the caller’s votes', async () => {
     const jay = createLocalBackend('jay'); const ana = createLocalBackend('ana'); const s = await jay.createSession('Votes');
-    await ana.join(s.id); await jay.updateSession(s.id, { stage: 'fragment_drop' }); const f = await jay.addFragment(s.id, 'More pairing', 'radiance');
+    await ana.join(s.id); checkInEveryone(s.id); await jay.updateSession(s.id, { stage: 'fragment_drop' }); const f = await jay.addFragment(s.id, 'More pairing', 'radiance');
     await jay.updateSession(s.id, { stage: 'vote' });
     await ana.castVote(s.id, f.id); await ana.castVote(s.id, f.id); await ana.castVote(s.id, f.id);
     await expect(ana.castVote(s.id, f.id)).rejects.toThrow('three votes');
@@ -131,7 +175,7 @@ describe('local demo contract', () => {
   it('persists a Vow across voyages and allows only admin settings changes', async () => {
     const jay = createLocalBackend('jay'); const ana = createLocalBackend('ana'); const s = await jay.createSession('First voyage');
     const vow = await jay.addVow(s.id, 'Write an onboarding checklist', null);
-    await jay.updateSession(s.id, { status: 'ended', stage: 'completed' });
+    checkInEveryone(s.id); await jay.updateSession(s.id, { status: 'ended', stage: 'completed' });
     await jay.createSession('Second voyage'); await jay.updateVow(vow.id, { status: 'fulfilled' });
     let fulfilled = false; const stop = jay.watchVows(vows => { fulfilled = vows.some(v => v.id === vow.id && v.status === 'fulfilled'); });
     expect(fulfilled).toBe(true); await expect(ana.saveSettings(DEFAULT_SETTINGS)).rejects.toThrow('Only Jay');
@@ -162,14 +206,14 @@ describe('local demo contract', () => {
   });
   it('does not lose an existing thought when a stale tab tries to remove it after writing closes', async () => {
     const jay = createLocalBackend('jay'); const s = await jay.createSession('Stage guard');
-    await jay.updateSession(s.id, { stage: 'fragment_drop' }); const f = await jay.addFragment(s.id, 'Keep it safe', 'radiance');
+    checkInEveryone(s.id); await jay.updateSession(s.id, { stage: 'fragment_drop' }); const f = await jay.addFragment(s.id, 'Keep it safe', 'radiance');
     await jay.updateSession(s.id, { stage: 'vote' }); await expect(jay.deleteMyFragment(s.id, f.id)).rejects.toThrow('moved on');
     let fragments: Fragment[] = []; const stop = jay.watchFragments(s.id, list => { fragments = list; });
     expect(fragments).toHaveLength(1); stop();
   });
   it('cancels a voyage as if it never happened, and only the Warden or an admin can', async () => {
     const jay = createLocalBackend('jay'), ana = createLocalBackend('ana');
-    const s = await jay.createSession('Oops'); await ana.join(s.id);
+    const s = await jay.createSession('Oops'); await ana.join(s.id); checkInEveryone(s.id);
     await jay.updateSession(s.id, { stage: 'fragment_drop' }); await ana.addFragment(s.id, 'A thought', 'spark');
     await jay.updateSession(s.id, { stage: 'vote' }); let frags: Fragment[] = []; ana.watchFragments(s.id, v => { frags = v; })(); const [f] = frags;
     await ana.castVote(s.id, f.id);

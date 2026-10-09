@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { toPlayer, toSession, toVow } from './supabaseRows';
+import { toAttendance, toPlayer, toSession, toVow } from './supabaseRows';
 
 describe('row mappers', () => {
+  it('maps checkin_done on attendance', () => {
+    expect(toAttendance({ user_id: 'u', session_id: 's', joined_at: 1, votes_cast: 0, checkin_done: true }).checkinDone).toBe(true);
+    expect(toAttendance({ user_id: 'u', session_id: 's', joined_at: 1, votes_cast: 0 }).checkinDone).toBe(false);
+  });
   it('maps party_locked and speaker on sessions', () => {
     const speaker = { currentId: 'u1', spoken: [], skipped: ['u2'] };
     expect(toSession({ id: 's', sprint_name: 'S', stage: 'hall', status: 'active', warden_id: 'w', created_at: 1, party_locked: true, speaker })).toMatchObject({ partyLocked: true, speaker });

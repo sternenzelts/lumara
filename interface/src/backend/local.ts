@@ -2,7 +2,8 @@ import { starlightBalance, stardustBalance } from '../logic';
 import { characterById } from '../data/characters';
 import { cleanNickname } from '../logic/names';
 import { welcomeRollsRemaining } from '../logic/welcome';
-import type { Attendance, Backend, CueTopic, Fragment, FragmentCategory, Me, Player, Presence, PullRecord, Session, Settings, Unsubscribe, UserId, Vote, Vow } from './types';
+import { summarizeCheckIns } from '../logic/feedback';
+import type { Attendance, Backend, CheckIn, CueTopic, Fragment, FragmentCategory, Me, Player, Presence, PullRecord, Session, Settings, Unsubscribe, UserId, Vote, Vow } from './types';
 
 export const DEFAULT_SETTINGS: Settings = {
   pullMode: 'fresh', rates: { sPlusPlus: .005, sPlus: .03 }, pity: { enabled: true, sPlus: 30, sPlusPlus: 100 },
@@ -10,7 +11,7 @@ export const DEFAULT_SETTINGS: Settings = {
   starlight: { start: 1200, attend: 300, perVote: 50, perVow: 200, pullCost: 200 },
   stardust: { dupeA: 10, dupeSPlus: 50, dupeSPlusPlus: 50, costA: 60, costSPlus: 300, costSPlusPlus: 1000 },
 };
-type Store = { sessions: Session[]; attendance: Attendance[]; fragments: Fragment[]; votes: Vote[]; vows: Vow[]; players: Player[]; settings: Settings };
+type Store = { sessions: Session[]; attendance: Attendance[]; fragments: Fragment[]; votes: Vote[]; vows: Vow[]; players: Player[]; settings: Settings; checkins: CheckIn[] };
 type PrivateStore = { fragments: Record<string, string[]>; votes: Record<string, string[]> };
 const KEY = 'lumara.demo.v1';
 const CHANGE = 'lumara-demo-change';
@@ -20,7 +21,7 @@ const title = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 export function createLocalBackend(playerId = new URLSearchParams(location.search).get('player') || 'jay'): Backend {
   const id = playerId.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 40) || 'jay';
   const identity: Me = { id, name: id === 'jay' ? 'Jay' : title(id), isAdmin: id === 'jay' };
-  let memory: Store = { sessions: [], attendance: [], fragments: [], votes: [], vows: [], players: [], settings: structuredClone(DEFAULT_SETTINGS) };
+  let memory: Store = { sessions: [], attendance: [], fragments: [], votes: [], vows: [], players: [], settings: structuredClone(DEFAULT_SETTINGS), checkins: [] };
   let privateMemory: PrivateStore = { fragments: {}, votes: {} };
   let channel: BroadcastChannel | null = null;
   try { channel = new BroadcastChannel('lumara-demo-v1'); } catch { /* Single-tab operation is still usable. */ }
@@ -38,6 +39,8 @@ export function createLocalBackend(playerId = new URLSearchParams(location.searc
     if (oldEconomy) copy.settings.starlight.pullCost = 200;
     copy.players = copy.players.map(p => ({ ...p, nickname: p.nickname ?? null, introSeen: p.introSeen ?? false }));
     copy.sessions = copy.sessions.map(x => ({ ...x, partyLocked: x.partyLocked ?? false, speaker: x.speaker ?? null }));
+    copy.checkins ??= [];
+    copy.attendance = copy.attendance.map(a => ({ ...a, checkinDone: a.checkinDone ?? false }));
     return copy;
   };
   const readPrivate = (): PrivateStore => {
@@ -75,6 +78,11 @@ export function createLocalBackend(playerId = new URLSearchParams(location.searc
     if (!session || session.status !== 'active' || !allowed.includes(session.stage)) throw new Error('The retro has moved on. Your screen will follow the current stage.');
     if (!s.attendance.some(x => x.sessionId === sid && x.userId === id)) throw new Error('Join this retro first.');
   };
+  const isWardenOf = (s: Store, sid: string) => identity.isAdmin || s.sessions.find(x => x.id === sid)?.wardenId === id;
+  const reportOpen = (s: Store, sid: string) => ['rewards', 'completed'].includes(s.sessions.find(x => x.id === sid)?.stage ?? '');
+  const partyOf = (s: Store, sid: string) => s.attendance.filter(a => a.sessionId === sid).map(a => a.userId);
+  /** Who has finished (never what they answered), recomputed for the whole party. */
+  const progress = (s: Store, sid: string) => { for (const a of s.attendance.filter(x => x.sessionId === sid)) a.checkinDone = s.checkins.some(c => c.sessionId === sid && c.userId === a.userId); };
   const player = (s: Store) => {
     let p = s.players.find(x => x.userId === id);
     if (!p) { p = { userId: id, displayCharacterId: null, owned: {}, pulls: [], nickname: null, introSeen: false }; s.players.push(p); }
@@ -109,7 +117,11 @@ export function createLocalBackend(playerId = new URLSearchParams(location.searc
     },
     watchActiveSession(cb) { return watch(s => s.sessions.filter(x => x.status !== 'ended').sort((a, b) => b.createdAt - a.createdAt)[0] || null, cb); },
     watchSessions(cb) { return watch(s => [...s.sessions].sort((a, b) => b.createdAt - a.createdAt), cb); },
-    async updateSession(sid, patch) { await mutate(s => { const session = requireWarden(s, sid); Object.assign(session, patch); }); },
+    async updateSession(sid, patch) { await mutate(s => {
+      const session = requireWarden(s, sid);
+      if (session.stage === 'register' && patch.stage && patch.stage !== 'register' && s.attendance.some(a => a.sessionId === sid && !a.checkinDone))
+        throw new Error('Everyone in the party must check in before the voyage starts.');
+      Object.assign(session, patch); }); },
     async cancelSession(sid) {
       await mutate(s => {
         requireWarden(s, sid);
@@ -122,6 +134,7 @@ export function createLocalBackend(playerId = new URLSearchParams(location.searc
         }
         s.sessions = s.sessions.filter(x => x.id !== sid); s.attendance = s.attendance.filter(x => x.sessionId !== sid);
         s.fragments = s.fragments.filter(x => x.sessionId !== sid); s.votes = s.votes.filter(x => x.sessionId !== sid); s.vows = s.vows.filter(x => x.sessionId !== sid);
+        s.checkins = s.checkins.filter(x => x.sessionId !== sid);
       });
     },
     async join(sid) {
@@ -131,7 +144,7 @@ export function createLocalBackend(playerId = new URLSearchParams(location.searc
         if (!s.attendance.some(x => x.sessionId === sid && x.userId === id)) {   // members may always reconnect
           if (session.partyLocked) throw new Error('The party is locked. Ask your Warden to unlock it.');
           if (session.stage !== 'register') throw new Error('This voyage has already started. Join the next one.');
-          s.attendance.push({ userId: id, sessionId: sid, joinedAt: Date.now(), votesCast: 0, characterId: null });
+          s.attendance.push({ userId: id, sessionId: sid, joinedAt: Date.now(), votesCast: 0, characterId: null, checkinDone: false });
         }
         player(s);
       });
@@ -149,6 +162,19 @@ export function createLocalBackend(playerId = new URLSearchParams(location.searc
       const a = s.attendance.find(x => x.sessionId === sid && x.userId === id); if (!a) throw new Error('Join the retro first.');
       if (!player(s).owned[characterId]) throw new Error('Choose a character from your collection.'); a.characterId = characterId; }); },
     watchAttendance(sid, cb) { return watch(s => s.attendance.filter(x => x.sessionId === sid), cb); },
+    async saveMyCheckIn(sid, sat, growth) {
+      if (![sat, growth].every(v => Number.isInteger(v) && v >= 1 && v <= 5)) throw new Error('Pick 1 to 5 for both questions.');
+      await mutate(s => {
+        requireStage(s, sid, ['register']);
+        if (!s.attendance.find(a => a.sessionId === sid && a.userId === id)?.characterId) throw new Error('Pick your voyage companion first.');
+        const row = s.checkins.find(c => c.sessionId === sid && c.userId === id);
+        if (row) Object.assign(row, { sat, growth }); else s.checkins.push({ sessionId: sid, userId: id, sat, growth });
+        progress(s, sid);
+      });
+    },
+    async myCheckIn(sid) { return read().checkins.find(c => c.sessionId === sid && c.userId === id) ?? null; },
+    async checkInSummary(sid) { const s = read(); return reportOpen(s, sid) ? summarizeCheckIns(s.checkins.filter(c => c.sessionId === sid), partyOf(s, sid)) : null; },
+    watchCheckIns(sid, cb) { return watch(s => isWardenOf(s, sid) && reportOpen(s, sid) ? s.checkins.filter(c => c.sessionId === sid) : [], cb); },
     async addFragment(sid, text, category) {
       if (!text.trim()) throw new Error('Write a thought before sending it.');
       const fragment: Fragment = { id: uid(), sessionId: sid, text: text.trim().slice(0, 1500), category, createdAt: Date.now() };

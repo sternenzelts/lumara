@@ -22,7 +22,7 @@ const watch = <T,>(select: () => T, cb: (value: T) => void) => {
   return () => { subscribers.delete(send); };
 };
 const notify = () => subscribers.forEach(send => send());
-const attendance = [{ userId: 'jay', sessionId: session.id, joinedAt: 2, votesCast: 0, characterId: 'mahesvara' }];
+const attendance = [{ userId: 'jay', sessionId: session.id, joinedAt: 2, votesCast: 0, characterId: 'mahesvara', checkinDone: true }];
 const unsupported = async () => { throw new Error('This sample preview supports vow review only.'); };
 const noSubscription = () => () => {};
 
@@ -40,6 +40,7 @@ const backend: Backend = {
   watchFragments: (_id, cb) => { cb([]); return () => {}; },
   watchVotes: (_id, cb) => { cb([]); return () => {}; },
   myFragmentIds: async () => [], myVotes: async () => [],
+  saveMyCheckIn: unsupported, myCheckIn: async () => null, checkInSummary: async () => null, watchCheckIns: (_id, cb) => watch(() => [], cb),
   updateVow: async (id, patch) => { const vow = vows.find(v => v.id === id); if (vow) Object.assign(vow, patch); notify(); },
   cancelSession: async () => {},
   updateSession: async (_id, patch) => {

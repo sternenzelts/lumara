@@ -30,6 +30,18 @@ describe('supabase backend reads', () => {
   });
 });
 describe('supabase writes and sign-in', () => {
+  it('check-in calls use the RPC names and pass the summary through', async () => {
+    const f = fakeClient({}); const b = createSupabaseBackend(f.client, me);
+    await b.saveMyCheckIn('s1', 4, 5);
+    expect(f.client.rpc).toHaveBeenCalledWith('save_checkin', { p_session: 's1', p_sat: 4, p_growth: 5 });
+    f.client.rpc = vi.fn(async () => ({ data: { sat: 70, growth: 80, n: 2, of: 3 }, error: null }));
+    expect(await b.checkInSummary('s1')).toEqual({ sat: 70, growth: 80, n: 2, of: 3 });
+    expect(f.client.rpc).toHaveBeenCalledWith('checkin_summary', { p_session: 's1' });
+  });
+  it('myCheckIn reads only the caller’s row', async () => {
+    const f = fakeClient({ checkins: [{ session_id: 's1', user_id: 'u1', sat: 3, growth: 4 }, { session_id: 's1', user_id: 'u2', sat: 1, growth: 1 }] });
+    expect(await createSupabaseBackend(f.client, me).myCheckIn('s1')).toEqual({ sessionId: 's1', userId: 'u1', sat: 3, growth: 4 });
+  });
   it('removePlayer calls remove_player with the right names', async () => {
     const f = fakeClient({}); await createSupabaseBackend(f.client, me).removePlayer('s1', 'u2');
     expect(f.client.rpc).toHaveBeenCalledWith('remove_player', { p_session: 's1', p_user: 'u2' });
