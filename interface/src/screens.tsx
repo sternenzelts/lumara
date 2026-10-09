@@ -15,7 +15,7 @@ import VoyageHud from './components/VoyageHud';
 import VoyageLobby from './components/VoyageLobby';
 import VoyageWindow from './components/VoyageWindow';
 import VowJournalWindow from './components/VowJournalWindow';
-import { previousStep, stageProgress, voyageSteps, VOYAGE_BRIEFING } from './logic/voyage';
+import { previousStep, removedNote, stageProgress, voyageSteps, VOYAGE_BRIEFING } from './logic/voyage';
 import WishLineups from './components/WishLineups';
 import VoteBoard from './components/VoteBoard';
 import ThoughtPicker from './components/ThoughtPicker';
@@ -141,7 +141,7 @@ export function RetroScreen() {
   const lobby = !joined || session.stage === 'register';
   const members = attendance.map(a => ({ userId: a.userId, name: profiles[a.userId]?.name || a.userId, characterId: a.characterId || (a.userId === me.id ? player?.displayCharacterId || null : null), warden: a.userId === session.wardenId, you: a.userId === me.id, ready: a.checkinDone }));
   const toggleLock = () => run(() => backend.updateSession(session.id, { partyLocked: !session.partyLocked }), session.partyLocked ? 'The party is open again.' : 'Party locked. Nobody new can join.');
-  const removePlayer = (userId: string) => run(() => backend.removePlayer(session.id, userId), `${profiles[userId]?.name || 'They'} left the party. They can rejoin unless it’s locked.`);
+  const removePlayer = (userId: string) => run(() => backend.removePlayer(session.id, userId), removedNote(profiles[userId]?.name || userId, session.stage, session.partyLocked));
   const backdrop = <div className={`voyage-backdrop ${lobby ? 'lobby-dim' : ''}`}><Scene backend={backend} me={me} player={player} vows={vows} fragments={fragments} movement={settings.movement} cooldownMode={settings.skillCooldown} frozen={lobby || journalOpen} stage={lobby ? undefined : session.stage} sessionId={session.id} activeCharacterId={ownAttendance?.characterId || player?.displayCharacterId} editThought={editThought} onEditDone={() => setEditThought(null)} onFragmentSaved={(message, error) => tell(message, error)} onOpenVows={() => { setWindowOpen(false); setJournalOpen(true); }} onOpenVote={session.stage === 'vote' ? () => setWindowOpen(true) : undefined} /></div>;
   if (lobby) return <>{backdrop}<VoyageLobby sprintName={session.sprintName} code={session.id.slice(0, 8)} steps={voyageSteps(settings, hasPrev)}
     members={members}

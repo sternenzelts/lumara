@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_SETTINGS } from '../backend/local';
-import { previousStep, stageProgress, voyageSteps, VOYAGE_BRIEFING } from './voyage';
+import { previousStep, removedNote, stageProgress, voyageSteps, VOYAGE_BRIEFING } from './voyage';
 
 const on = { ...DEFAULT_SETTINGS, skipVowReview: false };
 
@@ -24,5 +24,12 @@ describe('voyage steps', () => {
   it('has no label in the lobby or after the voyage', () => {
     expect(stageProgress('register', on, true)).toBeNull();
     expect(stageProgress('completed', on, true)).toBeNull();
+  });
+});
+describe('removedNote', () => {
+  it('tells the Warden whether a removed player can rejoin', () => {
+    expect(removedNote('Ana', 'register', false)).toBe('Ana left the party. They can rejoin from the lobby.');
+    expect(removedNote('Ana', 'register', true)).toBe('Ana left the party. The party is locked, so they can’t rejoin.');
+    expect(removedNote('Ana', 'hall', false)).toBe('Ana left the party. They can’t rejoin until you return to the lobby.');
   });
 });

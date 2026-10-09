@@ -32,3 +32,9 @@ export function stageProgress(stage: Stage, settings: Settings, hasPreviousVows:
   if (i < 0) return null;
   return { title: VOYAGE_BRIEFING[stage as keyof typeof VOYAGE_BRIEFING].title, index: i + 1, total: steps.length };
 }
+
+/** The Warden's toast after removing someone: in the lobby they can rejoin (unless locked); once the voyage starts, joining is closed. */
+export function removedNote(name: string, stage: Stage, locked: boolean): string {
+  if (stage !== 'register') return `${name} left the party. They can’t rejoin until you return to the lobby.`;
+  return `${name} left the party. ${locked ? 'The party is locked, so they can’t rejoin.' : 'They can rejoin from the lobby.'}`;
+}
