@@ -2,7 +2,7 @@ import { bannerReturnTarget, characterFromHash } from './logic/bannerNavigation'
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import gsap from 'gsap';
 import { ArrowLeft, ArrowRight, BookOpen, Check, CheckCircle2, ChevronRight, Clock3, Compass, Copy, Flame, Gem, Pause, Pencil, Play, Plus, ShieldCheck, Sparkles, Trash2, UsersRound } from 'lucide-react';
-import type { CheckIn, FragmentCategory, PeerScores, SpeakerState, Stage, UserId, Vow, VowStatus } from './backend/types';
+import type { CheckIn, Fragment, FragmentCategory, PeerScores, SpeakerState, Stage, UserId, Vote, Vow, VowStatus } from './backend/types';
 import { CHARACTERS, GAME_NAME, characterById, type CharacterDef } from './data/characters';
 import { SANCTUARY_BACKGROUND } from './data/art';
 import { CATEGORIES } from './data/categories';
@@ -23,6 +23,9 @@ import ThoughtPicker from './components/ThoughtPicker';
 import VowEditRow from './components/VowEditRow';
 import PartyControls from './components/PartyControls';
 import CheckInPanel from './components/CheckInPanel';
+import HomecomingReport from './components/HomecomingReport';
+import { useVoyageSummaries } from './components/useVoyageSummaries';
+import { buildReport } from './logic/report';
 import PeerFeedbackPanel from './components/PeerFeedbackPanel';
 import PartyProgress from './components/PartyProgress';
 import { finishWarningText, pendingPeerFeedback } from './logic/feedback';
@@ -118,7 +121,7 @@ export function ExchangeScreen() {
 }
 
 export function RetroScreen() {
-  const ui = useUI(); const { session, sessions, me, attendance, backend, settings, fragments, votes, vows, player, busy, run, pull, navigate, openCreate, openJoin, profiles, tell } = ui;
+  const ui = useUI(); const { session, sessions, me, attendance, backend, settings, fragments, votes, vows, player, busy, run, pull, navigate, openCreate, openJoin, profiles, tell, players } = ui;
   const warden = useWarden();
   const [ownIds, setOwnIds] = useState<string[]>([]); const [ownVotes, setOwnVotes] = useState<string[]>([]); const [editThought, setEditThought] = useState<{ id: string; text: string; category: FragmentCategory } | null>(null);
   const [vowText, setVowText] = useState(''); const [owner, setOwner] = useState(''); const [selectedCharacter, setSelectedCharacter] = useState('');
@@ -126,6 +129,8 @@ export function RetroScreen() {
   const [windowOpen, setWindowOpen] = useState(!['fragment_drop', 'vote'].includes(session?.stage ?? ''));
   const [journalOpen, setJournalOpen] = useState(false);
   const [myCheck, setMyCheck] = useState<CheckIn | null>(null);
+  const summaries = useVoyageSummaries(backend, session?.id ?? null, attendance, session?.stage);
+  
   const [myPeer, setMyPeer] = useState<Record<string, PeerScores>>({});
   useEffect(() => { let live = true; if (!session || !['vow_altar', 'rewards'].includes(session.stage)) return; backend.myPeerRatings(session.id).then(r => { if (live) setMyPeer(r); }).catch(() => {}); return () => { live = false; }; }, [backend, session?.id, session?.stage]);
   
@@ -165,6 +170,9 @@ export function RetroScreen() {
     <PeerFeedbackPanel allies={members.filter(m => !m.you)} mine={myPeer} busy={busy} onSave={async (t, sc) => { let ok = false; await run(async () => { await backend.ratePeer(session.id, t, sc); setMyPeer(await backend.myPeerRatings(session.id)); ok = true; }, 'Rating saved.'); return ok; }} />
   </div> : null;
   
+  const seesAll = warden;
+  const report = buildReport({ session, sessions, viewerId: me.id, viewerSeesAll: seesAll, attendance, players, profiles, fragments, votes, vows, settings, checkIn: summaries.checkIn, peer: summaries.peer });
+  
   const finishWarning = session.stage === 'rewards' ? finishWarningText(pendingPeerFeedback(attendance)) : null;
   const pickWarning = pickWarningText(underPicked(attendance, fragments.length), minPicks(fragments.length));
   const brief = VOYAGE_BRIEFING[(session.stage === 'completed' ? 'rewards' : session.stage) as keyof typeof VOYAGE_BRIEFING];
@@ -187,7 +195,7 @@ export function RetroScreen() {
         onTimer={() => run(() => backend.updateSession(session.id, { timerEndsAt: Date.now() + 180000 }))} /></div>}
       {session.stage === 'vow_altar' && <><div className="stage-intro"><h3>Review the Vows.</h3><p>Every turn in Discuss ended at the Vow box. Fix wording or owners, and add anything still missing.</p></div>{warden ? <><form className="vow-form" onSubmit={e => { e.preventDefault(); run(async () => { await backend.addVow(session.id, vowText, owner || null); setVowText(''); }, 'A new Vow to carry forward.'); }}><label>Vow · action item<textarea value={vowText} onChange={e => setVowText(e.target.value)} rows={3} maxLength={1000} required placeholder="What will we do differently next sprint?" /></label><div><label>Owner · optional<select value={owner} onChange={e => setOwner(e.target.value)}><option value="">Shared by the team</option>{attendance.map(a => <option key={a.userId} value={a.userId}>{profiles[a.userId]?.name || a.userId}</option>)}</select></label><Button type="submit" disabled={busy || !vowText.trim()}>Make a Vow<Plus size={16} /></Button></div></form>{vows.filter(v => v.sessionId === session.id).map(v => <VowEditRow key={v.id} vow={v} party={members} busy={busy} onSave={patch => run(() => backend.updateVow(v.id, patch), 'Vow updated.')} />)}
 <ThoughtPicker fragments={fragments.filter(f => !(session.speaker?.discussed ?? []).includes(f.id))} onPick={t => setVowText(t.slice(0, 1000))} /></> : <p>Your Warden is reviewing the Vows. While they do, rate your allies below.</p>}{!warden && vows.filter(v => v.sessionId === session.id).map(v => <VowRow key={v.id} vow={v} />)}{feedback}</>}
-      {(session.stage === 'rewards' || session.stage === 'completed') && <div className="rewards-stage"><div className="rewards-symbol"><Sparkles size={45} strokeWidth={1} /></div><h3>We return a little brighter.</h3><p>A chapter closed. A few promises carried forward.</p><div className="reward-summary"><div><strong>{fragments.length}</strong><span>thoughts shared</span></div><div><strong>{votes.length}</strong><span>votes cast</span></div><div><strong>{vows.filter(v => v.sessionId === session.id).length}</strong><span>Vows to carry</span></div></div><div className="reward-currency"><Sparkles size={20} /><strong>Starlight awaits your next wish</strong><span>Reward totals will be connected with the game logic.</span></div>{player?.pulls.some(p => p.source === 'opening' && p.sessionId === session.id) ? <p className="small-copy">Free wish claimed — your new companion is in your collection.</p> : <Button onClick={() => pull('opening')} disabled={busy}><Sparkles size={16} />Claim your free wish</Button>}<Button onClick={() => navigate('banner')}>Visit the character banner<ArrowRight size={16} /></Button><p className="small-copy">The Warden can finish the voyage below. Your Vows will be waiting next time.</p>{feedback}</div>}
+      {(session.stage === 'rewards' || session.stage === 'completed') && <div className="rewards-stage"><HomecomingReport report={report} viewerSeesAll={seesAll} actions={<>{player?.pulls.some(p => p.source === 'opening' && p.sessionId === session.id) ? <p className="small-copy">Free wish claimed — your new companion is in your collection.</p> : <Button onClick={() => pull('opening')} disabled={busy}><Sparkles size={16} />Claim your free wish</Button>}<Button secondary onClick={() => navigate('banner')}>Visit the character banner<ArrowRight size={16} /></Button></>} />{feedback}</div>}
       </>}
     </VoyageWindow>
     {session.stage === 'hall' && <SpeakerReel backend={backend} sessionId={session.id} party={members} />}
@@ -197,9 +205,15 @@ export function RetroScreen() {
 }
 
 export function ArchivesScreen() {
-  const { sessions, vows, fragments } = useUI(); const [selected, setSelected] = useState<string | null>(null);
+  const { sessions, vows, me, backend, allAttendance, players, profiles, settings } = useUI(); const [selected, setSelected] = useState<string | null>(null);
   const ended = sessions.filter(s => s.status === 'ended'); const session = ended.find(s => s.id === selected);
-  return <><div className="page-heading"><div><h1>The voyages we remember.</h1><p>Archives · past retrospectives and the promises they left behind</p></div></div>{session ? <><button className="back-link" onClick={() => setSelected(null)}><ArrowLeft size={16} />All voyages</button><section className="archive-detail"><h2>{session.sprintName}</h2><p>{new Date(session.createdAt).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}</p><SectionTitle title="Vows from this voyage" plain="Action items & outcomes" />{vows.filter(v => v.sessionId === session.id).map(v => <VowRow key={v.id} vow={v} />)}{!vows.some(v => v.sessionId === session.id) && <p>No action items were recorded for this voyage.</p>}</section></> : ended.length ? <div className="archive-list">{ended.map((s, i) => <button key={s.id} onClick={() => setSelected(s.id)}><span className="archive-symbol"><Sparkles size={21} strokeWidth={1} /></span><div><h2>{s.sprintName}</h2><p>{new Date(s.createdAt).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}</p></div><span>{vows.filter(v => v.sessionId === s.id && v.status === 'fulfilled').length} / {vows.filter(v => v.sessionId === s.id).length} Vows fulfilled</span><ChevronRight size={18} /></button>)}</div> : <Empty title="The first chapter is still ahead."><p>Completed retrospectives will appear here, along with their action items and outcomes.</p></Empty>}</>;
+  const [fragments] = useWatch<Fragment[]>(cb => selected ? backend.watchFragments(selected, cb) : (() => {}), [], [backend, selected]);
+  const [votes] = useWatch<Vote[]>(cb => selected ? backend.watchVotes(selected, cb) : (() => {}), [], [backend, selected]);
+  const attendance = allAttendance.filter(a => a.sessionId === selected);
+  const summaries = useVoyageSummaries(backend, selected, attendance, session?.stage);
+  const seesAll = me.isAdmin || session?.wardenId === me.id;
+  const report = session ? buildReport({ session, sessions, viewerId: me.id, viewerSeesAll: seesAll, attendance, players, profiles, fragments, votes, vows, settings, checkIn: summaries.checkIn, peer: summaries.peer }) : null;
+  return <><div className="page-heading"><div><h1>The voyages we remember.</h1><p>Archives · past retrospectives and the promises they left behind</p></div></div>{session && report ? <><button className="back-link" onClick={() => setSelected(null)}><ArrowLeft size={16} />All voyages</button><section className="archive-detail"><HomecomingReport report={report} viewerSeesAll={seesAll} /><SectionTitle title="Vows from this voyage" plain="Action items & outcomes" />{vows.filter(v => v.sessionId === session.id).map(v => <VowRow key={v.id} vow={v} />)}{!vows.some(v => v.sessionId === session.id) && <p>No action items were recorded for this voyage.</p>}</section></> : ended.length ? <div className="archive-list">{ended.map(s => <button key={s.id} onClick={() => setSelected(s.id)}><span className="archive-symbol"><Sparkles size={21} strokeWidth={1} /></span><div><h2>{s.sprintName}</h2><p>{new Date(s.createdAt).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}</p></div><span>{vows.filter(v => v.sessionId === s.id && v.status === 'fulfilled').length} / {vows.filter(v => v.sessionId === s.id).length} Vows fulfilled</span><ChevronRight size={18} /></button>)}</div> : <Empty title="The first chapter is still ahead."><p>Completed retrospectives will appear here, along with their action items and outcomes.</p></Empty>}</>;
 }
 
 export { default as AdminScreen } from './components/AdminSettings';
