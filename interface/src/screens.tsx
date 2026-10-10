@@ -2,12 +2,12 @@ import { bannerReturnTarget, characterFromHash } from './logic/bannerNavigation'
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import gsap from 'gsap';
 import { ArrowLeft, ArrowRight, BookOpen, Check, CheckCircle2, ChevronRight, Clock3, Compass, Copy, Flame, Gem, Pause, Pencil, Play, Plus, ShieldCheck, Sparkles, Trash2, UsersRound } from 'lucide-react';
-import type { CheckIn, FragmentCategory, SpeakerState, Stage, UserId, Vow, VowStatus } from './backend/types';
+import type { CheckIn, FragmentCategory, PeerScores, SpeakerState, Stage, UserId, Vow, VowStatus } from './backend/types';
 import { CHARACTERS, GAME_NAME, characterById, type CharacterDef } from './data/characters';
 import { SANCTUARY_BACKGROUND } from './data/art';
 import { CATEGORIES } from './data/categories';
 import { nextStage, pityProgress } from './logic';
-import { useReducedMotion } from './hooks';
+import { useReducedMotion, useWatch } from './hooks';
 import { useUI } from './App';
 import { Art, Button, CharacterCard, Empty, GradeBadge, LinkButton, SectionTitle } from './components/ui';
 import Scene from './components/Scene';
@@ -23,6 +23,9 @@ import ThoughtPicker from './components/ThoughtPicker';
 import VowEditRow from './components/VowEditRow';
 import PartyControls from './components/PartyControls';
 import CheckInPanel from './components/CheckInPanel';
+import PeerFeedbackPanel from './components/PeerFeedbackPanel';
+import PartyProgress from './components/PartyProgress';
+import { finishWarningText, pendingPeerFeedback } from './logic/feedback';
 import DiscussStage from './components/DiscussStage';
 import SpeakerReel from './components/SpeakerReel';
 import { finishTurn } from './logic/speaker';
@@ -123,6 +126,10 @@ export function RetroScreen() {
   const [windowOpen, setWindowOpen] = useState(!['fragment_drop', 'vote'].includes(session?.stage ?? ''));
   const [journalOpen, setJournalOpen] = useState(false);
   const [myCheck, setMyCheck] = useState<CheckIn | null>(null);
+  const [myPeer, setMyPeer] = useState<Record<string, PeerScores>>({});
+  useEffect(() => { let live = true; if (!session || !['vow_altar', 'rewards'].includes(session.stage)) return; backend.myPeerRatings(session.id).then(r => { if (live) setMyPeer(r); }).catch(() => {}); return () => { live = false; }; }, [backend, session?.id, session?.stage]);
+  
+  const [checkins] = useWatch<CheckIn[]>(cb => session && warden ? backend.watchCheckIns(session.id, cb) : (() => {}), [], [backend, session?.id, warden]);
   useEffect(() => { let live = true; if (!session || session.stage !== 'register') return; backend.myCheckIn(session.id).then(c => { if (live) setMyCheck(c); }).catch(() => {}); return () => { live = false; }; }, [backend, session?.id, session?.stage]);
   useEffect(() => { setWindowOpen(!['fragment_drop', 'vote'].includes(session?.stage ?? '')); setJournalOpen(false); setEditThought(null); }, [session?.id, session?.stage]);
   useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer); }, []);
@@ -153,6 +160,12 @@ export function RetroScreen() {
     joined={joined} warden={warden} busy={busy} paused={session.status === 'paused'} locked={session.partyLocked} started={session.stage !== 'register'} onToggleLock={warden ? toggleLock : undefined} onRemove={warden ? removePlayer : undefined}
     checkIn={joined ? <CheckInPanel owned={ownedCharacters} companionId={ownAttendance?.characterId ?? null} saved={myCheck} busy={busy} onSave={(c, sat, growth) => run(async () => { if (c !== ownAttendance?.characterId) await backend.setMyCharacter(session.id, c); await backend.saveMyCheckIn(session.id, sat, growth); setMyCheck(await backend.myCheckIn(session.id)); }, 'Checked in. You’re ready to sail.')} /> : undefined}
     onJoin={() => run(() => backend.join(session.id))} onEnter={advance} onCopyCode={copyCode} /></>;
+  const feedback = joined && ['vow_altar', 'rewards'].includes(session.stage) ? <div className="feedback-panels">
+    {warden && <PartyProgress members={members} attendance={attendance} checkins={checkins} />}
+    <PeerFeedbackPanel allies={members.filter(m => !m.you)} mine={myPeer} busy={busy} onSave={async (t, sc) => { let ok = false; await run(async () => { await backend.ratePeer(session.id, t, sc); setMyPeer(await backend.myPeerRatings(session.id)); ok = true; }, 'Rating saved.'); return ok; }} />
+  </div> : null;
+  
+  const finishWarning = session.stage === 'rewards' ? finishWarningText(pendingPeerFeedback(attendance)) : null;
   const pickWarning = pickWarningText(underPicked(attendance, fragments.length), minPicks(fragments.length));
   const brief = VOYAGE_BRIEFING[(session.stage === 'completed' ? 'rewards' : session.stage) as keyof typeof VOYAGE_BRIEFING];
   return <>{backdrop}
@@ -160,7 +173,7 @@ export function RetroScreen() {
       nextLabel={session.stage === 'rewards' ? 'Finish voyage' : 'Next stage'} actionLabel={session.stage === 'fragment_drop' ? 'My thoughts' : session.stage === 'vote' && settings.movement ? null : brief.title} onBack={back} onNext={advance} onOpen={() => setWindowOpen(true)} onPauseToggle={togglePause}
       onLobby={() => run(() => backend.updateSession(session.id, { stage: 'register', timerEndsAt: null, currentFragmentId: null }), 'The party is back in the lobby.')}
       onCancel={() => run(async () => { await backend.cancelSession(session.id); navigate('sanctuary'); }, 'The voyage was cancelled. Start a fresh one when you are ready.')}
-      nextWarning={session.stage === 'vote' && pickWarning ? { title: 'Move on to Discuss?', text: pickWarning, stay: 'Keep voting', go: 'Continue anyway' } : null}
+      nextWarning={session.stage === 'vote' && pickWarning ? { title: 'Move on to Discuss?', text: pickWarning, stay: 'Keep voting', go: 'Continue anyway' } : finishWarning ? { title: 'Finish the voyage?', text: finishWarning, stay: 'Keep going', go: 'Finish anyway' } : null}
       partyControls={warden ? <PartyControls members={members} busy={busy} onRemove={removePlayer} /> : undefined} />
     <VoyageWindow title={brief.title} open={windowOpen} onClose={() => setWindowOpen(false)} variant={session.stage === 'vow_review' ? 'vow-review' : undefined}>
       {remaining !== null && <span className="timer" aria-label={`${remaining} seconds remaining`}><Clock3 size={15} />{Math.floor(remaining / 60)}:{String(remaining % 60).padStart(2, '0')}</span>}
@@ -173,8 +186,8 @@ export function RetroScreen() {
         onMakeVow={(text, owner) => run(async () => { await backend.addVow(session.id, text, owner); await backend.updateSession(session.id, { speaker: finishTurn(session.speaker) }); }, 'A new Vow to carry forward.')}
         onTimer={() => run(() => backend.updateSession(session.id, { timerEndsAt: Date.now() + 180000 }))} /></div>}
       {session.stage === 'vow_altar' && <><div className="stage-intro"><h3>Review the Vows.</h3><p>Every turn in Discuss ended at the Vow box. Fix wording or owners, and add anything still missing.</p></div>{warden ? <><form className="vow-form" onSubmit={e => { e.preventDefault(); run(async () => { await backend.addVow(session.id, vowText, owner || null); setVowText(''); }, 'A new Vow to carry forward.'); }}><label>Vow · action item<textarea value={vowText} onChange={e => setVowText(e.target.value)} rows={3} maxLength={1000} required placeholder="What will we do differently next sprint?" /></label><div><label>Owner · optional<select value={owner} onChange={e => setOwner(e.target.value)}><option value="">Shared by the team</option>{attendance.map(a => <option key={a.userId} value={a.userId}>{profiles[a.userId]?.name || a.userId}</option>)}</select></label><Button type="submit" disabled={busy || !vowText.trim()}>Make a Vow<Plus size={16} /></Button></div></form>{vows.filter(v => v.sessionId === session.id).map(v => <VowEditRow key={v.id} vow={v} party={members} busy={busy} onSave={patch => run(() => backend.updateVow(v.id, patch), 'Vow updated.')} />)}
-<ThoughtPicker fragments={fragments.filter(f => !(session.speaker?.discussed ?? []).includes(f.id))} onPick={t => setVowText(t.slice(0, 1000))} /></> : <p>Your Warden is capturing the team’s action items. Share ideas in your call.</p>}{!warden && vows.filter(v => v.sessionId === session.id).map(v => <VowRow key={v.id} vow={v} />)}</>}
-      {(session.stage === 'rewards' || session.stage === 'completed') && <div className="rewards-stage"><div className="rewards-symbol"><Sparkles size={45} strokeWidth={1} /></div><h3>We return a little brighter.</h3><p>A chapter closed. A few promises carried forward.</p><div className="reward-summary"><div><strong>{fragments.length}</strong><span>thoughts shared</span></div><div><strong>{votes.length}</strong><span>votes cast</span></div><div><strong>{vows.filter(v => v.sessionId === session.id).length}</strong><span>Vows to carry</span></div></div><div className="reward-currency"><Sparkles size={20} /><strong>Starlight awaits your next wish</strong><span>Reward totals will be connected with the game logic.</span></div>{player?.pulls.some(p => p.source === 'opening' && p.sessionId === session.id) ? <p className="small-copy">Free wish claimed — your new companion is in your collection.</p> : <Button onClick={() => pull('opening')} disabled={busy}><Sparkles size={16} />Claim your free wish</Button>}<Button onClick={() => navigate('banner')}>Visit the character banner<ArrowRight size={16} /></Button><p className="small-copy">The Warden can finish the voyage below. Your Vows will be waiting next time.</p></div>}
+<ThoughtPicker fragments={fragments.filter(f => !(session.speaker?.discussed ?? []).includes(f.id))} onPick={t => setVowText(t.slice(0, 1000))} /></> : <p>Your Warden is reviewing the Vows. While they do, rate your allies below.</p>}{!warden && vows.filter(v => v.sessionId === session.id).map(v => <VowRow key={v.id} vow={v} />)}{feedback}</>}
+      {(session.stage === 'rewards' || session.stage === 'completed') && <div className="rewards-stage"><div className="rewards-symbol"><Sparkles size={45} strokeWidth={1} /></div><h3>We return a little brighter.</h3><p>A chapter closed. A few promises carried forward.</p><div className="reward-summary"><div><strong>{fragments.length}</strong><span>thoughts shared</span></div><div><strong>{votes.length}</strong><span>votes cast</span></div><div><strong>{vows.filter(v => v.sessionId === session.id).length}</strong><span>Vows to carry</span></div></div><div className="reward-currency"><Sparkles size={20} /><strong>Starlight awaits your next wish</strong><span>Reward totals will be connected with the game logic.</span></div>{player?.pulls.some(p => p.source === 'opening' && p.sessionId === session.id) ? <p className="small-copy">Free wish claimed — your new companion is in your collection.</p> : <Button onClick={() => pull('opening')} disabled={busy}><Sparkles size={16} />Claim your free wish</Button>}<Button onClick={() => navigate('banner')}>Visit the character banner<ArrowRight size={16} /></Button><p className="small-copy">The Warden can finish the voyage below. Your Vows will be waiting next time.</p>{feedback}</div>}
       </>}
     </VoyageWindow>
     {session.stage === 'hall' && <SpeakerReel backend={backend} sessionId={session.id} party={members} />}
