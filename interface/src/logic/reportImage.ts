@@ -63,3 +63,19 @@ export async function saveCanvas(c: HTMLCanvasElement, fileName: string) {
   const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = fileName;
   document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+export const cardFileName = (sprintName: string, date: number, nickname: string) => reportFileName(sprintName, date).replace(/\.png$/, `-${slug(nickname) || 'card'}.png`);
+/** Recognition card as a 1080×1350 image: splash art, then nickname, sprint, the companion's line and Starlight. */
+export async function renderCardImage(card: { characterId: string; nickname: string; sprintName: string; line: string; starlight: number | null }): Promise<HTMLCanvasElement> {
+  await document.fonts?.ready;
+  const c = document.createElement('canvas'); c.width = 1080; c.height = 1350; const g = c.getContext('2d')!;
+  const grad = g.createLinearGradient(0, 0, 0, c.height); grad.addColorStop(0, '#1d3a5c'); grad.addColorStop(1, '#0a1a2c'); g.fillStyle = grad; g.fillRect(0, 0, c.width, c.height);
+  const ch = characterById(card.characterId); const art = ch?.art.splash ? await loadImage(ch.art.splash) : null;
+  if (art) { const s = Math.max(1080 / art.width, 820 / art.height); g.drawImage(art, (1080 - art.width * s) / 2, 0, art.width * s, art.height * s); }
+  const fade = g.createLinearGradient(0, 560, 0, 860); fade.addColorStop(0, '#0a1a2c00'); fade.addColorStop(1, '#0a1a2c'); g.fillStyle = fade; g.fillRect(0, 560, 1080, 300); g.fillStyle = '#0a1a2c'; g.fillRect(0, 860, 1080, 490);
+  g.strokeStyle = '#d8bf82'; g.lineWidth = 2; g.strokeRect(28, 28, 1024, 1294);
+  g.textAlign = 'center'; g.fillStyle = '#fff4dc'; g.font = "400 64px Marcellus, serif"; g.fillText(card.nickname, 540, 900, 960);
+  g.fillStyle = '#d8bf82'; g.font = "400 26px Manrope, sans-serif"; g.fillText(`${card.sprintName} · with ${ch?.name ?? 'Seren'}`, 540, 948, 960);
+  g.fillStyle = '#e4ebf1'; g.font = "italic 400 34px Marcellus, serif"; let y = 1030; for (const l of wrap(g, `“${card.line}”`, 900)) { g.fillText(l, 540, y); y += 46; }
+  g.fillStyle = '#e9cf8f'; g.font = "400 40px Marcellus, serif"; g.fillText(card.starlight === null ? '' : `✦ ${card.starlight.toLocaleString()} Starlight earned`, 540, 1270);
+  return c;
+}

@@ -24,6 +24,7 @@ import VowEditRow from './components/VowEditRow';
 import PartyControls from './components/PartyControls';
 import CheckInPanel from './components/CheckInPanel';
 import HomecomingReport from './components/HomecomingReport';
+import RecognitionCard from './components/RecognitionCard';
 import { useVoyageSummaries } from './components/useVoyageSummaries';
 import { buildReport } from './logic/report';
 import { renderReportImage, reportFileName, saveCanvas } from './logic/reportImage';
@@ -129,7 +130,7 @@ export function RetroScreen() {
   const [now, setNow] = useState(Date.now()); const hallRef = useRef<HTMLDivElement>(null); const reduced = useReducedMotion();
   const [windowOpen, setWindowOpen] = useState(!['fragment_drop', 'vote'].includes(session?.stage ?? ''));
   const [journalOpen, setJournalOpen] = useState(false);
-  const [myCheck, setMyCheck] = useState<CheckIn | null>(null);
+  const [myCheck, setMyCheck] = useState<CheckIn | null>(null); const [cardOpen, setCardOpen] = useState(false);
   const summaries = useVoyageSummaries(backend, session?.id ?? null, attendance, session?.stage);
   
   const [myPeer, setMyPeer] = useState<Record<string, PeerScores>>({});
@@ -137,7 +138,7 @@ export function RetroScreen() {
   
   const [checkins] = useWatch<CheckIn[]>(cb => session && warden ? backend.watchCheckIns(session.id, cb) : (() => {}), [], [backend, session?.id, warden]);
   useEffect(() => { let live = true; if (!session || session.stage !== 'register') return; backend.myCheckIn(session.id).then(c => { if (live) setMyCheck(c); }).catch(() => {}); return () => { live = false; }; }, [backend, session?.id, session?.stage]);
-  useEffect(() => { setWindowOpen(!['fragment_drop', 'vote'].includes(session?.stage ?? '')); setJournalOpen(false); setEditThought(null); }, [session?.id, session?.stage]);
+  useEffect(() => { setWindowOpen(!['fragment_drop', 'vote'].includes(session?.stage ?? '')); setJournalOpen(false); setEditThought(null); setCardOpen(false); }, [session?.id, session?.stage]);
   useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer); }, []);
   useEffect(() => { let live = true; if (!session) { setOwnIds([]); setOwnVotes([]); return; } Promise.all([backend.myFragmentIds(session.id), backend.myVotes(session.id)]).then(([ids, myVotes]) => { if (live) { setOwnIds(ids); setOwnVotes(myVotes); } }).catch(e => tell(String(e), true)); return () => { live = false; }; }, [backend, session?.id, fragments, votes]);
   useEffect(() => { if (!hallRef.current || reduced) return; const ctx = gsap.context(() => gsap.fromTo('.hall-fragment', { filter: 'blur(8px)', y: 18, opacity: .4 }, { filter: 'blur(0px)', y: 0, opacity: 1, duration: .8, ease: 'expo.out' }), hallRef); return () => ctx.revert(); }, [session?.speaker?.thoughtId, reduced]);
@@ -196,9 +197,11 @@ export function RetroScreen() {
         onTimer={() => run(() => backend.updateSession(session.id, { timerEndsAt: Date.now() + 180000 }))} /></div>}
       {session.stage === 'vow_altar' && <><div className="stage-intro"><h3>Review the Vows.</h3><p>Every turn in Discuss ended at the Vow box. Fix wording or owners, and add anything still missing.</p></div>{warden ? <><form className="vow-form" onSubmit={e => { e.preventDefault(); run(async () => { await backend.addVow(session.id, vowText, owner || null); setVowText(''); }, 'A new Vow to carry forward.'); }}><label>Vow · action item<textarea value={vowText} onChange={e => setVowText(e.target.value)} rows={3} maxLength={1000} required placeholder="What will we do differently next sprint?" /></label><div><label>Owner · optional<select value={owner} onChange={e => setOwner(e.target.value)}><option value="">Shared by the team</option>{attendance.map(a => <option key={a.userId} value={a.userId}>{profiles[a.userId]?.name || a.userId}</option>)}</select></label><Button type="submit" disabled={busy || !vowText.trim()}>Make a Vow<Plus size={16} /></Button></div></form>{vows.filter(v => v.sessionId === session.id).map(v => <VowEditRow key={v.id} vow={v} party={members} busy={busy} onSave={patch => run(() => backend.updateVow(v.id, patch), 'Vow updated.')} />)}
 <ThoughtPicker fragments={fragments.filter(f => !(session.speaker?.discussed ?? []).includes(f.id))} onPick={t => setVowText(t.slice(0, 1000))} /></> : <p>Your Warden is reviewing the Vows. While they do, rate your allies below.</p>}{!warden && vows.filter(v => v.sessionId === session.id).map(v => <VowRow key={v.id} vow={v} />)}{feedback}</>}
-      {(session.stage === 'rewards' || session.stage === 'completed') && <div className="rewards-stage"><HomecomingReport report={report} viewerSeesAll={seesAll} actions={<>{player?.pulls.some(p => p.source === 'opening' && p.sessionId === session.id) ? <p className="small-copy">Free wish claimed — your new companion is in your collection.</p> : <Button onClick={() => pull('opening')} disabled={busy}><Sparkles size={16} />Claim your free wish</Button>}<Button secondary onClick={() => navigate('banner')}>Visit the character banner<ArrowRight size={16} /></Button><Button secondary disabled={busy} onClick={() => run(async () => saveCanvas(await renderReportImage(report, seesAll), reportFileName(report.sprintName, report.date)), 'Voyage record saved.')}><Download size={16} />Save voyage record</Button></>} />{feedback}</div>}
+      {(session.stage === 'rewards' || session.stage === 'completed') && <div className="rewards-stage"><HomecomingReport report={report} viewerSeesAll={seesAll} actions={<>{player?.pulls.some(p => p.source === 'opening' && p.sessionId === session.id) ? <p className="small-copy">Free wish claimed — your new companion is in your collection.</p> : <Button onClick={() => pull('opening')} disabled={busy}><Sparkles size={16} />Claim your free wish</Button>}<Button secondary onClick={() => navigate('banner')}>Visit the character banner<ArrowRight size={16} /></Button>{report.numbers.myStarlight !== null && <Button onClick={() => setCardOpen(true)}><Sparkles size={16} />Your recognition</Button>}<Button secondary disabled={busy} onClick={() => run(async () => saveCanvas(await renderReportImage(report, seesAll), reportFileName(report.sprintName, report.date)), 'Voyage record saved.')}><Download size={16} />Save voyage record</Button></>} />{feedback}</div>}
       </>}
     </VoyageWindow>
+  {cardOpen && <RecognitionCard characterId={report.portrait.find(m => m.userId === me.id)?.characterId ?? null} nickname={me.name} sprintName={session.sprintName} starlight={report.numbers.myStarlight} date={session.createdAt} onClose={() => setCardOpen(false)} />}
+  
     {session.stage === 'hall' && <SpeakerReel backend={backend} sessionId={session.id} party={members} />}
     {speakerId === me.id && <p className="speaker-your-turn" role="status">Your turn — the hall is listening.</p>}
     {journalOpen && <VowJournalWindow onClose={() => setJournalOpen(false)} />}
