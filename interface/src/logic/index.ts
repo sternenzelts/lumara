@@ -51,3 +51,7 @@ export function nextStage(stage: Stage, settings: Settings, hasPreviousVows: boo
   const stages: Stage[] = ['register', ...(!settings.skipVowReview && hasPreviousVows ? ['vow_review' as const] : []), 'fragment_drop', 'vote', 'hall', 'vow_altar', 'rewards', 'completed'];
   return stages[stages.indexOf(stage) + 1] || 'completed';
 }
+/** Starlight one player earned in one voyage: attending, their own votes, and the team's promises kept at its Sanctuary Gate. */
+export function voyageStarlight({ settings, attendance, promisesKept }: { settings: Settings; attendance: Attendance | undefined; promisesKept: number }): number {
+  return attendance ? settings.starlight.attend + settings.starlight.perVote * attendance.votesCast + settings.starlight.perVow * promisesKept : 0;
+}

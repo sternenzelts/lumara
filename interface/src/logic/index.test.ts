@@ -1,8 +1,8 @@
-﻿import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { DEFAULT_SETTINGS } from '../backend/local';
 import { CHARACTERS } from '../data/characters';
 import type { Player, PullRecord, Attendance, Vow } from '../backend/types';
-import { rollPull, pityProgress, starlightBalance, stardustBalance } from './index';
+import { rollPull, pityProgress, starlightBalance, stardustBalance, voyageStarlight } from './index';
 const player = (pulls: PullRecord[] = []): Player => ({ userId:'ana', nickname:'Moon', introSeen:true, displayCharacterId:null, owned:{}, pulls });
 const record = (grade: PullRecord['grade']='A', source: PullRecord['source']='banner', duplicate=false): PullRecord => ({at:1, characterId:grade==='A'?'wren':grade==='S+'?'seren':'ayaka',grade,source,duplicate});
 const balance = (pulls: PullRecord[] = [], attendance: Attendance[] = [], vows: Vow[] = []) => starlightBalance({userId:'ana',player:player(pulls),attendance,vows,settings:DEFAULT_SETTINGS});
@@ -22,4 +22,11 @@ describe('real game economy',()=>{
  it('can disable pity',()=>expect(rollPull({settings:{...DEFAULT_SETTINGS,pity:{...DEFAULT_SETTINGS.pity,enabled:false}},history:Array.from({length:100},()=>record()),roster:CHARACTERS,owned:{},rng:()=>.9}).grade).toBe('A'));
  it('detects duplicates and awards Stardust',()=>{const pull=rollPull({settings:DEFAULT_SETTINGS,history:[],roster:CHARACTERS,owned:{ayaka:1,mahesvara:1,keira:1},rng:()=>.001});expect(pull.duplicate).toBe(true);expect(stardustBalance({player:player([record('S++','banner',true)]),settings:DEFAULT_SETTINGS})).toBe(DEFAULT_SETTINGS.stardust.dupeSPlusPlus)});
  it('starts Stardust at zero and charges exchanges without duplicate rewards',()=>{expect(stardustBalance({player:player(),settings:DEFAULT_SETTINGS})).toBe(0);const p=player([...Array.from({length:7},()=>record('A','banner',true)),record('A','exchange',true)]);expect(stardustBalance({player:p,settings:DEFAULT_SETTINGS})).toBe(10)});
+});
+describe('voyageStarlight', () => {
+  it('pays attending, own votes and the team’s promises kept at this gate', () => {
+    const a = { userId: 'ana', sessionId: 's', joinedAt: 1, votesCast: 3, characterId: null, checkinDone: false, peerGiven: 0 };
+    expect(voyageStarlight({ settings: DEFAULT_SETTINGS, attendance: a, promisesKept: 2 })).toBe(300 + 3 * 50 + 2 * 200);
+    expect(voyageStarlight({ settings: DEFAULT_SETTINGS, attendance: undefined, promisesKept: 2 })).toBe(0);
+  });
 });
