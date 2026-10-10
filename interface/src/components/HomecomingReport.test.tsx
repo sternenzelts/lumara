@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { VoyageReport } from '../logic/report';
 import HomecomingReport from './HomecomingReport';
+import { reportLines } from '../logic/reportImage';
 
 afterEach(() => { document.body.innerHTML = ''; vi.unstubAllGlobals(); });
 const pct = { collab: 80, owner: 60, comm: 100, impact: 80, growth: 40 };
@@ -39,5 +40,10 @@ describe('HomecomingReport', () => {
   it('lays out 8 companions in two rows', async () => {
     const el = await render(report({ portrait: Array.from({ length: 8 }, (_, i) => ({ userId: 'u' + i, name: 'P' + i, characterId: 'wren', warden: false })) }));
     expect([...el.querySelectorAll('.portrait-row')].map(r => r.children.length)).toEqual([4, 4]);
+  });
+  it('every peer row in the image is on the screen', async () => {
+    const el = await render(report());
+    for (const p of report().peer) expect(el.textContent).toContain(p.name);
+    expect(reportLines(report(), false).filter(l => l.text.includes('Party Spirit')).length).toBe(report().peer.length);
   });
 });
