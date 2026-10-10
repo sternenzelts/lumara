@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { minPicks, pickWarningText, underPicked } from './picks';
 
-const att = (userId: string, votesCast: number) => ({ userId, sessionId: 's', joinedAt: 1, votesCast, characterId: null, checkinDone: true });
+const att = (userId: string, votesCast: number) => ({ userId, sessionId: 's', joinedAt: 1, votesCast, characterId: null, checkinDone: true, peerGiven: 0 });
 describe('picks', () => {
   it('asks for 3 picks, or every thought when fewer were written', () => {
     expect(minPicks(10)).toBe(3); expect(minPicks(2)).toBe(2); expect(minPicks(0)).toBe(0);

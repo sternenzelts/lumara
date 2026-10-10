@@ -13,9 +13,11 @@ export interface Session {
 export type FragmentCategory = 'radiance' | 'fracture' | 'spark' | 'wildcard';
 export interface Fragment { id: string; sessionId: string; text: string; category: FragmentCategory; createdAt: number }
 export interface Vote { id: string; sessionId: string; fragmentId: string }
-export interface Attendance { userId: UserId; sessionId: string; joinedAt: number; votesCast: number; characterId: string | null; /** Checked in at the lobby (✓). */ checkinDone: boolean }
+export interface Attendance { userId: UserId; sessionId: string; joinedAt: number; votesCast: number; characterId: string | null; /** Checked in at the lobby (✓). */ checkinDone: boolean; /** How many current teammates this player has rated (never whom or how). */ peerGiven: number }
 export type PeerTrait = 'collab' | 'owner' | 'comm' | 'impact' | 'growth';
 export type PeerScores = Record<PeerTrait, number>;
+/** One player's peer result: % of 5 per trait and how many allies rated them. */
+export interface PeerResult { targetId: UserId; raters: number; pct: PeerScores }
 export interface CheckIn { sessionId: string; userId: UserId; sat: number; growth: number }
 /** Team check-in as % of 5 (null when nobody checked in); n of `of` party members checked in. */
 export interface CheckInSummary { sat: number | null; growth: number | null; n: number; of: number }
@@ -60,7 +62,13 @@ export interface Backend {
   checkInSummary(sessionId: string): Promise<CheckInSummary | null>;
   /** Warden/admin, from Homecoming: every player's answers. Everyone else (and earlier) gets []. */
   watchCheckIns(sessionId: string, cb: (rows: CheckIn[]) => void): Unsubscribe;
-  addFragment(sessionId: string, text: string, category: FragmentCategory): Promise<Fragment>;
+  /** Peer Feedback (feature 2): rate a teammate 1–5 on each trait; never yourself; Vow Altar or Homecoming only. */
+  ratePeer(sessionId: string, targetId: UserId, scores: PeerScores): Promise<void>;
+  /** The caller's own ratings, by teammate (to show ✓ and edit). */
+  myPeerRatings(sessionId: string): Promise<Record<UserId, PeerScores>>;
+  /** [] before Homecoming; the caller's own result for players; everyone's for the Warden/admins. */
+  peerSummary(sessionId: string): Promise<PeerResult[]>;
+    addFragment(sessionId: string, text: string, category: FragmentCategory): Promise<Fragment>;
   deleteMyFragment(sessionId: string, fragmentId: string): Promise<void>;
   myFragmentIds(sessionId: string): Promise<string[]>;
   watchFragments(sessionId: string, cb: (f: Fragment[]) => void): Unsubscribe;

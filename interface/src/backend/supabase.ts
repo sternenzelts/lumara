@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Backend, CheckInSummary, CueTopic, Me, Player, Presence, Settings, UserId, Unsubscribe } from './types';
+import type { Backend, CheckInSummary, CueTopic, PeerScores, Me, Player, Presence, Settings, UserId, Unsubscribe } from './types';
 import { createSmoother } from './peerSmoothing';
-import { toAttendance, toCheckIn, toFragment, toPlayer, toSession, toSettings, toVote, toVow } from './supabaseRows';
+import { toAttendance, toCheckIn, toPeerResult, toFragment, toPlayer, toSession, toSettings, toVote, toVow } from './supabaseRows';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /** Online backend: reads re-fetch on Realtime changes (and on reconnect); writes go through server RPCs that enforce the rules. */
@@ -98,6 +98,9 @@ export function createSupabaseBackend(sb: SupabaseClient, me: Me): Backend {
     watchSettings: (cb: (s: Settings) => void) => live(['settings'], async () => toSettings((await rows(sb.from('settings').select('*')))[0]), cb),
     watchCheckIns: (sid, cb) => live(['checkins', 'attendance', 'sessions'], async () => (await rows(sb.from('checkins').select('*').eq('session_id', sid))).map(toCheckIn), cb),
     async myCheckIn(sid) { const [r] = await rows(sb.from('checkins').select('*').eq('session_id', sid).eq('user_id', me.id)); return r ? toCheckIn(r) : null; },
+    ratePeer: async (sid, targetId, scores) => { await call('rate_peer', { p_session: sid, p_target: targetId, p_scores: scores }); },
+    async myPeerRatings(sid) { const r = ((await call('my_peer_ratings', { p_session: sid })) ?? []) as { target_id: string; scores: PeerScores }[]; return Object.fromEntries(r.map(x => [x.target_id, x.scores])); },
+    async peerSummary(sid) { return (((await call('peer_summary', { p_session: sid })) ?? []) as any[]).map(toPeerResult); },
     async checkInSummary(sid) { return ((await call('checkin_summary', { p_session: sid })) ?? null) as CheckInSummary | null; },
     async myFragmentIds(sid) { return ((await call('my_fragment_ids', { p_session: sid })) ?? []) as string[]; },
     async myVotes(sid) { return ((await call('my_votes', { p_session: sid })) ?? []) as string[]; },

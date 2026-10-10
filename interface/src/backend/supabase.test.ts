@@ -30,6 +30,15 @@ describe('supabase backend reads', () => {
   });
 });
 describe('supabase writes and sign-in', () => {
+  it('peer calls use the RPC names and map rows', async () => {
+    const f = fakeClient({}); const b = createSupabaseBackend(f.client, me);
+    const ok = { collab: 5, owner: 4, comm: 3, impact: 4, growth: 5 };
+    await b.ratePeer('s1', 'u2', ok);
+    expect(f.client.rpc).toHaveBeenCalledWith('rate_peer', { p_session: 's1', p_target: 'u2', p_scores: ok });
+    f.client.rpc = vi.fn(async (name: string) => ({ data: name === 'peer_summary' ? [{ target_id: 'u1', raters: 2, collab: 80, owner: 60, comm: 100, impact: 80, growth: 40 }] : [{ target_id: 'u2', scores: ok }], error: null }));
+    expect(await b.peerSummary('s1')).toEqual([{ targetId: 'u1', raters: 2, pct: { collab: 80, owner: 60, comm: 100, impact: 80, growth: 40 } }]);
+    expect(await b.myPeerRatings('s1')).toEqual({ u2: ok });
+  });
   it('chooseTurnThought calls choose_turn_thought', async () => {
     const f = fakeClient({}); await createSupabaseBackend(f.client, me).chooseTurnThought('s1', 'f1');
     expect(f.client.rpc).toHaveBeenCalledWith('choose_turn_thought', { p_session: 's1', p_fragment: 'f1' });

@@ -24,6 +24,29 @@ beforeEach(() => {
   vi.stubGlobal('BroadcastChannel', class { postMessage() {} addEventListener() {} });
 });
 describe('local demo contract', () => {
+  it('peer feedback: no self-rating, editable, own result only, Warden sees all, removal-aware', async () => {
+    const jay = createLocalBackend('jay'), ana = createLocalBackend('ana'), bob = createLocalBackend('bob');
+    const s = await jay.createSession('Peers'); await ana.join(s.id); await bob.join(s.id);
+    checkInEveryone(s.id); await jay.updateSession(s.id, { stage: 'vow_altar' });
+    const ok = { collab: 5, owner: 4, comm: 3, impact: 4, growth: 5 };
+    await expect(ana.ratePeer(s.id, 'ana', ok)).rejects.toThrow('yourself');
+    await expect(ana.ratePeer(s.id, 'zed', ok)).rejects.toThrow('isn’t in this party');
+    await expect(ana.ratePeer(s.id, 'bob', { ...ok, collab: 2.5 })).rejects.toThrow('1 to 5');
+    await ana.ratePeer(s.id, 'bob', ok); await ana.ratePeer(s.id, 'bob', { ...ok, collab: 1 });
+    await bob.ratePeer(s.id, 'ana', ok);
+    expect(await ana.myPeerRatings(s.id)).toEqual({ bob: { ...ok, collab: 1 } });
+    expect(await ana.peerSummary(s.id)).toEqual([]);   // before Homecoming
+    let att: Attendance[] = []; jay.watchAttendance(s.id, a => att = a);
+    expect(att.find(a => a.userId === 'ana')?.peerGiven).toBe(1);
+    await jay.updateSession(s.id, { stage: 'rewards' });
+    expect((await bob.peerSummary(s.id)).map(r => [r.targetId, r.raters, r.pct.collab])).toEqual([['bob', 1, 20]]);
+    expect((await jay.peerSummary(s.id)).map(r => r.targetId).sort()).toEqual(['ana', 'bob']);
+    await jay.removePlayer(s.id, 'bob');
+    expect(await jay.peerSummary(s.id)).toEqual([]);
+    jay.watchAttendance(s.id, a => att = a); expect(att.find(a => a.userId === 'ana')?.peerGiven).toBe(0);
+    const pub = JSON.parse(localStorage.getItem('lumara.demo.v1')!).peerRatings as object[];   // the shared store never holds the rater
+    expect(pub.every(r => Object.keys(r).sort().join() === 'id,scores,sessionId,targetId')).toBe(true);
+  });
   it('turns: only the chosen player chooses, from their own undiscussed picks, with a fallback', async () => {
     const jay = createLocalBackend('jay'), ana = createLocalBackend('ana');
     const s = await jay.createSession('Turns'); await ana.join(s.id); checkInEveryone(s.id);

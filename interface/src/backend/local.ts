@@ -2,8 +2,8 @@ import { starlightBalance, stardustBalance } from '../logic';
 import { characterById } from '../data/characters';
 import { cleanNickname } from '../logic/names';
 import { welcomeRollsRemaining } from '../logic/welcome';
-import { summarizeCheckIns } from '../logic/feedback';
-import type { Attendance, Backend, CheckIn, CueTopic, Fragment, FragmentCategory, Me, Player, Presence, PullRecord, Session, Settings, Unsubscribe, UserId, Vote, Vow } from './types';
+import { summarizeCheckIns, summarizePeers } from '../logic/feedback';
+import type { Attendance, Backend, CheckIn, CueTopic, PeerResult, PeerScores, Fragment, FragmentCategory, Me, Player, Presence, PullRecord, Session, Settings, Unsubscribe, UserId, Vote, Vow } from './types';
 
 export const DEFAULT_SETTINGS: Settings = {
   pullMode: 'fresh', rates: { sPlusPlus: .005, sPlus: .03 }, pity: { enabled: true, sPlus: 30, sPlusPlus: 100 },
@@ -11,8 +11,8 @@ export const DEFAULT_SETTINGS: Settings = {
   starlight: { start: 1200, attend: 300, perVote: 50, perVow: 200, pullCost: 200 },
   stardust: { dupeA: 10, dupeSPlus: 50, dupeSPlusPlus: 50, costA: 60, costSPlus: 300, costSPlusPlus: 1000 },
 };
-type Store = { sessions: Session[]; attendance: Attendance[]; fragments: Fragment[]; votes: Vote[]; vows: Vow[]; players: Player[]; settings: Settings; checkins: CheckIn[] };
-type PrivateStore = { fragments: Record<string, string[]>; votes: Record<string, string[]> };
+type Store = { sessions: Session[]; attendance: Attendance[]; fragments: Fragment[]; votes: Vote[]; vows: Vow[]; players: Player[]; settings: Settings; checkins: CheckIn[]; peerRatings: { id: string; sessionId: string; targetId: UserId; scores: PeerScores }[] };
+type PrivateStore = { fragments: Record<string, string[]>; votes: Record<string, string[]>; /** session → teammate → rating id */ peer: Record<string, Record<UserId, string>> };
 const KEY = 'lumara.demo.v1';
 const CHANGE = 'lumara-demo-change';
 const uid = () => crypto.randomUUID();
@@ -21,8 +21,8 @@ const title = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 export function createLocalBackend(playerId = new URLSearchParams(location.search).get('player') || 'jay'): Backend {
   const id = playerId.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 40) || 'jay';
   const identity: Me = { id, name: id === 'jay' ? 'Jay' : title(id), isAdmin: id === 'jay' };
-  let memory: Store = { sessions: [], attendance: [], fragments: [], votes: [], vows: [], players: [], settings: structuredClone(DEFAULT_SETTINGS), checkins: [] };
-  let privateMemory: PrivateStore = { fragments: {}, votes: {} };
+  let memory: Store = { sessions: [], attendance: [], fragments: [], votes: [], vows: [], players: [], settings: structuredClone(DEFAULT_SETTINGS), checkins: [], peerRatings: [] };
+  let privateMemory: PrivateStore = { fragments: {}, votes: {}, peer: {} };
   let channel: BroadcastChannel | null = null;
   try { channel = new BroadcastChannel('lumara-demo-v1'); } catch { /* Single-tab operation is still usable. */ }
   const subscribers = new Set<() => void>();
@@ -40,12 +40,13 @@ export function createLocalBackend(playerId = new URLSearchParams(location.searc
     copy.players = copy.players.map(p => ({ ...p, nickname: p.nickname ?? null, introSeen: p.introSeen ?? false }));
     copy.sessions = copy.sessions.map(x => ({ ...x, partyLocked: x.partyLocked ?? false, speaker: x.speaker ? { ...x.speaker, thoughtId: x.speaker.thoughtId ?? null, phase: x.speaker.phase ?? null, discussed: x.speaker.discussed ?? [] } : null }));
     copy.checkins ??= [];
-    copy.attendance = copy.attendance.map(a => ({ ...a, checkinDone: a.checkinDone ?? false }));
+    copy.peerRatings ??= [];
+    copy.attendance = copy.attendance.map(a => ({ ...a, checkinDone: a.checkinDone ?? false, peerGiven: a.peerGiven ?? 0 }));
     return copy;
   };
   const readPrivate = (): PrivateStore => {
     try { const raw = localStorage.getItem(`${KEY}.private.${id}`); if (raw) privateMemory = JSON.parse(raw); } catch { /* Private identifiers remain in memory. */ }
-    return structuredClone(privateMemory);
+    return structuredClone({ ...privateMemory, peer: privateMemory.peer ?? {} });
   };
   const writePrivate = (value: PrivateStore) => {
     privateMemory = value;
@@ -82,7 +83,19 @@ export function createLocalBackend(playerId = new URLSearchParams(location.searc
   const reportOpen = (s: Store, sid: string) => ['rewards', 'completed'].includes(s.sessions.find(x => x.id === sid)?.stage ?? '');
   const partyOf = (s: Store, sid: string) => s.attendance.filter(a => a.sessionId === sid).map(a => a.userId);
   /** Who has finished (never what they answered), recomputed for the whole party. */
-  const progress = (s: Store, sid: string) => { for (const a of s.attendance.filter(x => x.sessionId === sid)) a.checkinDone = s.checkins.some(c => c.sessionId === sid && c.userId === a.userId); };
+  /** Another player's private store (demo only: every tab shares one browser). */
+  const privateOf = (userId: string): PrivateStore => {
+    if (userId === id) return readPrivate();
+    try { const raw = localStorage.getItem(`${KEY}.private.${userId}`); return { fragments: {}, votes: {}, peer: {}, ...(raw ? JSON.parse(raw) : {}) }; } catch { return { fragments: {}, votes: {}, peer: {} }; }
+  };
+  
+  const progress = (s: Store, sid: string) => {
+    const members = s.attendance.filter(x => x.sessionId === sid); const party = new Set(members.map(a => a.userId));
+    for (const a of members) {
+      a.checkinDone = s.checkins.some(c => c.sessionId === sid && c.userId === a.userId);
+      a.peerGiven = Object.keys(privateOf(a.userId).peer[sid] ?? {}).filter(t => party.has(t)).length;
+    }
+  };
   const player = (s: Store) => {
     let p = s.players.find(x => x.userId === id);
     if (!p) { p = { userId: id, displayCharacterId: null, owned: {}, pulls: [], nickname: null, introSeen: false }; s.players.push(p); }
@@ -134,7 +147,7 @@ export function createLocalBackend(playerId = new URLSearchParams(location.searc
         }
         s.sessions = s.sessions.filter(x => x.id !== sid); s.attendance = s.attendance.filter(x => x.sessionId !== sid);
         s.fragments = s.fragments.filter(x => x.sessionId !== sid); s.votes = s.votes.filter(x => x.sessionId !== sid); s.vows = s.vows.filter(x => x.sessionId !== sid);
-        s.checkins = s.checkins.filter(x => x.sessionId !== sid);
+        s.checkins = s.checkins.filter(x => x.sessionId !== sid); s.peerRatings = s.peerRatings.filter(x => x.sessionId !== sid);
       });
     },
     async join(sid) {
@@ -144,7 +157,7 @@ export function createLocalBackend(playerId = new URLSearchParams(location.searc
         if (!s.attendance.some(x => x.sessionId === sid && x.userId === id)) {   // members may always reconnect
           if (session.partyLocked) throw new Error('The party is locked. Ask your Warden to unlock it.');
           if (session.stage !== 'register') throw new Error('This voyage has already started. Join the next one.');
-          s.attendance.push({ userId: id, sessionId: sid, joinedAt: Date.now(), votesCast: 0, characterId: null, checkinDone: false });
+          s.attendance.push({ userId: id, sessionId: sid, joinedAt: Date.now(), votesCast: 0, characterId: null, checkinDone: false, peerGiven: 0 });
         }
         player(s);
       });
@@ -155,6 +168,7 @@ export function createLocalBackend(playerId = new URLSearchParams(location.searc
         if (session.status === 'ended') throw new Error('This voyage has ended.');
         if (userId === session.wardenId) throw new Error('The Warden can’t be removed from their own party.');
         s.attendance = s.attendance.filter(x => !(x.sessionId === sid && x.userId === userId));
+        progress(s, sid);
       });
     },
     async chooseTurnThought(sid, fid) {
@@ -186,7 +200,27 @@ export function createLocalBackend(playerId = new URLSearchParams(location.searc
         progress(s, sid);
       });
     },
-    async myCheckIn(sid) { return read().checkins.find(c => c.sessionId === sid && c.userId === id) ?? null; },
+      async ratePeer(sid, targetId, scores) {
+        const traits = ['collab', 'owner', 'comm', 'impact', 'growth'] as const;
+        if (!traits.every(t => Number.isInteger(scores?.[t]) && scores[t] >= 1 && scores[t] <= 5)) throw new Error('Rate every trait from 1 to 5 stars.');
+        await mutate(s => {
+          requireStage(s, sid, ['vow_altar', 'rewards']);
+          if (targetId === id) throw new Error('You can’t rate yourself.');
+          if (!s.attendance.some(a => a.sessionId === sid && a.userId === targetId)) throw new Error('That ally isn’t in this party.');
+          const p = readPrivate(); const mine = p.peer[sid] ||= {}; const clean = Object.fromEntries(traits.map(t => [t, scores[t]])) as PeerScores;
+          const existing = s.peerRatings.find(r => r.id === mine[targetId]);
+          if (existing) existing.scores = clean; else { const rid = uid(); s.peerRatings.push({ id: rid, sessionId: sid, targetId, scores: clean }); mine[targetId] = rid; }
+          writePrivate(p); progress(s, sid);
+        });
+      },
+      async myPeerRatings(sid) { const s = read(); const mine = readPrivate().peer[sid] ?? {}; return Object.fromEntries(Object.entries(mine).flatMap(([t, rid]) => { const r = s.peerRatings.find(x => x.id === rid); return r ? [[t, r.scores]] : []; })); },
+      async peerSummary(sid) {
+        const s = read(); if (!reportOpen(s, sid)) return [];
+        const party = partyOf(s, sid); const live = new Set(party.flatMap(u => Object.values(privateOf(u).peer[sid] ?? {})));
+        const all = summarizePeers(s.peerRatings.filter(r => r.sessionId === sid && party.includes(r.targetId) && live.has(r.id)));
+        return isWardenOf(s, sid) ? all : all.filter(r => r.targetId === id);
+      },
+      async myCheckIn(sid) { return read().checkins.find(c => c.sessionId === sid && c.userId === id) ?? null; },
     async checkInSummary(sid) { const s = read(); return reportOpen(s, sid) ? summarizeCheckIns(s.checkins.filter(c => c.sessionId === sid), partyOf(s, sid)) : null; },
     watchCheckIns(sid, cb) { return watch(s => isWardenOf(s, sid) && reportOpen(s, sid) ? s.checkins.filter(c => c.sessionId === sid) : [], cb); },
     async addFragment(sid, text, category) {
