@@ -38,7 +38,7 @@ export function createLocalBackend(playerId = new URLSearchParams(location.searc
     copy.settings.starlight = { ...DEFAULT_SETTINGS.starlight, ...copy.settings.starlight };
     if (oldEconomy) copy.settings.starlight.pullCost = 200;
     copy.players = copy.players.map(p => ({ ...p, nickname: p.nickname ?? null, introSeen: p.introSeen ?? false }));
-    copy.sessions = copy.sessions.map(x => ({ ...x, partyLocked: x.partyLocked ?? false, speaker: x.speaker ?? null }));
+    copy.sessions = copy.sessions.map(x => ({ ...x, partyLocked: x.partyLocked ?? false, speaker: x.speaker ? { ...x.speaker, thoughtId: x.speaker.thoughtId ?? null, phase: x.speaker.phase ?? null, discussed: x.speaker.discussed ?? [] } : null }));
     copy.checkins ??= [];
     copy.attendance = copy.attendance.map(a => ({ ...a, checkinDone: a.checkinDone ?? false }));
     return copy;
@@ -155,6 +155,20 @@ export function createLocalBackend(playerId = new URLSearchParams(location.searc
         if (session.status === 'ended') throw new Error('This voyage has ended.');
         if (userId === session.wardenId) throw new Error('The Warden can’t be removed from their own party.');
         s.attendance = s.attendance.filter(x => !(x.sessionId === sid && x.userId === userId));
+      });
+    },
+    async chooseTurnThought(sid, fid) {
+      await mutate(s => {
+        const session = s.sessions.find(x => x.id === sid);
+        if (!session || session.status !== 'active' || session.stage !== 'hall') throw new Error('The retro has moved on. Your screen will follow the current stage.');
+        const sp = session.speaker;
+        if (!sp || sp.currentId !== id || sp.phase !== 'choosing') throw new Error('It isn’t your turn to choose a thought.');
+        if (!s.fragments.some(x => x.id === fid && x.sessionId === sid)) throw new Error('This thought is no longer available.');
+        if (sp.discussed.includes(fid)) throw new Error('That thought was already discussed.');
+        const own = readPrivate().votes[sid] ?? [];
+        const openPicks = s.votes.filter(v => v.sessionId === sid && own.includes(v.id) && !sp.discussed.includes(v.fragmentId)).map(v => v.fragmentId);
+        if (openPicks.length && !openPicks.includes(fid)) throw new Error('Choose one of the thoughts you picked.');
+        session.speaker = { ...sp, thoughtId: fid, phase: 'discussing' };
       });
     },
     async setMyCharacter(sid, characterId) { await mutate(s => {

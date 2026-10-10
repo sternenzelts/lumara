@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createLocalBackend, DEFAULT_SETTINGS } from './local';
-import type { Attendance, CheckIn, Fragment, Player, Session, Stage, Vote } from './types';
+import type { Attendance, CheckIn, Fragment, Player, Session, SpeakerState, Stage, Vote } from './types';
+import { NO_SPEAKER } from '../logic/speaker';
 
 /** Test shortcut: move a voyage's stage directly in the demo store (skips the Warden and check-in rules). */
 const setStage = (sid: string, stage: Stage) => {
@@ -23,6 +24,29 @@ beforeEach(() => {
   vi.stubGlobal('BroadcastChannel', class { postMessage() {} addEventListener() {} });
 });
 describe('local demo contract', () => {
+  it('turns: only the chosen player chooses, from their own undiscussed picks, with a fallback', async () => {
+    const jay = createLocalBackend('jay'), ana = createLocalBackend('ana');
+    const s = await jay.createSession('Turns'); await ana.join(s.id); checkInEveryone(s.id);
+    await jay.updateSession(s.id, { stage: 'fragment_drop' });
+    const f1 = (await jay.addFragment(s.id, 'one', 'spark')).id, f2 = (await jay.addFragment(s.id, 'two', 'spark')).id, f3 = (await jay.addFragment(s.id, 'three', 'spark')).id;
+    await jay.updateSession(s.id, { stage: 'vote' }); await ana.castVote(s.id, f1); await ana.castVote(s.id, f2);
+    await jay.updateSession(s.id, { stage: 'hall' });
+    const turn = (patch: Partial<SpeakerState> = {}) => jay.updateSession(s.id, { speaker: { ...NO_SPEAKER, currentId: 'ana', phase: 'choosing', ...patch } });
+    await turn();
+    await expect(jay.chooseTurnThought(s.id, f1)).rejects.toThrow('your turn');
+    await expect(ana.chooseTurnThought(s.id, f3)).rejects.toThrow('you picked');
+    await ana.chooseTurnThought(s.id, f1);
+    let now: Session | null = null; jay.watchActiveSession(x => now = x);
+    expect((now as Session | null)?.speaker).toMatchObject({ thoughtId: f1, phase: 'discussing' });
+    await expect(ana.chooseTurnThought(s.id, f2)).rejects.toThrow('your turn');   // already discussing
+    await turn({ discussed: [f1] }); await expect(ana.chooseTurnThought(s.id, f1)).rejects.toThrow('already discussed');
+    await turn({ discussed: [f1, f2] }); await ana.chooseTurnThought(s.id, f3);   // none of her picks left: any undiscussed thought
+  });
+  it('reads a speaker saved before turns had thoughts as an empty turn state', async () => {
+    localStorage.setItem('lumara.demo.v1', JSON.stringify({ sessions: [{ id: 'old', sprintName: 'Old', stage: 'hall', status: 'active', wardenId: 'jay', currentFragmentId: null, timerEndsAt: null, createdAt: 1, partyLocked: false, speaker: { currentId: 'ana', spoken: [], skipped: [] } }], attendance: [], fragments: [], votes: [], vows: [], players: [] }));
+    let s: Session | null = null; createLocalBackend('jay').watchActiveSession(x => s = x);
+    expect((s as Session | null)?.speaker).toEqual({ currentId: 'ana', spoken: [], skipped: [], thoughtId: null, phase: null, discussed: [] });
+  });
   it('lobby check-in: companion first, start waits for everyone, locks at the start, answers hidden until Homecoming', async () => {
     const jay = createLocalBackend('jay'), ana = createLocalBackend('ana'), bob = createLocalBackend('bob');
     const s = await jay.createSession('Check'); await ana.join(s.id); await bob.join(s.id);

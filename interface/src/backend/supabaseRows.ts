@@ -1,7 +1,7 @@
 import type { Attendance, CheckIn, CurrencyGrant, Fragment, Player, PullRecord, Session, Settings, Vote, Vow } from './types';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Row = Record<string, any>;
-export const toSession = (r: Row): Session => ({ id: r.id, sprintName: r.sprint_name, stage: r.stage, status: r.status, wardenId: r.warden_id, currentFragmentId: r.current_fragment_id ?? null, timerEndsAt: r.timer_ends_at == null ? null : Number(r.timer_ends_at), createdAt: Number(r.created_at), partyLocked: !!r.party_locked, speaker: r.speaker ?? null });
+export const toSession = (r: Row): Session => ({ id: r.id, sprintName: r.sprint_name, stage: r.stage, status: r.status, wardenId: r.warden_id, currentFragmentId: r.current_fragment_id ?? null, timerEndsAt: r.timer_ends_at == null ? null : Number(r.timer_ends_at), createdAt: Number(r.created_at), partyLocked: !!r.party_locked, speaker: r.speaker ? { thoughtId: null, phase: null, discussed: [], ...r.speaker } : null });
 export const toAttendance = (r: Row): Attendance => ({ userId: r.user_id, sessionId: r.session_id, joinedAt: Number(r.joined_at), votesCast: r.votes_cast, characterId: r.character_id ?? null, checkinDone: !!r.checkin_done });
 export const toCheckIn = (r: Row): CheckIn => ({ sessionId: r.session_id, userId: r.user_id, sat: r.sat, growth: r.growth });
 export const toFragment = (r: Row): Fragment => ({ id: r.id, sessionId: r.session_id, text: r.text, category: r.category, createdAt: Number(r.created_at) });

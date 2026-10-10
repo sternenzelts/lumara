@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { toAttendance, toPlayer, toSession, toVow } from './supabaseRows';
 
 describe('row mappers', () => {
+  it('fills turn fields missing from an older speaker', () => {
+    expect(toSession({ id: 's', sprint_name: 'S', stage: 'hall', status: 'active', warden_id: 'w', created_at: 1, speaker: { currentId: 'u1', spoken: [], skipped: [] } }).speaker)
+      .toEqual({ currentId: 'u1', spoken: [], skipped: [], thoughtId: null, phase: null, discussed: [] });
+  });
   it('maps checkin_done on attendance', () => {
     expect(toAttendance({ user_id: 'u', session_id: 's', joined_at: 1, votes_cast: 0, checkin_done: true }).checkinDone).toBe(true);
     expect(toAttendance({ user_id: 'u', session_id: 's', joined_at: 1, votes_cast: 0 }).checkinDone).toBe(false);

@@ -57,7 +57,7 @@ export function createSupabaseBackend(sb: SupabaseClient, me: Me): Backend {
   const sendPos = (p: Presence) => { lastSent = Date.now(); lastKey = JSON.stringify(p); void liveCh!.send({ type: 'broadcast', event: 'pos', payload: { from: me.id, p } }); };
   const openLive = () => {
     const ch = sb.channel('lumara-live', { config: { broadcast: { self: false }, presence: { key: me.id } } });
-    (['pull_reveal', 'reaction', 'stage_cue', 'skill', 'say'] as const).forEach(event =>
+    (['pull_reveal', 'reaction', 'stage_cue', 'skill', 'say', 'speaker'] as const).forEach(event =>
       ch.on('broadcast' as any, { event }, ({ payload }: any) => cueSubs.get(event)?.forEach(fn => fn(payload.data, payload.from))));
     ch.on('broadcast' as any, { event: 'pos' }, ({ payload }: any) => {
       if (!payload?.from || payload.from === me.id) return;
@@ -106,6 +106,7 @@ export function createSupabaseBackend(sb: SupabaseClient, me: Me): Backend {
     updateSession: async (id, patch) => { await call('set_session', { p_session: id, p_patch: patch }); },
     cancelSession: async id => { await call('cancel_session', { p_session: id }); },
     join: async sid => { await call('join_session', { p_session: sid }); },
+    chooseTurnThought: async (sid, fid) => { await call('choose_turn_thought', { p_session: sid, p_fragment: fid }); },
     removePlayer: async (sid, userId) => { await call('remove_player', { p_session: sid, p_user: userId }); },
     saveMyCheckIn: async (sid, sat, growth) => { await call('save_checkin', { p_session: sid, p_sat: sat, p_growth: growth }); },
     setMyCharacter: async (sid, c) => { await call('set_my_character', { p_session: sid, p_character: c }); },

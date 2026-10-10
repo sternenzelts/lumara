@@ -30,6 +30,15 @@ describe('supabase backend reads', () => {
   });
 });
 describe('supabase writes and sign-in', () => {
+  it('chooseTurnThought calls choose_turn_thought', async () => {
+    const f = fakeClient({}); await createSupabaseBackend(f.client, me).chooseTurnThought('s1', 'f1');
+    expect(f.client.rpc).toHaveBeenCalledWith('choose_turn_thought', { p_session: 's1', p_fragment: 'f1' });
+  });
+  it('delivers the speaker cue to its own listeners', async () => {
+    const f = fakeClient({}); const b = createSupabaseBackend(f.client, me);
+    const got = vi.fn(); b.on('speaker', got); b.emit('speaker', { sessionId: 's1', frames: ['u1'] });
+    expect(got).toHaveBeenCalledWith({ sessionId: 's1', frames: ['u1'] }, 'u1');
+  });
   it('check-in calls use the RPC names and pass the summary through', async () => {
     const f = fakeClient({}); const b = createSupabaseBackend(f.client, me);
     await b.saveMyCheckIn('s1', 4, 5);

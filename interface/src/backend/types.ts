@@ -2,8 +2,9 @@ export type UserId = string;
 export type Unsubscribe = () => void;
 export interface Me { id: UserId; name: string; isAdmin: boolean }
 export type Stage = 'register' | 'opening_pull' | 'vow_review' | 'fragment_drop' | 'vote' | 'hall' | 'vow_altar' | 'rewards' | 'completed';
-/** Resonance Hall speaker turns (feature 3). */
-export interface SpeakerState { currentId: UserId | null; spoken: UserId[]; skipped: UserId[] }
+/** Resonance Hall turns (feature 3): spin → the chosen player chooses a thought → discuss → the Warden's Vow box. */
+export type TurnPhase = 'choosing' | 'discussing' | 'vow';
+export interface SpeakerState { currentId: UserId | null; spoken: UserId[]; skipped: UserId[]; /** The thought the current speaker chose. */ thoughtId: string | null; phase: TurnPhase | null; /** Thoughts already discussed this voyage. */ discussed: string[] }
 export interface Session {
   id: string; sprintName: string; stage: Stage; status: 'active' | 'paused' | 'ended';
   wardenId: UserId; currentFragmentId: string | null; timerEndsAt: number | null; createdAt: number;
@@ -34,7 +35,7 @@ export interface Settings {
   stardust: { dupeA: number; dupeSPlus: number; dupeSPlusPlus: number; costA: number; costSPlus: number; costSPlusPlus: number };
 }
 export interface Presence { name?: string; idle?: boolean; x: number; y: number; facing: 'left' | 'right'; characterId: string | null; moving: boolean; dir?: 'down' | 'right' | 'up' | 'left' }
-export type CueTopic = 'pull_reveal' | 'reaction' | 'stage_cue' | 'skill' | 'say';
+export type CueTopic = 'pull_reveal' | 'reaction' | 'stage_cue' | 'skill' | 'say' | 'speaker';
 export interface Backend {
   mode: 'artifact' | 'local';
   me(): Promise<Me>;
@@ -48,6 +49,8 @@ export interface Backend {
   join(sessionId: string): Promise<void>;
   /** Warden/admin: take a player out of the party (attendance only; anonymous thoughts and votes stay). */
   removePlayer(sessionId: string, userId: UserId): Promise<void>;
+  /** The chosen speaker only: the thought for their turn (one of their own undiscussed picks, or any undiscussed thought when none are left). */
+  chooseTurnThought(sessionId: string, fragmentId: string): Promise<void>;
   setMyCharacter(sessionId: string, characterId: string): Promise<void>;
   watchAttendance(sessionId: string, cb: (a: Attendance[]) => void): Unsubscribe;
   /** Self Check-In (feature 1): 1–5 each, in the lobby only, after picking a companion; editable until the voyage starts. */

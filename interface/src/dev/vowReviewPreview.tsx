@@ -50,7 +50,7 @@ const backend: Backend = {
   on: noSubscription,
   onPeers: cb => { cb({}); return () => {}; },
   emit() {}, setPresence() {},
-  createSession: unsupported, join: unsupported, removePlayer: unsupported, setMyCharacter: unsupported,
+  createSession: unsupported, join: unsupported, removePlayer: unsupported, chooseTurnThought: unsupported, setMyCharacter: unsupported,
   addFragment: unsupported, deleteMyFragment: unsupported, castVote: unsupported, removeMyVote: unsupported,
   addVow: unsupported, grantCurrency: unsupported, appendMyPull: unsupported, setMyDisplayCharacter: unsupported,
   setMyNickname: unsupported, markIntroSeen: unsupported, saveSettings: unsupported,
