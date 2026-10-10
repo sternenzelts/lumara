@@ -161,16 +161,18 @@ describe('local demo contract', () => {
     const publicStore = JSON.parse(localStorage.getItem('lumara.demo.v1')!);
     expect(publicStore.fragments[0]).not.toHaveProperty('author'); expect(publicStore.votes[0]).not.toHaveProperty('voter'); stop();
   });
-  it('supports three stacked votes and only removes the caller’s votes', async () => {
-    const jay = createLocalBackend('jay'); const ana = createLocalBackend('ana'); const s = await jay.createSession('Votes');
-    await ana.join(s.id); checkInEveryone(s.id); await jay.updateSession(s.id, { stage: 'fragment_drop' }); const f = await jay.addFragment(s.id, 'More pairing', 'radiance');
+  it('picks: one per thought, no upper limit, un-pick works, votesCast counts picks', async () => {
+    const jay = createLocalBackend('jay'), ana = createLocalBackend('ana');
+    const s = await jay.createSession('Picks'); await ana.join(s.id); checkInEveryone(s.id);
+    await jay.updateSession(s.id, { stage: 'fragment_drop' });
+    const ids: string[] = []; for (const t of ['one', 'two', 'three', 'four']) ids.push((await jay.addFragment(s.id, t, 'spark')).id);
     await jay.updateSession(s.id, { stage: 'vote' });
-    await ana.castVote(s.id, f.id); await ana.castVote(s.id, f.id); await ana.castVote(s.id, f.id);
-    await expect(ana.castVote(s.id, f.id)).rejects.toThrow('three votes');
-    await expect(jay.removeMyVote(s.id, f.id)).rejects.toThrow('no vote');
-    await ana.removeMyVote(s.id, f.id); expect(await ana.myVotes(s.id)).toHaveLength(2);
-    let attendance: Attendance[] = []; const stop = jay.watchAttendance(s.id, value => { attendance = value; });
-    expect(attendance.find(a => a.userId === 'ana')?.votesCast).toBe(2); stop();
+    for (const fid of ids) await ana.castVote(s.id, fid);
+    await expect(ana.castVote(s.id, ids[0])).rejects.toThrow('already picked');
+    await ana.removeMyVote(s.id, ids[3]);
+    expect((await ana.myVotes(s.id)).sort()).toEqual(ids.slice(0, 3).sort());
+    let att: Attendance[] = []; jay.watchAttendance(s.id, a => att = a);
+    expect(att.find(a => a.userId === 'ana')?.votesCast).toBe(3);
   });
   it('persists a Vow across voyages and allows only admin settings changes', async () => {
     const jay = createLocalBackend('jay'); const ana = createLocalBackend('ana'); const s = await jay.createSession('First voyage');

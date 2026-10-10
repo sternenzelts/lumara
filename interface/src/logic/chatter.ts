@@ -32,8 +32,10 @@ const MOMENT_IDS: Record<RetroMoment, string[]> = {
   fragments: ['fragments', 'stage_fragments'], vote: ['vote', 'stage_vote'], vow: ['vow', 'vow_fulfilled'],
   vow_not_yet: ['vow_not_yet'], beacon: ['beacon'], retro_end: ['retro_end', 'stage_goodbye'],
 };
+// Picks have no cap now: lines about "three votes" would be wrong at the Vote stage.
+const OUTDATED_VOTE = /\bthree\b|\b3 votes\b/i;
 export function eventLine(characterId: string, moment: RetroMoment): VoiceLine | undefined {
-  const lines = VOICE_LINES[characterId] || [];
+  const lines = (VOICE_LINES[characterId] || []).filter(l => moment !== 'vote' || !OUTDATED_VOTE.test(l.text));
   return MOMENT_IDS[moment].map(id => lines.find(l => l.id === id)).find(Boolean);
 }
 

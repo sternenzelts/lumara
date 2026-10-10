@@ -194,10 +194,10 @@ export function createLocalBackend(playerId = new URLSearchParams(location.searc
       const vote: Vote = { id: uid(), sessionId: sid, fragmentId: fid };
       await mutate(s => {
         const p = readPrivate(); const own = p.votes[sid] ||= [];
-        if (own.length >= 3) throw new Error('You have used all three votes. Remove one to vote elsewhere.');
         requireStage(s, sid, ['vote']); if (!s.fragments.some(x => x.id === fid && x.sessionId === sid)) throw new Error('This thought is no longer available.');
-        s.votes.push(vote); const a = s.attendance.find(x => x.sessionId === sid && x.userId === id)!; a.votesCast = own.length + 1;
-        own.push(vote.id); writePrivate(p);
+        if (s.votes.some(x => x.fragmentId === fid && own.includes(x.id))) throw new Error('You already picked this thought.');
+        s.votes.push(vote); own.push(vote.id); s.attendance.find(x => x.sessionId === sid && x.userId === id)!.votesCast = own.length;
+        writePrivate(p);
       });
     },
     async removeMyVote(sid, fid) {

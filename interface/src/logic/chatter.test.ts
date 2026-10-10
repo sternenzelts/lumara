@@ -42,8 +42,10 @@ describe('pacing', () => {
 
 describe('retro moments', () => {
   it('finds the matching line, including Seren\'s differently named ones', () => {
-    expect(eventLine('azrenth', 'vote')?.id).toBe('vote');
-    expect(eventLine('seren', 'vote')?.id).toBe('stage_vote');
+    expect(eventLine('azrenth', 'vote')).toBeUndefined();        // "Three votes…"
+    expect(eventLine('seren', 'vote')).toBeUndefined();          // "You have 3 votes…" is no longer true
+    expect(eventLine('mahesvara', 'vote')).toBeUndefined();      // "Three votes…"
+    expect(eventLine('dax', 'vote')?.id).toBe('vote');           // still fits picking
     expect(eventLine('seren', 'vow')?.id).toBe('vow_fulfilled');
     expect(eventLine('nobody', 'vote')).toBeUndefined();
   });
