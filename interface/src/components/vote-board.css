@@ -13,7 +13,7 @@
 .vb-filter button b{font-weight:600;color:#9fb6c7}
 .vb-filter button:hover{border-color:#d8bf82aa}
 .vb-filter button.on{color:#fff4dc;border-color:var(--tint,#e9cf8f);background:#17324a}
-.vb-filter button:focus-visible,.vb-give:focus-visible,.vb-star:focus-visible{outline:2px solid #fff4dc;outline-offset:2px}
+.vb-filter button:focus-visible,.vb-give:focus-visible{outline:2px solid #fff4dc;outline-offset:2px}
 
 .vb-list{display:flex;flex-direction:column;gap:10px}
 .vb-card{position:relative;padding:13px 14px 11px;background:linear-gradient(180deg,#16304a,#0d2135);border:1px solid #d8bf8230;border-top:2px solid var(--tint)}
@@ -23,17 +23,15 @@
 .vb-cat small{font:12px Manrope,sans-serif;color:#9fb6c7;margin-left:2px}
 .vb-card p{position:relative;margin:8px 0 12px;font-size:14px;line-height:1.6;color:#f2f5f8;white-space:pre-wrap;overflow-wrap:anywhere}
 .vb-card footer{display:flex;align-items:center;justify-content:space-between;gap:10px}
-.vb-stars{display:flex;flex-wrap:wrap;align-items:center;gap:3px;min-height:26px}
-.vb-star{display:grid;place-items:center;width:20px;height:20px;color:#e6eef5;opacity:.75}
-button.vb-star{width:26px;height:26px;padding:0;border:0;border-radius:50%;background:none;cursor:pointer;color:#f5c96a;opacity:1;filter:drop-shadow(0 0 5px #f5c96a);animation:vb-land .45s cubic-bezier(.2,1.4,.4,1)}
-button.vb-star:hover{color:#fff4dc}
 .vb-give{display:flex;align-items:center;gap:7px;min-height:36px;padding:6px 14px;color:#2d1d04;background:linear-gradient(180deg,#f8e2a8,#d9b064);border:1px solid #f8e7b8;font:600 13px Manrope,sans-serif;cursor:pointer;clip-path:polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%)}
 .vb-give:hover:not(:disabled){filter:brightness(1.07)}
 .vb-give:disabled{color:#8ea3b4;background:#1b3043;border-color:#2c4559;cursor:default}
-@keyframes vb-land{from{transform:translateY(-14px) scale(1.6);opacity:0}to{transform:none;opacity:1}}
 
 .vb-empty{padding:26px 6px;text-align:center}
 .vb-empty h3{margin:0 0 6px;font:400 20px Marcellus,serif;color:#fff4dc}
 .vb-empty p{margin:0;color:#bcd0de;font-size:13px}
 @media(max-width:560px){.vb-head{flex-direction:column;align-items:flex-start}.vb-hand{margin-left:0}}
-@media(prefers-reduced-motion:reduce){button.vb-star{animation:none}.vb-orb{transition:none}}
+@media(prefers-reduced-motion:reduce){.vb-orb{transition:none}}
+.vb-extra{align-self:center;font:600 15px Marcellus,serif;color:#f5d27a}
+.vb-count{font-size:12.5px;color:#b9c6d2}
+.vb-give.on{color:#fff4dc;background:#1b3043;border-color:#e9cf8f}

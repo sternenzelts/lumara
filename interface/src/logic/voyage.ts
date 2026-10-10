@@ -5,9 +5,9 @@ import { nextStage } from './index';
 export const VOYAGE_BRIEFING = {
   vow_review: { title: 'Vow review', text: 'At the beacon, look back at last voyage’s vows. Each one kept relights a lamp.' },
   fragment_drop: { title: 'Write', text: 'Walk to a crystal and leave an anonymous thought: Keep, Problem, Try or Wild.' },
-  vote: { title: 'Vote', text: 'Give your 3 Starlight votes to the thoughts that matter most.' },
-  hall: { title: 'Discuss', text: 'The Warden draws thoughts from the beacon, most voted first.' },
-  vow_altar: { title: 'New vows', text: 'Pass through the gate to the vow island and make promises for next sprint.' },
+  vote: { title: 'Vote', text: 'Pick at least 3 thoughts you want to discuss. Your picks stay private until you’re chosen to speak.' },
+  hall: { title: 'Discuss', text: 'The Warden spins for a speaker. They choose one of their picks, the party discusses it, and it becomes a Vow.' },
+  vow_altar: { title: 'New vows', text: 'Review the Vows made in Discuss and add any that are missing.' },
   rewards: { title: 'Homecoming', text: 'Back on the plaza: see what you shared, collect your Starlight and claim your free wish.' },
 } satisfies Record<Exclude<Stage, 'register' | 'completed' | 'opening_pull'>, { title: string; text: string }>;
 

@@ -72,4 +72,16 @@ describe('VoyageHud', () => {
     const { el } = await render({ warden: false, onCancel: vi.fn() });
     expect(button(el, 'Cancel voyage')).toBeUndefined();
   });
+  it('warns before Next when given a warning, and can still continue', async () => {
+    const nextWarning = { title: 'Move on to Discuss?', text: '2 players picked fewer than 3 thoughts. Continue anyway?', stay: 'Keep voting', go: 'Continue anyway' };
+    const { el, props } = await render({ nextWarning });
+    await act(async () => button(el, 'Next stage')!.click());
+    expect(props.onNext).not.toHaveBeenCalled();
+    expect(el.querySelector('[role="alertdialog"]')?.textContent).toContain('2 players picked fewer than 3');
+    await act(async () => button(el, 'Keep voting')!.click());
+    expect(el.querySelector('[role="alertdialog"]')).toBeNull();
+    await act(async () => button(el, 'Next stage')!.click());
+    await act(async () => button(el, 'Continue anyway')!.click());
+    expect(props.onNext).toHaveBeenCalled();
+  });
 });

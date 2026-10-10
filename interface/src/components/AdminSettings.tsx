@@ -9,7 +9,7 @@ import './admin-settings.css';
 
 const GROUPS = [['players', 'Players'], ['voyage', 'Voyage'], ['rates', 'Wish rates'], ['starlight', 'Starlight'], ['stardust', 'Stardust']] as const;
 type Group = typeof GROUPS[number][0];
-const STARLIGHT = { start: 'Starting Starlight', attend: 'Attending a retro', perVote: 'Each vote cast', perVow: 'Each fulfilled Vow', pullCost: 'Cost per wish' };
+const STARLIGHT = { start: 'Starting Starlight', attend: 'Attending a retro', perVote: 'Each thought picked', perVow: 'Each fulfilled Vow', pullCost: 'Cost per wish' };
 const STARDUST = { dupeA: 'A duplicate reward', dupeSPlus: 'S+ duplicate reward', dupeSPlusPlus: 'S++ duplicate reward', costA: 'A exchange cost', costSPlus: 'S+ exchange cost', costSPlusPlus: 'S++ exchange cost' };
 
 export default function AdminSettings() {
