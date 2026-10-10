@@ -96,6 +96,9 @@
 .nickname-panel .nickname-field input{background:#0e2536!important;color:#fff2d6!important;border-color:#bda56c;caret-color:#ffe3a0}
 .nickname-field:focus-within{border-bottom-color:#ffe3a0;box-shadow:0 1px 0 #ffe3a0}
 .game-panel .balance-badge,.game-panel .exchange-item>strong,.game-panel .exchange-confirm span{color:#e2bdff}
+/* Exchange in the dark game panel: the light-theme selected card and confirm bar kept their near-white backgrounds under cream text. */
+.game-panel .exchange-item.selected{background:#1f3d54;border-color:#e9cf8f;box-shadow:0 0 0 1px #e9cf8f66,0 0 18px #e9cf8f33}
+.game-panel .exchange-confirm{background:#10233a;border-color:#d8bf8299;color:#fff2d6;box-shadow:0 10px 28px #0a1a2c99}
 .sanctuary-music-panel{background:#102436f5;color:#fff2d6;border-color:#c0a66a;backdrop-filter:blur(12px)}
 .sanctuary-music-panel label,.sanctuary-music-panel output{color:#e8d8b6}.sanctuary-music-toggle{color:#ffe4ae;background:#233f51;border-color:#b99e65}.sanctuary-music-toggle:hover{background:#345368}
 .game-shell .game-hud:has(.sanctuary-music-panel){z-index:40}
