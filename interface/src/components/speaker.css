@@ -1,0 +1,38 @@
+/* Resonance Hall turns: the turn card, the chooser, the tracker, the roulette reel, the spotlight. */
+.discuss-stage{display:grid;gap:14px}
+.turn-card{display:grid;gap:12px;min-height:90px}
+.turn-idle{margin:0;padding:18px;border:1px dashed #d8bf8255;text-align:center;font-family:'Marcellus',serif;font-size:18px;color:#e4ebf1}
+.turn-chooser h4{margin:0 0 2px;font-family:'Marcellus',serif;font-weight:400;font-size:20px;color:#fff4dc}
+.turn-chooser p{margin:0 0 10px;font-size:13px;color:#b9c6d2}
+.turn-chooser ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.turn-chooser li button{display:grid;gap:4px;width:100%;padding:10px 12px;border:1px solid #d8bf8244;background:#10233acc;color:#e4ebf1;font:inherit;font-size:14px;line-height:1.45;text-align:left;cursor:pointer}
+.turn-chooser li button:hover{border-color:#e9cf8f;box-shadow:0 0 14px #e9cf8f33}
+.turn-chooser li button:focus-visible,.hall-controls button:focus-visible,.speaker-panel button:focus-visible{outline:2px solid #fff4dc;outline-offset:2px}
+.turn-vow{margin:0}
+.turn-vows h4{margin:0 0 6px;font-family:'Marcellus',serif;font-weight:400;font-size:16px;color:#e9cf8f}
+.turn-vows ul{margin:0;padding-left:18px;display:grid;gap:4px;font-size:14px;color:#e4ebf1}
+.hall-controls{display:flex;flex-wrap:wrap;gap:8px}
+.hall-controls button{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 16px;border:1px solid #d8bf8299;background:#10233acc;color:#fff4dc;font:inherit;cursor:pointer}
+.speaker-spin{border-color:#f3dca0!important;background:linear-gradient(180deg,#e9cf8f,#c9a45a)!important;color:#1b2a3a!important;font-weight:700}
+.hall-controls button:disabled,.turn-vow button:disabled{opacity:.5;cursor:not-allowed}
+.speaker-panel{border-top:1px solid #d8bf8255;padding-top:12px;display:grid;gap:8px;color:#fff4dc}
+.speaker-panel header{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.speaker-panel h4{margin:0;font-family:'Marcellus',serif;font-weight:400;font-size:17px}
+.speaker-panel header p{margin:0;font-size:13px;color:#b9c6d2}
+.speaker-panel ul{list-style:none;margin:0;padding:0;display:flex;gap:8px;overflow-x:auto;scrollbar-width:thin}
+.speaker-panel li{flex:0 0 auto;display:grid;justify-items:center;gap:2px;width:84px;padding:6px 4px;border:1px solid #d8bf8233;background:#10233acc;font-size:12.5px}
+.speaker-panel li .character-art,.speaker-panel li .silhouette{height:58px;width:auto;object-fit:contain}
+.speaker-panel li small{font-size:11px;color:#b9c6d2}
+.speaker-panel li.mark-speaking{border-color:#f3dca0;box-shadow:0 0 16px #e9cf8f55}
+.speaker-panel li.mark-spoken{opacity:.6}
+.speaker-panel li.mark-skipped{opacity:.45;border-style:dashed}
+.speaker-panel li button{padding:2px 8px;border:1px solid #d8bf8266;background:transparent;color:#e9cf8f;font:inherit;font-size:11px;cursor:pointer}
+.speaker-reel{position:fixed;left:50%;top:22%;z-index:40;transform:translateX(-50%);display:grid;justify-items:center;gap:4px;padding:14px 26px 12px;border:1px solid #d8bf8299;background:radial-gradient(circle at 50% 30%,#1d3a5c,#0a1a2cf2);color:#fff4dc;pointer-events:none}
+.speaker-reel .character-art,.speaker-reel .silhouette{height:150px;width:auto;object-fit:contain}
+.speaker-reel strong{font-family:'Marcellus',serif;font-weight:400;font-size:24px}
+.speaker-reel span{font-size:13px;color:#e9cf8f}
+.speaker-reel.landed{box-shadow:0 0 40px #e9cf8f66;animation:speaker-land .5s var(--ease,ease-out)}
+@keyframes speaker-land{from{transform:translateX(-50%) scale(.92)}to{transform:translateX(-50%) scale(1)}}
+.speaker-your-turn{position:fixed;left:50%;top:84px;z-index:35;transform:translateX(-50%);margin:0;padding:10px 22px;border:1px solid #f3dca0;background:linear-gradient(180deg,#e9cf8f,#c9a45a);color:#1b2a3a;font-family:'Marcellus',serif;font-size:18px}
+.scene-character.speaker-spotlight::before{content:'';position:absolute;left:50%;bottom:0;width:140%;height:70%;transform:translateX(-50%);background:radial-gradient(ellipse at 50% 100%,#f3dca0aa,transparent 70%);pointer-events:none;z-index:-1}
+@media (prefers-reduced-motion:reduce){.speaker-reel.landed{animation:none}}

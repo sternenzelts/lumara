@@ -27,7 +27,7 @@ const raf = (cb: (t: number) => void) => requestAnimationFrame(cb);
 const GUN_HEIGHT = 60;   // px above the feet where shots leave his gun
 
 /** The Sanctuary: Jay's painted map at 2× zoom with a camera that follows your character. Positions are map fractions. */
-export default function Scene({ backend, me, player, vows, fragments = [], movement, cooldownMode, frozen = false, activeCharacterId, stage, sessionId = 'sanctuary', onOpenVows, onOpenVote, editThought, onEditDone, onFragmentSaved }: { sessionId?: string; backend: Backend; me: Me; player: Player | null; vows: Vow[]; fragments?: Fragment[]; movement: boolean; cooldownMode?: 'normal' | 'half' | 'none'; frozen?: boolean; activeCharacterId?: string | null; stage?: Stage; onOpenVows?: () => void; onOpenVote?: () => void; editThought?: { id: string; text: string; category: FragmentCategory } | null; onEditDone?: () => void; onFragmentSaved?: (message: string, error?: boolean) => void }) {
+export default function Scene({ backend, me, player, vows, fragments = [], movement, cooldownMode, frozen = false, activeCharacterId, stage, sessionId = 'sanctuary', onOpenVows, onOpenVote, editThought, onEditDone, onFragmentSaved, speakerId }: { sessionId?: string; backend: Backend; me: Me; player: Player | null; vows: Vow[]; fragments?: Fragment[]; movement: boolean; cooldownMode?: 'normal' | 'half' | 'none'; frozen?: boolean; activeCharacterId?: string | null; stage?: Stage; onOpenVows?: () => void; onOpenVote?: () => void; editThought?: { id: string; text: string; category: FragmentCategory } | null; onEditDone?: () => void; onFragmentSaved?: (message: string, error?: boolean) => void; /** Resonance Hall: the chosen speaker (spotlight; walks to the beacon on their own screen). */ speakerId?: string | null }) {
   const reduced = useReducedMotion();
   const [position, setPosition] = useState(() => ({ ...resolveMove({ x: MAP.floor.cx, y: MAP.floor.cy }, { x: MAP.floor.cx - 0.12 + [...me.id].reduce((sum, letter) => sum + letter.charCodeAt(0), 0) % 24 / 100, y: MAP.floor.cy + 0.16 }), facing: 'right' as Presence['facing'], dir: 'down' as WalkDir, moving: false }));
   const [peers, setPeers] = useState<Record<string, Presence>>({});
@@ -193,6 +193,14 @@ export default function Scene({ backend, me, player, vows, fragments = [], movem
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage]);
 
+  // Speaker turns: the chosen player walks to the beacon. Positions are self-broadcast, so only their own screen moves them.
+  const lastSpeaker = useRef(speakerId);
+  useEffect(() => {
+    const changed = lastSpeaker.current !== speakerId; lastSpeaker.current = speakerId;
+    if (changed && speakerId === me.id && movement) { keys.current.clear(); walkTo(gatherSpot({ x: MAP.beacon.x, y: MAP.beacon.y + 0.06 }, 0, 1), 2.2); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [speakerId]);
+
   // Walk keys work anywhere on the page (no need to click the plaza first), except while typing.
   const walkToRef = useRef(walkTo); walkToRef.current = walkTo;
   const loopRef = useRef(ensureLoop); loopRef.current = ensureLoop;
@@ -255,6 +263,7 @@ export default function Scene({ backend, me, player, vows, fragments = [], movem
     inLantern(p, field, t, size) ? 'lantern-lit' : '',
     field.some(f => (f.kind === 'soar' && f.userId === id && t >= f.at + SOAR.pickupMs && t < f.at + SOAR.landMs + 150) || (f.kind === 'thunder' && f.userId === id && t < f.at + THUNDER.landMs + 60)) ? 'riding' : '',
     resists(id) ? 'time-resist' : '',
+    speakerId && speakerId === id ? 'speaker-spotlight' : '',
   ].join(' ');
   const posOf = (id: string) => id === me.id ? position : peers[id];
   const reachOf = (from: { x: number; y: number }, dir?: WalkDir, angle?: number) => { const s = shotVector(dir || 'down', angle); return shotDistance(from, s, s.max, size.w); };

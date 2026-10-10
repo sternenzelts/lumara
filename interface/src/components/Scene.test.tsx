@@ -17,7 +17,7 @@ const hold = async (key: string, ms: number, target: EventTarget = window) => { 
 const posOf = (el: HTMLElement) => { const o = el.querySelector<HTMLElement>('.scene-character.own')!; return { x: parseFloat(o.style.left) / 100, y: parseFloat(o.style.top) / 100 }; };
 const vow = (i: number): Vow => ({ id: 'v' + i, sessionId: 's', text: 't', ownerId: null, status: 'fulfilled', createdAt: 1 });
 let root: Root | undefined;
-async function render(characterId: string, extra: { vows?: Vow[]; fragments?: Fragment[]; stage?: Stage; onOpenVows?: () => void; movement?: boolean } = {}) {
+async function render(characterId: string, extra: { vows?: Vow[]; fragments?: Fragment[]; stage?: Stage; onOpenVows?: () => void; movement?: boolean; speakerId?: string | null } = {}) {
   await act(async () => root?.unmount());
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   vi.stubGlobal('BroadcastChannel', class { postMessage() {} addEventListener() {} close() {} });
@@ -28,10 +28,10 @@ async function render(characterId: string, extra: { vows?: Vow[]; fragments?: Fr
   const el = document.createElement('div'); document.body.append(el);
   const backend = createLocalBackend('jay');
   root = createRoot(el);
-  let frozen = false;
-  const draw = (stage?: Stage) => root!.render(<Scene sessionId="s1" backend={backend} me={{ id: 'jay', name: 'Jay', isAdmin: true }} player={null} vows={extra.vows || []} fragments={extra.fragments} movement={extra.movement ?? true} frozen={frozen} activeCharacterId={characterId} stage={stage} onOpenVows={extra.onOpenVows} />);
+  let frozen = false; let speakerId = extra.speakerId ?? null;
+  const draw = (stage?: Stage) => root!.render(<Scene sessionId="s1" backend={backend} me={{ id: 'jay', name: 'Jay', isAdmin: true }} player={null} vows={extra.vows || []} fragments={extra.fragments} movement={extra.movement ?? true} frozen={frozen} speakerId={speakerId} activeCharacterId={characterId} stage={stage} onOpenVows={extra.onOpenVows} />);
   await act(async () => draw(extra.stage));
-  return Object.assign(el, { backend, restage: (stage: Stage) => act(async () => draw(stage)), freeze: () => act(async () => { frozen = true; draw(extra.stage); }) });
+  return Object.assign(el, { backend, restage: (stage: Stage) => act(async () => draw(stage)), freeze: () => act(async () => { frozen = true; draw(extra.stage); }), speak: (id: string | null) => act(async () => { speakerId = id; draw(extra.stage); }) });
 }
 
 describe('writing at the crystals', () => {
@@ -428,5 +428,16 @@ describe('Azrenth kit', () => {
     expect(ov.querySelector('.sv-painting')).toBeNull();
     expect(ov.querySelector('.ult-shockwave')).toBeNull();
     expect(own(el).querySelector<HTMLElement>('.fx-sever')!.style.backgroundImage).toContain('azrenth_vfx_sever');
+  });
+});
+describe('speaker turns', () => {
+  it('spotlights the chosen speaker and walks them to the beacon', async () => {
+    const el = await render('wren', { stage: 'hall' });
+    expect(el.querySelector('.scene-character.own.speaker-spotlight')).toBeNull();
+    const before = posOf(el);
+    await el.speak('jay'); await run(1500);
+    expect(el.querySelector('.scene-character.own.speaker-spotlight')).toBeTruthy();
+    const after = posOf(el); const goal = { x: MAP.beacon.x, y: MAP.beacon.y + 0.06 };
+    expect(Math.hypot(after.x - goal.x, after.y - goal.y)).toBeLessThan(Math.hypot(before.x - goal.x, before.y - goal.y));
   });
 });
