@@ -145,6 +145,8 @@ The outsider-viewer test in Task 13 stays. It just leaves the top-five list.
 
 ### Task 1: Make a Vow from a thought (feature 9)
 
+> **Revision 2:** R2-6 changes `ThoughtPicker`. It lists only undiscussed thoughts, oldest first, with no vote counts, and its `votes` prop is removed.
+
 **Files:**
 - Create: `interface/src/logic/report.ts`
 - Create: `interface/src/logic/report.test.ts`
@@ -1258,6 +1260,8 @@ git commit -m "Game: Self Check-In panel at the Vow Altar and Homecoming"
 
 ### Task 8: Peer feedback on the server (migration 0007)
 
+> **Revision 2:** this migration is now `0008_peer_feedback` (file names and the `apply_migration` name), because `0007` is taken by R2-1.
+
 > **Revised (lobby check-in):** read Appendix section **Rev I** first. It replaces parts of this task, and it wins where they disagree.
 
 **Files:**
@@ -1657,6 +1661,8 @@ git commit -m "Game: peer feedback in both backends (no rater stored, own result
 
 ### Task 10: Peer Feedback panel and finish warning (feature 2)
 
+> **Revision 2:** use `VoyageHud`'s `nextWarning` from R2-3 instead of adding `finishWarning`: `{ title: 'Finish the voyage?', text: finishWarningText(...), stay: 'Keep going', go: 'Finish anyway' }`.
+
 > **Revised (lobby check-in):** read Appendix section **Rev K** first. It replaces parts of this task, and it wins where they disagree.
 
 **Files:**
@@ -1893,6 +1899,8 @@ git commit -m "Game: Peer Feedback panel (character chips, five traits, Save & n
 
 ### Task 11: Speaker-turn rules and the `speaker` cue (feature 3, logic)
 
+> **Superseded by Revision 2 (R2-4).** Skip this task.
+
 **Files:**
 - Create: `interface/src/logic/speaker.ts`
 - Create: `interface/src/logic/speaker.test.ts`
@@ -2025,6 +2033,8 @@ git commit -m "Game: speaker-turn rules (spin, spin again, done, skip, add back)
 ---
 
 ### Task 12: Speaker turns in the Resonance Hall (feature 3, UI)
+
+> **Superseded by Revision 2 (R2-5).** Skip this task.
 
 **Files:**
 - Create: `interface/src/components/SpeakerPanel.tsx`, `SpeakerPanel.test.tsx`
@@ -3973,3 +3983,1239 @@ The CSS row changes to `.party-progress li{…grid-template-columns:1fr auto 80p
 6. Take a phone-width screenshot.
 
 The commit becomes: `Game: Peer Feedback panel, the Warden's party progress (answers from Homecoming), finish warning for peer feedback`.
+
+---
+
+## Revision 2 (2026-10-10): picks, chosen-speaker Discuss, Vow Altar review
+
+**Spec:** design doc sections 3 (revised), 9 (revised) and 10 (new).
+
+**Order and what this replaces:**
+- Run **R2-1 to R2-7 next**, then Tasks 8–10 and 13–17.
+- **Tasks 11 and 12 are superseded.** R2-4 and R2-5 replace them; skip them.
+- **Task 8's migration is renumbered `0008_peer_feedback`**, because `0007` is taken by R2-1.
+- **Task 10 (and Rev K) use R2-3's `nextWarning` instead of `finishWarning`:**
+  - title `'Finish the voyage?'`
+  - text from `finishWarningText(...)`
+  - buttons `'Keep going'` / `'Finish anyway'`
+
+**Already live:** Tasks 1–7 (features 9, 8, 1). Migrations 0005 and 0006 are applied.
+
+**Database:** Jay runs migrations in the Supabase SQL Editor. Claude checks the result with a read-only query before any push.
+
+### R2 Global Constraints
+- Everything in the plan's Global Constraints still applies:
+  - green `tsc` and `vitest` after every task;
+  - no push to `main` without Jay's OK;
+  - the local backend keeps parity;
+  - the voyage look.
+- **Picks stay anonymous rows.** `votes` never holds a user id. Only the chosen player's own choice reveals that they picked that thought.
+- **No pick counts and no ranking in Discuss.** Thoughts are listed oldest first.
+- **Starlight:** `perVote` per pick, no cap. The formula in `logic/index.ts` is unchanged.
+
+### R2 Review Focus
+1. **Reload mid-turn.** A chosen player who refreshes while choosing gets the same choices back. The choices are computed from `myVotes`, which reloads. Pinned in R2-5 (DiscussStage renders from props only).
+2. **Speaker JSON saved before these fields existed** (`thoughtId`/`phase`/`discussed` missing) reads as empty. Pinned in R2-4 (row mapper and local read).
+3. **The chosen player leaves or is removed mid-turn.** Skip clears the turn, including its thought and phase. Pinned in R2-4 (`skipSpeaker`).
+4. **Fewer than 3 thoughts written:** the minimum becomes the number of thoughts. Pinned in R2-2 (`minPicks`).
+5. **Only the chosen player can choose, and only from their own undiscussed picks**, with the fallback. Pinned in R2-1 (SQL) and R2-4 (local).
+
+---
+
+### R2-1: Server: picks and choosing a turn's thought (migration 0007)
+
+**Files:**
+- Create: `supabase/migrations/0007_picks_and_turns.sql`
+- Create: `supabase/tests/0007_picks_and_turns_test.sql`
+- Modify: `supabase/tests/0001_lumara_test.sql` (its vote-cap lines)
+
+**Interfaces:**
+- Produces:
+  - `cast_vote(p_session, p_fragment)`: no cap, and it refuses a second pick of the same thought ("You already picked this thought."). `votes_cast` = the number of picks.
+  - `choose_turn_thought(p_session uuid, p_fragment uuid)`: sets `speaker.thoughtId` and `speaker.phase = 'discussing'`.
+- Consumes: `sessions.speaker` from 0005 (now holding `currentId, spoken, skipped, thoughtId, phase, discussed`), `vote_owners`/`votes`, and `require_stage` from 0001.
+
+- [ ] **Step 1: Write the SQL test** (`supabase/tests/0007_picks_and_turns_test.sql`)
+```sql
+-- 0007: picks (no cap, one per thought) and choosing a turn's thought. Run in the SQL Editor; everything rolls back.
+create or replace function pg_temp.as_user(uid uuid, anon bool default true) returns void language plpgsql as $$
+begin
+  perform set_config('request.jwt.claims', json_build_object('sub', uid, 'role','authenticated','is_anonymous', anon)::text, true);
+  set local role authenticated;
+end $$;
+create or replace function pg_temp.ready_all(p_session uuid) returns void language sql as $$
+  update attendance set character_id = coalesce(character_id, 'wren'), checkin_done = true where session_id = p_session;
+  insert into checkins(session_id, user_id, sat, growth) select session_id, user_id, 4, 4 from attendance where session_id = p_session on conflict do nothing $$;
+begin;
+  update sessions set status = 'ended' where status <> 'ended';
+  insert into auth.users(id, aud, role, is_anonymous) values
+    ('00000000-0000-0000-0000-00000000000a','authenticated','authenticated', false),
+    ('00000000-0000-0000-0000-00000000000b','authenticated','authenticated', true),
+    ('00000000-0000-0000-0000-00000000000c','authenticated','authenticated', true);
+  insert into app_admins(user_id) values ('00000000-0000-0000-0000-00000000000a');
+  select pg_temp.as_user('00000000-0000-0000-0000-00000000000a', false);
+  create temp table t_sess as select (create_session('Sprint V')).id as id;
+  reset role; select pg_temp.as_user('00000000-0000-0000-0000-00000000000b'); select join_session((select id from t_sess));
+  reset role; select pg_temp.as_user('00000000-0000-0000-0000-00000000000c'); select join_session((select id from t_sess));
+  reset role; select pg_temp.ready_all((select id from t_sess));
+  select pg_temp.as_user('00000000-0000-0000-0000-00000000000a', false); select set_session((select id from t_sess), '{"stage":"fragment_drop"}');
+  reset role; select pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
+  create temp table t_f(n int, id uuid);
+  insert into t_f select 1, (add_fragment((select id from t_sess), 'one', 'spark')).id;
+  insert into t_f select 2, (add_fragment((select id from t_sess), 'two', 'spark')).id;
+  insert into t_f select 3, (add_fragment((select id from t_sess), 'three', 'fracture')).id;
+  insert into t_f select 4, (add_fragment((select id from t_sess), 'four', 'radiance')).id;
+  reset role; select pg_temp.as_user('00000000-0000-0000-0000-00000000000a', false); select set_session((select id from t_sess), '{"stage":"vote"}');
+  -- c picks all four (no cap), cannot pick one twice, un-picks one; votes_cast counts picks
+  reset role; select pg_temp.as_user('00000000-0000-0000-0000-00000000000c');
+  select cast_vote((select id from t_sess), id) from t_f order by n;
+  do $$ begin begin perform cast_vote((select id from t_sess), (select id from t_f where n = 1)); raise exception 'FAIL: picked the same thought twice'; exception when others then if sqlerrm like 'FAIL%' then raise; end if; end; end $$;
+  select remove_my_vote((select id from t_sess), (select id from t_f where n = 4));
+  do $$ begin if (select votes_cast from attendance where session_id = (select id from t_sess) and user_id = '00000000-0000-0000-0000-00000000000c') <> 3 then raise exception 'FAIL: votes_cast is not the number of picks'; end if; end $$;
+  do $$ begin if exists (select 1 from information_schema.columns where table_name = 'votes' and column_name like '%user%') then raise exception 'FAIL: user column on votes'; end if; end $$;
+  -- Discuss: the Warden makes c the chooser
+  reset role; select pg_temp.as_user('00000000-0000-0000-0000-00000000000a', false); select set_session((select id from t_sess), '{"stage":"hall"}');
+  select set_session((select id from t_sess), jsonb_build_object('speaker', jsonb_build_object('currentId', '00000000-0000-0000-0000-00000000000c', 'spoken', '[]'::jsonb, 'skipped', '[]'::jsonb, 'thoughtId', null, 'phase', 'choosing', 'discussed', '[]'::jsonb)));
+  -- b is not the chosen player
+  reset role; select pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
+  do $$ begin begin perform choose_turn_thought((select id from t_sess), (select id from t_f where n = 1)); raise exception 'FAIL: non-chosen player chose'; exception when others then if sqlerrm like 'FAIL%' then raise; end if; end; end $$;
+  -- c must choose one of their own picks (4 was un-picked)
+  reset role; select pg_temp.as_user('00000000-0000-0000-0000-00000000000c');
+  do $$ begin begin perform choose_turn_thought((select id from t_sess), (select id from t_f where n = 4)); raise exception 'FAIL: chose a thought they did not pick'; exception when others then if sqlerrm like 'FAIL%' then raise; end if; end; end $$;
+  select choose_turn_thought((select id from t_sess), (select id from t_f where n = 1));
+  do $$ begin if (select speaker->>'thoughtId' from sessions where id = (select id from t_sess)) is distinct from (select id::text from t_f where n = 1) or (select speaker->>'phase' from sessions where id = (select id from t_sess)) <> 'discussing' then raise exception 'FAIL: choice not saved'; end if; end $$;
+  do $$ begin begin perform choose_turn_thought((select id from t_sess), (select id from t_f where n = 2)); raise exception 'FAIL: chose twice'; exception when others then if sqlerrm like 'FAIL%' then raise; end if; end; end $$;
+  -- a discussed thought cannot be chosen again
+  reset role; select pg_temp.as_user('00000000-0000-0000-0000-00000000000a', false);
+  select set_session((select id from t_sess), jsonb_build_object('speaker', jsonb_build_object('currentId', '00000000-0000-0000-0000-00000000000c', 'spoken', '[]'::jsonb, 'skipped', '[]'::jsonb, 'thoughtId', null, 'phase', 'choosing', 'discussed', jsonb_build_array((select id::text from t_f where n = 1)))));
+  reset role; select pg_temp.as_user('00000000-0000-0000-0000-00000000000c');
+  do $$ begin begin perform choose_turn_thought((select id from t_sess), (select id from t_f where n = 1)); raise exception 'FAIL: chose a discussed thought'; exception when others then if sqlerrm like 'FAIL%' then raise; end if; end; end $$;
+  -- none of c's picks left: any undiscussed thought
+  reset role; select pg_temp.as_user('00000000-0000-0000-0000-00000000000a', false);
+  select set_session((select id from t_sess), jsonb_build_object('speaker', jsonb_build_object('currentId', '00000000-0000-0000-0000-00000000000c', 'spoken', '[]'::jsonb, 'skipped', '[]'::jsonb, 'thoughtId', null, 'phase', 'choosing', 'discussed', (select jsonb_agg(id::text) from t_f where n <= 3))));
+  reset role; select pg_temp.as_user('00000000-0000-0000-0000-00000000000c');
+  select choose_turn_thought((select id from t_sess), (select id from t_f where n = 4));
+  select 'ALL PASSED' as result;
+rollback;
+```
+
+`supabase/tests/0001_lumara_test.sql`:
+- Replace the comment `-- admin (not Warden of record? he is) moves to vote; c votes 3 times, 4th rejected` with `-- admin moves to vote; c picks the thought once; a second pick of the same thought is refused`.
+- Replace the line `select cast_vote(…); select cast_vote(…); select cast_vote(…);` with one `select cast_vote((select id from t_sess), (select id from t_frag));`.
+- Replace the `'FAIL: 4th vote accepted'` line with:
+```sql
+  do $$ begin begin perform cast_vote((select id from t_sess), (select id from t_frag)); raise exception 'FAIL: picked the same thought twice'; exception when others then if sqlerrm like 'FAIL%' then raise; end if; end; end $$;
+```
+
+- [ ] **Step 2: Write the migration** (`supabase/migrations/0007_picks_and_turns.sql`)
+```sql
+-- Vote as picks (feature 10): one pick per thought, no upper limit; votes_cast counts picks.
+create or replace function cast_vote(p_session uuid, p_fragment uuid) returns void language plpgsql security definer set search_path = public as $$
+declare v uuid; begin
+  perform require_stage(p_session, array['vote']);
+  if not exists (select 1 from fragments where id = p_fragment and session_id = p_session) then raise exception 'This thought is no longer available.'; end if;
+  if exists (select 1 from vote_owners o join votes x on x.id = o.vote_id where o.user_id = auth.uid() and x.session_id = p_session and x.fragment_id = p_fragment) then raise exception 'You already picked this thought.'; end if;
+  insert into votes(session_id, fragment_id) values (p_session, p_fragment) returning id into v;
+  insert into vote_owners values (v, auth.uid(), p_session);
+  update attendance set votes_cast = (select count(*) from vote_owners where user_id = auth.uid() and session_id = p_session) where session_id = p_session and user_id = auth.uid(); end $$;
+
+-- Discuss turns (feature 3): the chosen player picks the thought for their turn — one of their own undiscussed picks,
+-- or any undiscussed thought when none of their picks are left. Everything else about turns stays Warden-only (set_session).
+create or replace function choose_turn_thought(p_session uuid, p_fragment uuid) returns void language plpgsql security definer set search_path = public as $$
+declare s sessions; done jsonb; open_picks uuid[]; begin
+  select * into s from sessions where id = p_session for update;
+  if s.id is null or s.status <> 'active' or s.stage <> 'hall' then raise exception 'The retro has moved on. Your screen will follow the current stage.'; end if;
+  if s.speaker is null or s.speaker->>'currentId' is distinct from auth.uid()::text or s.speaker->>'phase' is distinct from 'choosing' then raise exception 'It isn’t your turn to choose a thought.'; end if;
+  if not exists (select 1 from fragments where id = p_fragment and session_id = p_session) then raise exception 'This thought is no longer available.'; end if;
+  done := coalesce(s.speaker->'discussed', '[]'::jsonb);
+  if done ? p_fragment::text then raise exception 'That thought was already discussed.'; end if;
+  select array_agg(distinct x.fragment_id) into open_picks from vote_owners o join votes x on x.id = o.vote_id
+    where o.user_id = auth.uid() and x.session_id = p_session and not (done ? x.fragment_id::text);
+  if open_picks is not null and not (p_fragment = any(open_picks)) then raise exception 'Choose one of the thoughts you picked.'; end if;
+  update sessions set speaker = speaker || jsonb_build_object('thoughtId', p_fragment::text, 'phase', 'discussing') where id = p_session; end $$;
+revoke execute on function choose_turn_thought(uuid, uuid) from public, anon;
+grant execute on function choose_turn_thought(uuid, uuid) to authenticated;
+```
+
+- [ ] **Step 3: Check it, without applying.** Ask Jay to run, in the SQL Editor, `begin;` + the migration body + the 0007 test body (between its `begin;` and `rollback;`) + `rollback;`. The pg_temp helpers go first, outside the transaction.
+  - Expected: the run ends with `ALL PASSED` and nothing is saved.
+  - Applying happens in R2-7, with the deploy.
+
+- [ ] **Step 4:** `supabase/` is git-ignored, so there's nothing to commit. Add a ledger line.
+
+---
+
+### R2-2: Picks in both backends, the minimum, and voice lines
+
+**Files:**
+- Create: `interface/src/logic/picks.ts`, `interface/src/logic/picks.test.ts`
+- Modify: `interface/src/backend/local.ts` (`castVote`), `interface/src/backend/local.test.ts`
+- Modify: `interface/src/logic/chatter.ts`, `interface/src/logic/chatter.test.ts`
+
+**Interfaces:**
+- Produces:
+  - `minPicks(thoughts: number): number`
+  - `underPicked(party: Attendance[], thoughts: number): number`
+  - `pickWarningText(under: number, min: number): string | null`
+  - local `castVote` refuses a second pick of the same thought, with no cap.
+  - `eventLine(id, 'vote')` skips lines that mention three votes.
+- The Supabase backend's `castVote` is unchanged (the rule lives in the RPC).
+
+- [ ] **Step 1: Write the failing tests**
+
+`interface/src/logic/picks.test.ts`:
+```ts
+import { describe, expect, it } from 'vitest';
+import { minPicks, pickWarningText, underPicked } from './picks';
+
+const att = (userId: string, votesCast: number) => ({ userId, sessionId: 's', joinedAt: 1, votesCast, characterId: null, checkinDone: true });
+describe('picks', () => {
+  it('asks for 3 picks, or every thought when fewer were written', () => {
+    expect(minPicks(10)).toBe(3); expect(minPicks(2)).toBe(2); expect(minPicks(0)).toBe(0);
+  });
+  it('counts players under the minimum', () => {
+    expect(underPicked([att('a', 3), att('b', 1), att('c', 0)], 5)).toBe(2);
+    expect(underPicked([att('a', 2)], 2)).toBe(0);
+  });
+  it('warns the Warden, or not at all', () => {
+    expect(pickWarningText(2, 3)).toBe('2 players picked fewer than 3 thoughts. Continue anyway?');
+    expect(pickWarningText(1, 1)).toBe('1 player picked fewer than 1 thought. Continue anyway?');
+    expect(pickWarningText(0, 3)).toBeNull(); expect(pickWarningText(2, 0)).toBeNull();
+  });
+});
+```
+
+In `interface/src/backend/local.test.ts`, delete the test `'supports three stacked votes and only removes the caller’s votes'` (stacking is gone) and add:
+```ts
+  it('picks: one per thought, no upper limit, un-pick works, votesCast counts picks', async () => {
+    const jay = createLocalBackend('jay'), ana = createLocalBackend('ana');
+    const s = await jay.createSession('Picks'); await ana.join(s.id); checkInEveryone(s.id);
+    await jay.updateSession(s.id, { stage: 'fragment_drop' });
+    const ids: string[] = []; for (const t of ['one', 'two', 'three', 'four']) ids.push((await jay.addFragment(s.id, t, 'spark')).id);
+    await jay.updateSession(s.id, { stage: 'vote' });
+    for (const fid of ids) await ana.castVote(s.id, fid);
+    await expect(ana.castVote(s.id, ids[0])).rejects.toThrow('already picked');
+    await ana.removeMyVote(s.id, ids[3]);
+    expect((await ana.myVotes(s.id)).sort()).toEqual(ids.slice(0, 3).sort());
+    let att: Attendance[] = []; jay.watchAttendance(s.id, a => att = a);
+    expect(att.find(a => a.userId === 'ana')?.votesCast).toBe(3);
+  });
+```
+
+In `interface/src/logic/chatter.test.ts`, replace `expect(eventLine('seren', 'vote')?.id).toBe('stage_vote');` with:
+```ts
+    expect(eventLine('seren', 'vote')).toBeUndefined();          // "You have 3 votes…" is no longer true
+    expect(eventLine('mahesvara', 'vote')).toBeUndefined();      // "Three votes…"
+    expect(eventLine('dax', 'vote')?.id).toBe('vote');           // still fits picking
+```
+
+- [ ] **Step 2: Run them and watch them fail.**
+Run: `cd interface && npx vitest run src/logic/picks.test.ts src/backend/local.test.ts src/logic/chatter.test.ts`
+Expected: FAIL. `picks` is missing, the 4th pick throws "all three votes", and eventLine returns `stage_vote`.
+
+- [ ] **Step 3: Implement**
+
+`interface/src/logic/picks.ts`:
+```ts
+import type { Attendance } from '../backend/types';
+
+/** Picks each player should make at the Vote stage: 3, or every thought when fewer were written. */
+export const minPicks = (thoughts: number) => Math.min(3, thoughts);
+/** How many party members picked fewer than the minimum. */
+export const underPicked = (party: Attendance[], thoughts: number) => party.filter(a => a.votesCast < minPicks(thoughts)).length;
+/** The Warden's warning on Next stage at the Vote stage; null when everyone picked enough. */
+export function pickWarningText(under: number, min: number): string | null {
+  return under && min ? `${under} ${under === 1 ? 'player' : 'players'} picked fewer than ${min} ${min === 1 ? 'thought' : 'thoughts'}. Continue anyway?` : null;
+}
+```
+
+`interface/src/backend/local.ts`: replace `castVote` with:
+```ts
+    async castVote(sid, fid) {
+      const vote: Vote = { id: uid(), sessionId: sid, fragmentId: fid };
+      await mutate(s => {
+        const p = readPrivate(); const own = p.votes[sid] ||= [];
+        requireStage(s, sid, ['vote']); if (!s.fragments.some(x => x.id === fid && x.sessionId === sid)) throw new Error('This thought is no longer available.');
+        if (s.votes.some(x => x.fragmentId === fid && own.includes(x.id))) throw new Error('You already picked this thought.');
+        s.votes.push(vote); own.push(vote.id); s.attendance.find(x => x.sessionId === sid && x.userId === id)!.votesCast = own.length;
+        writePrivate(p);
+      });
+    },
+```
+
+`interface/src/logic/chatter.ts`: replace `eventLine` with:
+```ts
+// Picks have no cap now: lines about "three votes" would be wrong at the Vote stage.
+const OUTDATED_VOTE = /\bthree\b|\b3 votes\b/i;
+export function eventLine(characterId: string, moment: RetroMoment): VoiceLine | undefined {
+  const lines = (VOICE_LINES[characterId] || []).filter(l => moment !== 'vote' || !OUTDATED_VOTE.test(l.text));
+  return MOMENT_IDS[moment].map(id => lines.find(l => l.id === id)).find(Boolean);
+}
+```
+
+- [ ] **Step 4: Run the tests and watch them pass.** Run `cd interface && npx tsc --noEmit -p . && npx vitest run`. Expected: all green.
+- [ ] **Step 5: Commit**
+```bash
+git add interface/src
+git commit -m "Game: votes become picks (one per thought, no cap) in the demo backend; minimum-picks helpers; no 'three votes' lines at the Vote stage"
+```
+
+---
+
+### R2-3: Vote board as picks, the Next warning, and copy
+
+**Files:**
+- Modify: `interface/src/components/VoteBoard.tsx`, `VoteBoard.test.tsx`, `vote-board.css`
+- Modify: `interface/src/components/VoyageHud.tsx`, `VoyageHud.test.tsx`
+- Modify: `interface/src/logic/voyage.ts` (briefing copy)
+- Modify: `interface/src/components/AdminSettings.tsx` (label)
+- Modify: `interface/src/screens.tsx` (pass `nextWarning` at the Vote stage)
+
+**Interfaces:**
+- Consumes: `minPicks`, `underPicked`, `pickWarningText` (R2-2).
+- Produces:
+  - `VoyageHud` prop `nextWarning?: { title: string; text: string; stay: string; go: string } | null`. Task 10 uses it for Finish.
+  - `VoteBoard` keeps its props `{ fragments, votes, ownVotes, busy, onVote, onUnvote }`.
+
+- [ ] **Step 1: Write the failing tests**
+
+`interface/src/components/VoteBoard.test.tsx`: keep the header (imports, `frag`, `FRAGMENTS`, `render`, `card`) and replace the `describe` block with:
+```tsx
+describe('VoteBoard', () => {
+  it('shows progress toward 3 picks', async () => {
+    const { el } = await render({ ownVotes: ['b'] });
+    expect(el.querySelectorAll('.vb-hand .vb-orb').length).toBe(3);
+    expect(el.querySelectorAll('.vb-hand .vb-orb.spent').length).toBe(2);
+    expect(el.querySelector('.vb-hand')?.getAttribute('aria-label')).toBe('You picked 1 of at least 3');
+  });
+  it('asks for every thought when fewer than 3 were written', async () => {
+    const { el } = await render({ fragments: FRAGMENTS.slice(0, 2) });
+    expect(el.querySelectorAll('.vb-hand .vb-orb').length).toBe(2);
+    expect(el.textContent).toContain('Pick at least 2');
+  });
+  it('picks and un-picks a thought', async () => {
+    const { el, props } = await render({ ownVotes: ['a'] });
+    await act(async () => card(el, 'b').querySelector<HTMLButtonElement>('.vb-give')!.click());
+    expect(props.onVote).toHaveBeenCalledWith('b');
+    const picked = card(el, 'a').querySelector<HTMLButtonElement>('.vb-give')!;
+    expect(picked.getAttribute('aria-pressed')).toBe('true'); expect(picked.textContent).toContain('Picked');
+    await act(async () => picked.click());
+    expect(props.onUnvote).toHaveBeenCalledWith('a');
+  });
+  it('has no upper limit', async () => {
+    const { el } = await render({ ownVotes: ['a', 'b'], fragments: [...FRAGMENTS, frag('d', 'spark'), frag('e', 'spark')] });
+    expect(card(el, 'c').querySelector<HTMLButtonElement>('.vb-give')!.disabled).toBe(false);
+    const more = await render({ ownVotes: ['a', 'b', 'c', 'd'], fragments: [...FRAGMENTS, frag('d', 'spark'), frag('e', 'spark')] });
+    expect(more.el.querySelector('.vb-extra')?.textContent).toBe('+1');
+  });
+  it('shows how many players picked each thought', async () => {
+    const votes: Vote[] = [{ id: '1', sessionId: 's1', fragmentId: 'b' }, { id: '2', sessionId: 's1', fragmentId: 'b' }];
+    const { el } = await render({ votes });
+    expect(card(el, 'b').querySelector('.vb-count')?.textContent).toBe('2 picks');
+  });
+  it('says picks stay private until you are chosen to speak', async () => {
+    const { el } = await render();
+    expect(el.textContent).toContain('Your picks stay private until you’re chosen to speak');
+  });
+  it('filters by crystal, with counts', async () => {
+    const { el } = await render();
+    const fracture = [...el.querySelectorAll<HTMLButtonElement>('.vb-filter button')].find(b => b.textContent?.includes('Fracture'))!;
+    expect(fracture.textContent).toContain('2');
+    await act(async () => fracture.click());
+    expect(el.querySelectorAll('[data-fragment]').length).toBe(2);
+  });
+  it('invites the Warden back when there is nothing to vote on', async () => {
+    const { el } = await render({ fragments: [] });
+    expect(el.textContent).toContain('No thoughts to vote on yet');
+  });
+});
+```
+
+Append to `interface/src/components/VoyageHud.test.tsx`:
+```tsx
+  it('warns before Next when given a warning, and can still continue', async () => {
+    const nextWarning = { title: 'Move on to Discuss?', text: '2 players picked fewer than 3 thoughts. Continue anyway?', stay: 'Keep voting', go: 'Continue anyway' };
+    const { el, props } = await render({ nextWarning });
+    await act(async () => button(el, 'Next stage')!.click());
+    expect(props.onNext).not.toHaveBeenCalled();
+    expect(el.querySelector('[role="alertdialog"]')?.textContent).toContain('2 players picked fewer than 3');
+    await act(async () => button(el, 'Keep voting')!.click());
+    expect(el.querySelector('[role="alertdialog"]')).toBeNull();
+    await act(async () => button(el, 'Next stage')!.click());
+    await act(async () => button(el, 'Continue anyway')!.click());
+    expect(props.onNext).toHaveBeenCalled();
+  });
+```
+
+- [ ] **Step 2: Run them and watch them fail.**
+Run: `cd interface && npx vitest run src/components/VoteBoard.test.tsx src/components/VoyageHud.test.tsx`
+Expected: FAIL.
+
+- [ ] **Step 3: Implement**
+
+`VoteBoard.tsx`:
+- Imports: `import { Check, Plus } from 'lucide-react';` and `import { minPicks } from '../logic/picks';`. Drop `Star` and `MAX`.
+- Doc comment: `/** Starlight Vote: pick the thoughts you want to discuss — at least minPicks, no upper limit. Picks stay private until you're chosen to speak. */`
+- In the component:
+```tsx
+  const [filter, setFilter] = useState<FragmentCategory | 'all'>('all');
+  const min = minPicks(fragments.length); const picked = ownVotes.length;
+```
+- Header:
+```tsx
+    <header className="vb-head">
+      <div>
+        <h3>Pick what you want to talk about</h3>
+        <p>Pick at least {min}. Your picks stay private until you’re chosen to speak. Then you choose one to discuss.</p>
+      </div>
+      <div className="vb-hand" role="img" aria-label={`You picked ${picked} of at least ${min}`}>
+        {Array.from({ length: min }, (_, i) => <i key={i} className={`vb-orb ${i < picked ? '' : 'spent'}`}><Check size={18} strokeWidth={2} /></i>)}
+        {picked > min && <span className="vb-extra">+{picked - min}</span>}
+      </div>
+    </header>
+```
+- Each card's footer:
+```tsx
+        const total = votes.filter(v => v.fragmentId === f.id).length;
+        const mine = ownVotes.includes(f.id);
+        …
+          <footer>
+            <span className="vb-count">{total} {total === 1 ? 'pick' : 'picks'}</span>
+            <button className={`vb-give ${mine ? 'on' : ''}`} aria-pressed={mine} disabled={busy} onClick={() => mine ? onUnvote(f.id) : onVote(f.id)}>{mine ? <><Check size={15} />Picked</> : <><Plus size={15} />Pick</>}</button>
+          </footer>
+```
+- `className={`vb-card ${mine ? 'chosen' : ''}`}` stays.
+
+`vote-board.css` (append):
+```css
+.vb-extra{align-self:center;font:600 15px Marcellus,serif;color:#f5d27a}
+.vb-count{font-size:12.5px;color:#b9c6d2}
+.vb-give.on{color:#fff4dc;background:#1b3043;border-color:#e9cf8f}
+```
+Remove the now-unused `.vb-stars`, `.vb-star` and `button.vb-star` rules, along with their entries in the focus and reduced-motion lists.
+
+`VoyageHud.tsx`:
+- Add the prop `nextWarning?: { title: string; text: string; stay: string; go: string } | null` and `const [warning, setWarning] = useState(false);`.
+- The Next button's onClick becomes `() => nextWarning ? setWarning(true) : onNext()`.
+- After the cancel confirm, add:
+```tsx
+    {warden && warning && nextWarning && <div className="voyage-confirm" role="alertdialog" aria-modal="true" aria-labelledby="voyage-next-title">
+      <h3 id="voyage-next-title">{nextWarning.title}</h3><p>{nextWarning.text}</p>
+      <div><button autoFocus onClick={() => setWarning(false)}>{nextWarning.stay}</button><button disabled={busy} onClick={() => { setWarning(false); onNext(); }}>{nextWarning.go}</button></div>
+    </div>}
+```
+
+`logic/voyage.ts`, `VOYAGE_BRIEFING`:
+- `vote.text` becomes `'Pick at least 3 thoughts you want to discuss. Your picks stay private until you’re chosen to speak.'`
+- `hall.text` becomes `'The Warden spins for a speaker. They choose one of their picks, the party discusses it, and it becomes a Vow.'`
+- `vow_altar.text` becomes `'Review the Vows made in Discuss and add any that are missing.'`
+
+`AdminSettings.tsx`: in `STARLIGHT`, `perVote: 'Each vote cast'` becomes `perVote: 'Each thought picked'`.
+
+`screens.tsx` `RetroScreen`: after `const brief = …`, add
+```tsx
+  const pickWarning = pickWarningText(underPicked(attendance, fragments.length), minPicks(fragments.length));
+```
+and pass this to `VoyageHud`:
+```tsx
+      nextWarning={session.stage === 'vote' && pickWarning ? { title: 'Move on to Discuss?', text: pickWarning, stay: 'Keep voting', go: 'Continue anyway' } : null}
+```
+Import `minPicks`, `pickWarningText` and `underPicked` from `./logic/picks`.
+
+- [ ] **Step 4: Run the tests and watch them pass.** Run `cd interface && npx tsc --noEmit -p . && npx vitest run`. Expected: all green. If another test reads the old briefing or board copy, update it to the new copy.
+- [ ] **Step 5: Browser check.**
+  1. Use the local demo with two tabs at the Vote stage.
+  2. Pick 4 thoughts, then un-pick one. A second pick on the same card isn't possible: the button toggles.
+  3. With one player under 3, the Warden gets the warning, and both buttons work.
+  4. Take a screenshot.
+- [ ] **Step 6: Commit**
+```bash
+git add interface/src
+git commit -m "Game: Vote board as picks (at least 3, no cap, private until chosen); Warden warned when someone picked fewer"
+```
+
+---
+
+### R2-4: Turn rules, choosing a thought, and the `speaker` cue (replaces Task 11)
+
+**Files:**
+- Create: `interface/src/logic/speaker.ts`, `interface/src/logic/speaker.test.ts`
+- Modify: `interface/src/backend/types.ts`, `local.ts`, `supabase.ts`, `supabaseRows.ts`
+- Test: `local.test.ts`, `supabase.test.ts`, `supabaseRows.test.ts`
+- Fix any `SpeakerState` literal that tsc flags.
+
+**Interfaces:**
+- Consumes: the RPC `choose_turn_thought(p_session, p_fragment)` (R2-1) and `Session.speaker` (Task 3).
+- Produces:
+  - `TurnPhase = 'choosing' | 'discussing' | 'vow'`.
+  - `SpeakerState = { currentId; spoken; skipped; thoughtId: string | null; phase: TurnPhase | null; discussed: string[] }`.
+  - `Backend.chooseTurnThought(sessionId: string, fragmentId: string): Promise<void>`.
+  - `CueTopic` gets `'speaker'`, with payload `{ sessionId: string; frames: UserId[] }`.
+  - From `logic/speaker.ts`:
+    - `NO_SPEAKER`
+    - `speakerMark(s, id)`, `speakerPool(party, s)`
+    - `spinSpeaker(party, s, rng?)` (phase becomes `'choosing'`)
+    - `startVow(s)`, `finishTurn(s)`
+    - `skipSpeaker(s, id)`, `addBack(s, id)`
+    - `speakerCounts(party, s)`
+    - `reelFrames(party, pickedId, rng?, length?)`
+    - `turnChoices(fragments, ownPicks, discussed): Fragment[]`
+
+- [ ] **Step 1: Write the failing tests**
+
+`interface/src/logic/speaker.test.ts`:
+```ts
+import { describe, expect, it } from 'vitest';
+import type { Fragment } from '../backend/types';
+import { addBack, finishTurn, NO_SPEAKER, reelFrames, skipSpeaker, speakerCounts, speakerMark, speakerPool, spinSpeaker, startVow, turnChoices } from './speaker';
+
+const party = ['a', 'b', 'c'];
+const seq = (...xs: number[]) => () => xs.shift() ?? 0;
+const frag = (id: string, createdAt: number): Fragment => ({ id, sessionId: 's', text: id, category: 'spark', createdAt });
+describe('turns', () => {
+  it('spin starts a choosing turn for a waiting player; nobody gets two turns', () => {
+    let s = spinSpeaker(party, null, seq(0))!;
+    expect(s).toMatchObject({ currentId: 'a', phase: 'choosing', thoughtId: null });
+    s = finishTurn(startVow({ ...s, thoughtId: 'f1', phase: 'discussing' }));
+    expect(s).toEqual({ currentId: null, spoken: ['a'], skipped: [], thoughtId: null, phase: null, discussed: ['f1'] });
+    s = finishTurn(spinSpeaker(party, s, seq(0))!); s = finishTurn(spinSpeaker(party, s, seq(0))!);
+    expect(s.spoken).toEqual(['a', 'b', 'c']); expect(spinSpeaker(party, s)).toBeNull();
+  });
+  it('spin again while choosing picks someone else; the first goes back to waiting', () => {
+    const again = spinSpeaker(party, spinSpeaker(party, null, seq(0))!, seq(0))!;
+    expect(again.currentId).toBe('b'); expect(speakerMark(again, 'a')).toBe('waiting');
+  });
+  it('startVow moves a discussing turn to the Vow box', () => {
+    expect(startVow({ ...NO_SPEAKER, currentId: 'a', thoughtId: 'f1', phase: 'discussing' }).phase).toBe('vow');
+  });
+  it('skipping the current speaker clears their turn and thought; skipped players are never picked', () => {
+    const s = skipSpeaker({ ...NO_SPEAKER, currentId: 'b', thoughtId: 'f1', phase: 'discussing' }, 'b');
+    expect(s).toMatchObject({ currentId: null, thoughtId: null, phase: null, skipped: ['b'] });
+    expect(speakerPool(party, s)).toEqual(['a', 'c']);
+    expect(speakerPool(party, addBack(s, 'b'))).toEqual(['a', 'b', 'c']);
+  });
+  it('counts over the current party (removed players drop out)', () => {
+    expect(speakerCounts(party, { ...NO_SPEAKER, currentId: 'b', spoken: ['a', 'gone'], skipped: ['c'] })).toEqual({ spoken: 1, remaining: 1 });
+  });
+  it('builds a reel that lands on the pick', () => {
+    const f = reelFrames(party, 'c', seq(0.1, 0.5, 0.9), 6);
+    expect(f).toHaveLength(6); expect(f.at(-1)).toBe('c');
+  });
+  it('offers the chooser their own undiscussed picks, oldest first; else every undiscussed thought', () => {
+    const fs = [frag('f3', 3), frag('f1', 1), frag('f2', 2)];
+    expect(turnChoices(fs, ['f2', 'f3'], []).map(f => f.id)).toEqual(['f2', 'f3']);
+    expect(turnChoices(fs, ['f2', 'f3'], ['f2', 'f3']).map(f => f.id)).toEqual(['f1']);
+    expect(turnChoices(fs, [], ['f1']).map(f => f.id)).toEqual(['f2', 'f3']);
+  });
+});
+```
+
+Append to `local.test.ts`. Add `import { NO_SPEAKER } from '../logic/speaker';` and `SpeakerState` to the types import.
+```ts
+  it('turns: only the chosen player chooses, from their own undiscussed picks, with a fallback', async () => {
+    const jay = createLocalBackend('jay'), ana = createLocalBackend('ana');
+    const s = await jay.createSession('Turns'); await ana.join(s.id); checkInEveryone(s.id);
+    await jay.updateSession(s.id, { stage: 'fragment_drop' });
+    const f1 = (await jay.addFragment(s.id, 'one', 'spark')).id, f2 = (await jay.addFragment(s.id, 'two', 'spark')).id, f3 = (await jay.addFragment(s.id, 'three', 'spark')).id;
+    await jay.updateSession(s.id, { stage: 'vote' }); await ana.castVote(s.id, f1); await ana.castVote(s.id, f2);
+    await jay.updateSession(s.id, { stage: 'hall' });
+    const turn = (patch: Partial<SpeakerState> = {}) => jay.updateSession(s.id, { speaker: { ...NO_SPEAKER, currentId: 'ana', phase: 'choosing', ...patch } });
+    await turn();
+    await expect(jay.chooseTurnThought(s.id, f1)).rejects.toThrow('your turn');
+    await expect(ana.chooseTurnThought(s.id, f3)).rejects.toThrow('you picked');
+    await ana.chooseTurnThought(s.id, f1);
+    let now: Session | null = null; jay.watchActiveSession(x => now = x);
+    expect((now as Session | null)?.speaker).toMatchObject({ thoughtId: f1, phase: 'discussing' });
+    await expect(ana.chooseTurnThought(s.id, f2)).rejects.toThrow('your turn');   // already discussing
+    await turn({ discussed: [f1] }); await expect(ana.chooseTurnThought(s.id, f1)).rejects.toThrow('already discussed');
+    await turn({ discussed: [f1, f2] }); await ana.chooseTurnThought(s.id, f3);   // none of her picks left: any undiscussed thought
+  });
+  it('reads a speaker saved before turns had thoughts as an empty turn state', async () => {
+    localStorage.setItem('lumara.demo.v1', JSON.stringify({ sessions: [{ id: 'old', sprintName: 'Old', stage: 'hall', status: 'active', wardenId: 'jay', currentFragmentId: null, timerEndsAt: null, createdAt: 1, partyLocked: false, speaker: { currentId: 'ana', spoken: [], skipped: [] } }], attendance: [], fragments: [], votes: [], vows: [], players: [] }));
+    let s: Session | null = null; createLocalBackend('jay').watchActiveSession(x => s = x);
+    expect((s as Session | null)?.speaker).toEqual({ currentId: 'ana', spoken: [], skipped: [], thoughtId: null, phase: null, discussed: [] });
+  });
+```
+
+Append to `supabase.test.ts`, in `describe('supabase writes and sign-in', …)`:
+```ts
+  it('chooseTurnThought calls choose_turn_thought', async () => {
+    const f = fakeClient({}); await createSupabaseBackend(f.client, me).chooseTurnThought('s1', 'f1');
+    expect(f.client.rpc).toHaveBeenCalledWith('choose_turn_thought', { p_session: 's1', p_fragment: 'f1' });
+  });
+  it('delivers the speaker cue to its own listeners', async () => {
+    const f = fakeClient({}); const b = createSupabaseBackend(f.client, me);
+    const got = vi.fn(); b.on('speaker', got); b.emit('speaker', { sessionId: 's1', frames: ['u1'] });
+    expect(got).toHaveBeenCalledWith({ sessionId: 's1', frames: ['u1'] }, 'u1');
+  });
+```
+Append to `supabaseRows.test.ts`:
+```ts
+  it('fills turn fields missing from an older speaker', () => {
+    expect(toSession({ id: 's', sprint_name: 'S', stage: 'hall', status: 'active', warden_id: 'w', created_at: 1, speaker: { currentId: 'u1', spoken: [], skipped: [] } }).speaker)
+      .toEqual({ currentId: 'u1', spoken: [], skipped: [], thoughtId: null, phase: null, discussed: [] });
+  });
+```
+
+- [ ] **Step 2: Run them and watch them fail.** Expected: FAIL (`speaker` module missing, `chooseTurnThought` missing, speaker not normalized).
+
+- [ ] **Step 3: Implement**
+
+`types.ts`:
+- Replace the `SpeakerState` interface with:
+```ts
+/** Resonance Hall turns (feature 3): spin → the chosen player chooses a thought → discuss → the Warden's Vow box. */
+export type TurnPhase = 'choosing' | 'discussing' | 'vow';
+export interface SpeakerState { currentId: UserId | null; spoken: UserId[]; skipped: UserId[]; /** The thought the current speaker chose. */ thoughtId: string | null; phase: TurnPhase | null; /** Thoughts already discussed this voyage. */ discussed: string[] }
+```
+- `CueTopic` adds `| 'speaker'`.
+- `Backend` (after `removePlayer`):
+```ts
+  /** The chosen speaker only: the thought for their turn (one of their own undiscussed picks, or any undiscussed thought when none are left). */
+  chooseTurnThought(sessionId: string, fragmentId: string): Promise<void>;
+```
+
+`logic/speaker.ts`:
+```ts
+import type { Fragment, SpeakerState, UserId } from '../backend/types';
+
+export const NO_SPEAKER: SpeakerState = { currentId: null, spoken: [], skipped: [], thoughtId: null, phase: null, discussed: [] };
+export type SpeakerMark = 'speaking' | 'spoken' | 'skipped' | 'waiting';
+export function speakerMark(s: SpeakerState | null, id: UserId): SpeakerMark {
+  return s?.currentId === id ? 'speaking' : s?.spoken.includes(id) ? 'spoken' : s?.skipped.includes(id) ? 'skipped' : 'waiting';
+}
+/** Who a spin can pick: current party members who haven't spoken, aren't skipped, and aren't speaking now. */
+export const speakerPool = (party: UserId[], s: SpeakerState | null) => party.filter(id => speakerMark(s, id) === 'waiting');
+/** Spin (or "Spin again" while the chosen player is still choosing): a waiting player starts choosing. Null when nobody is left. */
+export function spinSpeaker(party: UserId[], s: SpeakerState | null, rng = Math.random): SpeakerState | null {
+  const pool = speakerPool(party, s); if (!pool.length) return null;
+  return { ...(s ?? NO_SPEAKER), currentId: pool[Math.min(pool.length - 1, Math.floor(rng() * pool.length))], thoughtId: null, phase: 'choosing' };
+}
+/** "Done discussing": the Warden's Vow box opens. */
+export const startVow = (s: SpeakerState): SpeakerState => ({ ...s, phase: 'vow' });
+/** "Make Vow" or "Skip": the turn ends — the speaker has spoken and their thought is discussed. */
+export function finishTurn(s: SpeakerState | null): SpeakerState {
+  const b = s ?? NO_SPEAKER; if (!b.currentId) return b;
+  return { currentId: null, spoken: [...b.spoken, b.currentId], skipped: b.skipped, thoughtId: null, phase: null,
+    discussed: b.thoughtId && !b.discussed.includes(b.thoughtId) ? [...b.discussed, b.thoughtId] : b.discussed };
+}
+/** "Skip": take an absent player out of the pool (ends their turn, thought and all, if they were chosen). */
+export function skipSpeaker(s: SpeakerState | null, id: UserId): SpeakerState {
+  const b = s ?? NO_SPEAKER; const cur = b.currentId === id;
+  return { ...b, currentId: cur ? null : b.currentId, thoughtId: cur ? null : b.thoughtId, phase: cur ? null : b.phase, skipped: b.skipped.includes(id) ? b.skipped : [...b.skipped, id] };
+}
+export const addBack = (s: SpeakerState | null, id: UserId): SpeakerState => { const b = s ?? NO_SPEAKER; return { ...b, skipped: b.skipped.filter(x => x !== id) }; };
+/** "Spoken N · Remaining M" over the current party (speaking now counts as remaining). */
+export function speakerCounts(party: UserId[], s: SpeakerState | null) {
+  const marks = party.map(id => speakerMark(s, id));
+  return { spoken: marks.filter(m => m === 'spoken').length, remaining: marks.filter(m => m === 'waiting' || m === 'speaking').length };
+}
+/** Portraits the roulette shows on every screen, ending on the pick. */
+export function reelFrames(party: UserId[], pickedId: UserId, rng = Math.random, length = 14): UserId[] {
+  return [...Array.from({ length: length - 1 }, () => party[Math.min(party.length - 1, Math.floor(rng() * party.length))]), pickedId];
+}
+/** What the chosen player may choose: their own undiscussed picks, or every undiscussed thought when none are left. Oldest first — no counts, no ranking. */
+export function turnChoices(fragments: Fragment[], ownPicks: string[], discussed: string[]): Fragment[] {
+  const open = fragments.filter(f => !discussed.includes(f.id)).sort((a, b) => a.createdAt - b.createdAt);
+  const mine = open.filter(f => ownPicks.includes(f.id));
+  return mine.length ? mine : open;
+}
+```
+
+`supabaseRows.ts` `toSession`: replace `speaker: r.speaker ?? null` with:
+```ts
+speaker: r.speaker ? { thoughtId: null, phase: null, discussed: [], ...r.speaker } : null
+```
+
+`supabase.ts`:
+- `openLive` cue list becomes `(['pull_reveal', 'reaction', 'stage_cue', 'skill', 'say', 'speaker'] as const)`.
+- Add to the writes: `chooseTurnThought: async (sid, fid) => { await call('choose_turn_thought', { p_session: sid, p_fragment: fid }); },`
+
+`local.ts`:
+- `read()`: the sessions map becomes
+```ts
+copy.sessions = copy.sessions.map(x => ({ ...x, partyLocked: x.partyLocked ?? false, speaker: x.speaker ? { thoughtId: null, phase: null, discussed: [], ...x.speaker } : null }));
+```
+- After `removePlayer`, add:
+```ts
+    async chooseTurnThought(sid, fid) {
+      await mutate(s => {
+        const session = s.sessions.find(x => x.id === sid);
+        if (!session || session.status !== 'active' || session.stage !== 'hall') throw new Error('The retro has moved on. Your screen will follow the current stage.');
+        const sp = session.speaker;
+        if (!sp || sp.currentId !== id || sp.phase !== 'choosing') throw new Error('It isn’t your turn to choose a thought.');
+        if (!s.fragments.some(x => x.id === fid && x.sessionId === sid)) throw new Error('This thought is no longer available.');
+        if (sp.discussed.includes(fid)) throw new Error('That thought was already discussed.');
+        const own = readPrivate().votes[sid] ?? [];
+        const openPicks = s.votes.filter(v => v.sessionId === sid && own.includes(v.id) && !sp.discussed.includes(v.fragmentId)).map(v => v.fragmentId);
+        if (openPicks.length && !openPicks.includes(fid)) throw new Error('Choose one of the thoughts you picked.');
+        session.speaker = { ...sp, thoughtId: fid, phase: 'discussing' };
+      });
+    },
+```
+
+`dev/vowReviewPreview.tsx`: add `chooseTurnThought: unsupported,`.
+
+- [ ] **Step 4: Run the tests and watch them pass.** Run `cd interface && npx tsc --noEmit -p . && npx vitest run`. Expected: all green.
+- [ ] **Step 5: Commit**
+```bash
+git add interface/src
+git commit -m "Game: Discuss turn rules (spin, choose a thought, discuss, Vow) and chooseTurnThought in both backends; live 'speaker' cue"
+```
+
+---
+
+### R2-5: Discuss stage UI (replaces Task 12)
+
+**Files:**
+- Create: `interface/src/components/DiscussStage.tsx`, `DiscussStage.test.tsx`
+- Create: `interface/src/components/SpeakerPanel.tsx`, `SpeakerPanel.test.tsx`
+- Create: `interface/src/components/TurnVowBox.tsx`
+- Create: `interface/src/components/SpeakerReel.tsx`, `SpeakerReel.test.tsx`
+- Create: `interface/src/components/speaker.css`
+- Modify: `interface/src/components/Scene.tsx`, `Scene.test.tsx` (`speakerId`: spotlight + the chosen player walks to the beacon)
+- Modify: `interface/src/screens.tsx` (the hall block becomes `DiscussStage`; the reveal controls and their now-unused helpers and imports are removed)
+
+**Interfaces:**
+- Consumes: everything from `logic/speaker.ts` (R2-4), `backend.chooseTurnThought`, `addVow`, `updateSession({ speaker })`, `emit/on('speaker')`.
+- Produces:
+  - `DiscussStage({ speaker, meId, warden, busy, party, fragments, ownPicks, vows, onSpeaker(next, frames?), onChoose(fragmentId), onMakeVow(text, ownerId), onTimer() })`
+  - `SpeakerPanel({ party, speaker, warden, busy, onChange })` and `type SpeakerMember = { userId; name; characterId }`
+  - `TurnVowBox({ thought, party, busy, onMake, onSkip })`
+  - `SpeakerReel({ backend, sessionId, party })`
+  - `Scene` prop `speakerId?: string | null`
+
+- [ ] **Step 1: Write the failing tests**
+
+`DiscussStage.test.tsx`:
+```tsx
+// @vitest-environment jsdom
+import { act } from 'react';
+import { createRoot } from 'react-dom/client';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { Fragment, SpeakerState } from '../backend/types';
+import { NO_SPEAKER } from '../logic/speaker';
+import DiscussStage from './DiscussStage';
+
+afterEach(() => { document.body.innerHTML = ''; vi.unstubAllGlobals(); });
+const party = [{ userId: 'jay', name: 'Jay', characterId: null }, { userId: 'ana', name: 'Ana', characterId: 'wren' }];
+const frag = (id: string, createdAt: number): Fragment => ({ id, sessionId: 's', text: `Thought ${id}`, category: 'spark', createdAt });
+const fragments = [frag('f1', 1), frag('f2', 2), frag('f3', 3)];
+const turn = (p: Partial<SpeakerState>): SpeakerState => ({ ...NO_SPEAKER, ...p });
+async function render(p: Partial<Parameters<typeof DiscussStage>[0]> = {}) {
+  vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+  const el = document.createElement('div'); document.body.append(el);
+  const props = { speaker: null, meId: 'jay', warden: true, busy: false, party, fragments, ownPicks: [] as string[], vows: [], onSpeaker: vi.fn(), onChoose: vi.fn(), onMakeVow: vi.fn(), onTimer: vi.fn(), ...p };
+  await act(async () => createRoot(el).render(<DiscussStage {...props} />));
+  return { el, props };
+}
+const btn = (el: HTMLElement, text: string) => [...el.querySelectorAll('button')].find(b => b.textContent === text);
+describe('DiscussStage', () => {
+  it('lets the Warden spin: a player starts choosing and every screen gets the same reel', async () => {
+    const { el, props } = await render();
+    await act(async () => btn(el, 'Spin')!.click());
+    const [next, frames] = props.onSpeaker.mock.calls[0];
+    expect(next.phase).toBe('choosing'); expect(['jay', 'ana']).toContain(next.currentId); expect(frames.at(-1)).toBe(next.currentId);
+  });
+  it('shows the chosen player only their own undiscussed picks, with no counts', async () => {
+    const { el, props } = await render({ meId: 'ana', warden: false, speaker: turn({ currentId: 'ana', phase: 'choosing', discussed: ['f1'] }), ownPicks: ['f1', 'f2'] });
+    const choices = [...el.querySelectorAll('.turn-chooser li button')];
+    expect(choices.map(b => b.textContent)).toEqual(['SparkThought f2']);
+    expect(el.querySelector('.turn-chooser')?.textContent).not.toMatch(/\d+ (pick|vote)/);
+    await act(async () => (choices[0] as HTMLButtonElement).click());
+    expect(props.onChoose).toHaveBeenCalledWith('f2');
+  });
+  it('falls back to any undiscussed thought when none of their picks are left', async () => {
+    const { el } = await render({ meId: 'ana', warden: false, speaker: turn({ currentId: 'ana', phase: 'choosing', discussed: ['f1'] }), ownPicks: ['f1'] });
+    expect(el.querySelectorAll('.turn-chooser li').length).toBe(2);
+    expect(el.textContent).toContain('None of your picks are left');
+  });
+  it('tells everyone else who is choosing, and lets the Warden spin again', async () => {
+    const { el } = await render({ speaker: turn({ currentId: 'ana', phase: 'choosing' }) });
+    expect(el.textContent).toContain('Ana is choosing a thought…');
+    expect(btn(el, 'Spin again')).toBeTruthy();
+  });
+  it('shows the chosen thought to everyone; the Warden ends the discussion', async () => {
+    const { el, props } = await render({ speaker: turn({ currentId: 'ana', phase: 'discussing', thoughtId: 'f2' }) });
+    expect(el.querySelector('.turn-thought')?.textContent).toContain('Thought f2');
+    await act(async () => btn(el, 'Done discussing')!.click());
+    expect(props.onSpeaker).toHaveBeenCalledWith(expect.objectContaining({ phase: 'vow', thoughtId: 'f2' }));
+  });
+  it('opens the Warden’s Vow box pre-filled; Make Vow or Skip ends the turn', async () => {
+    const speaker = turn({ currentId: 'ana', phase: 'vow', thoughtId: 'f2' });
+    const { el, props } = await render({ speaker });
+    expect(el.querySelector('textarea')?.value).toBe('Thought f2');
+    await act(async () => btn(el, 'Make Vow')!.click());
+    expect(props.onMakeVow).toHaveBeenCalledWith('Thought f2', null);
+    await act(async () => btn(el, 'Skip')!.click());
+    expect(props.onSpeaker).toHaveBeenCalledWith(expect.objectContaining({ currentId: null, spoken: ['ana'], discussed: ['f2'] }));
+  });
+  it('tells players the Warden is writing a Vow', async () => {
+    const { el } = await render({ warden: false, speaker: turn({ currentId: 'ana', phase: 'vow', thoughtId: 'f2' }) });
+    expect(el.textContent).toContain('The Warden is writing a Vow…');
+    expect(el.querySelector('textarea')).toBeNull();
+  });
+});
+```
+The test's `btn(el, 'Skip')` must not match a SpeakerPanel "Skip" button. The panel's per-member buttons have text "Skip", so give the Vow box's skip button the text `Skip this Vow`, and in that test use `btn(el, 'Skip this Vow')`. Use this test line:
+```tsx
+    await act(async () => btn(el, 'Skip this Vow')!.click());
+```
+
+`SpeakerPanel.test.tsx`:
+```tsx
+// @vitest-environment jsdom
+import { act } from 'react';
+import { createRoot } from 'react-dom/client';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { SpeakerState } from '../backend/types';
+import { NO_SPEAKER } from '../logic/speaker';
+import SpeakerPanel from './SpeakerPanel';
+
+afterEach(() => { document.body.innerHTML = ''; vi.unstubAllGlobals(); });
+const party = [{ userId: 'a', name: 'Ana', characterId: 'wren' }, { userId: 'b', name: 'Bob', characterId: null }];
+async function render(speaker: SpeakerState | null, warden = true) {
+  vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+  const el = document.createElement('div'); document.body.append(el); const onChange = vi.fn();
+  await act(async () => createRoot(el).render(<SpeakerPanel party={party} speaker={speaker} warden={warden} busy={false} onChange={onChange} />));
+  return { el, onChange };
+}
+describe('SpeakerPanel', () => {
+  it('tracks spoken and remaining', async () => {
+    const { el } = await render({ ...NO_SPEAKER, currentId: 'b', spoken: ['a'] }, false);
+    expect(el.textContent).toContain('Spoken 1 · Remaining 1');
+    expect(el.querySelector('button')).toBeNull();
+  });
+  it('lets the Warden skip and add back', async () => {
+    const { el, onChange } = await render({ ...NO_SPEAKER, skipped: ['b'] });
+    await act(async () => el.querySelector<HTMLButtonElement>('[aria-label="Add Bob back"]')!.click());
+    expect(onChange).toHaveBeenCalledWith({ ...NO_SPEAKER });
+    await act(async () => el.querySelector<HTMLButtonElement>('[aria-label="Skip Ana"]')!.click());
+    expect(onChange).toHaveBeenLastCalledWith({ ...NO_SPEAKER, skipped: ['b', 'a'] });
+  });
+});
+```
+
+`SpeakerReel.test.tsx`:
+```tsx
+// @vitest-environment jsdom
+import { act } from 'react';
+import { createRoot } from 'react-dom/client';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createLocalBackend } from '../backend/local';
+import SpeakerReel from './SpeakerReel';
+
+afterEach(() => { document.body.innerHTML = ''; vi.useRealTimers(); vi.unstubAllGlobals(); localStorage.clear(); });
+describe('SpeakerReel', () => {
+  it('plays the same reel on every screen and lands on the pick', async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+    vi.stubGlobal('BroadcastChannel', class { postMessage() {} addEventListener() {} close() {} });
+    vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener() {}, removeEventListener() {} }));
+    const backend = createLocalBackend('jay');
+    const el = document.createElement('div'); document.body.append(el);
+    const party = [{ userId: 'a', name: 'Ana', characterId: 'wren' }, { userId: 'b', name: 'Bob', characterId: null }];
+    await act(async () => createRoot(el).render(<SpeakerReel backend={backend} sessionId="s1" party={party} />));
+    await act(async () => backend.emit('speaker', { sessionId: 'other', frames: ['a'] }));
+    expect(el.textContent).toBe('');
+    await act(async () => backend.emit('speaker', { sessionId: 's1', frames: ['a', 'b', 'a', 'b'] }));
+    // Each frame's timeout is scheduled by an effect after the previous render, so advance in small steps.
+    const advance = async (ms: number) => { for (let t = 0; t < ms; t += 50) await act(async () => { vi.advanceTimersByTime(50); }); };
+    await advance(1000);
+    expect(el.querySelector('.speaker-reel.landed')?.textContent).toContain('Bob');
+    await advance(2000);
+    expect(el.textContent).toBe('');
+  });
+});
+```
+
+`Scene.test.tsx`:
+- Extend `render`'s `extra` with `speakerId?: string | null`, and hold it in `let speakerId = extra.speakerId ?? null;`.
+- Pass `speakerId={speakerId}` to `<Scene>` in `draw`.
+- Add `speak: (id: string | null) => act(async () => { speakerId = id; draw(extra.stage); })` to the returned object.
+- Then add:
+```tsx
+describe('speaker turns', () => {
+  it('spotlights the chosen speaker and walks them to the beacon', async () => {
+    const el = await render('wren', { stage: 'hall' });
+    expect(el.querySelector('.scene-character.own.speaker-spotlight')).toBeNull();
+    const before = posOf(el);
+    await el.speak('jay'); await run(1500);
+    expect(el.querySelector('.scene-character.own.speaker-spotlight')).toBeTruthy();
+    const after = posOf(el); const goal = { x: MAP.beacon.x, y: MAP.beacon.y + 0.06 };
+    expect(Math.hypot(after.x - goal.x, after.y - goal.y)).toBeLessThan(Math.hypot(before.x - goal.x, before.y - goal.y));
+  });
+});
+```
+
+- [ ] **Step 2: Run them and watch them fail.** Expected: FAIL (modules missing; no spotlight).
+
+- [ ] **Step 3: Implement**
+
+`SpeakerPanel.tsx`:
+```tsx
+import type { SpeakerState, UserId } from '../backend/types';
+import { characterById } from '../data/characters';
+import { addBack, skipSpeaker, speakerCounts, speakerMark, type SpeakerMark } from '../logic/speaker';
+import { Art } from './ui';
+import './speaker.css';
+
+export type SpeakerMember = { userId: UserId; name: string; characterId: string | null };
+const MARK: Record<SpeakerMark, string> = { speaking: 'Speaking', spoken: 'Spoken', skipped: 'Skipped', waiting: 'Waiting' };
+/** The party's turns: who has spoken, who is waiting, who was skipped. The Warden can skip an absent player or add them back. */
+export default function SpeakerPanel({ party, speaker, warden, busy, onChange }: { party: SpeakerMember[]; speaker: SpeakerState | null; warden: boolean; busy: boolean; onChange: (next: SpeakerState) => void }) {
+  const { spoken, remaining } = speakerCounts(party.map(p => p.userId), speaker);
+  return <section className="speaker-panel" aria-label="Speaker turns">
+    <header><h4>Speaker turns</h4><p>Spoken {spoken} · Remaining {remaining}</p></header>
+    <ul>{party.map(m => { const mark = speakerMark(speaker, m.userId); return <li key={m.userId} className={`mark-${mark}`}>
+      <Art character={characterById(m.characterId)} kind="cutout" decorative /><span>{m.name}</span><small>{MARK[mark]}</small>
+      {warden && (mark === 'waiting' || mark === 'speaking') && <button disabled={busy} aria-label={`Skip ${m.name}`} onClick={() => onChange(skipSpeaker(speaker, m.userId))}>Skip</button>}
+      {warden && mark === 'skipped' && <button disabled={busy} aria-label={`Add ${m.name} back`} onClick={() => onChange(addBack(speaker, m.userId))}>Add back</button>}
+    </li>; })}</ul>
+  </section>;
+}
+```
+
+`TurnVowBox.tsx`:
+```tsx
+import { useState } from 'react';
+import type { UserId } from '../backend/types';
+
+/** After a turn: the Warden turns the discussed thought into a Vow (pre-filled), or skips it. */
+export default function TurnVowBox({ thought, party, busy, onMake, onSkip }: { thought: string; party: { userId: UserId; name: string }[]; busy: boolean; onMake: (text: string, ownerId: UserId | null) => void; onSkip: () => void }) {
+  const [text, setText] = useState(thought.slice(0, 1000)); const [owner, setOwner] = useState('');
+  return <form className="vow-form turn-vow" aria-label="Make a Vow from this thought" onSubmit={e => { e.preventDefault(); if (text.trim()) onMake(text.trim(), owner || null); }}>
+    <label>Vow · action item<textarea value={text} onChange={e => setText(e.target.value)} rows={3} maxLength={1000} required /></label>
+    <div><label>Owner · optional<select value={owner} onChange={e => setOwner(e.target.value)}><option value="">Shared by the team</option>{party.map(p => <option key={p.userId} value={p.userId}>{p.name}</option>)}</select></label>
+      <button type="submit" className="speaker-spin" disabled={busy || !text.trim()}>Make Vow</button><button type="button" disabled={busy} onClick={onSkip}>Skip this Vow</button></div>
+  </form>;
+}
+```
+
+`DiscussStage.tsx`:
+```tsx
+import { Clock3, Sparkles } from 'lucide-react';
+import type { Fragment, SpeakerState, UserId, Vow } from '../backend/types';
+import { CATEGORIES } from '../data/categories';
+import { finishTurn, NO_SPEAKER, reelFrames, speakerPool, spinSpeaker, startVow, turnChoices } from '../logic/speaker';
+import SpeakerPanel, { type SpeakerMember } from './SpeakerPanel';
+import TurnVowBox from './TurnVowBox';
+import './speaker.css';
+
+/** Resonance Hall (feature 3): spin → the chosen player brings one of their picks → the party discusses → the Warden turns it into a Vow. */
+export default function DiscussStage({ speaker, meId, warden, busy, party, fragments, ownPicks, vows, onSpeaker, onChoose, onMakeVow, onTimer }: {
+  speaker: SpeakerState | null; meId: UserId; warden: boolean; busy: boolean; party: SpeakerMember[]; fragments: Fragment[]; ownPicks: string[]; vows: Vow[];
+  onSpeaker: (next: SpeakerState, frames?: UserId[]) => void; onChoose: (fragmentId: string) => void; onMakeVow: (text: string, ownerId: UserId | null) => void; onTimer: () => void;
+}) {
+  const s = speaker ?? NO_SPEAKER; const ids = party.map(p => p.userId);
+  const current = party.find(p => p.userId === s.currentId); const thought = fragments.find(f => f.id === s.thoughtId);
+  const canSpin = speakerPool(ids, s).length > 0;
+  const spin = () => { const next = spinSpeaker(ids, s); if (next?.currentId) onSpeaker(next, reelFrames(ids, next.currentId)); };
+  const cat = (f: Fragment) => CATEGORIES.find(c => c.id === f.category);
+  const choices = turnChoices(fragments, ownPicks, s.discussed); const fromOwn = choices.some(f => ownPicks.includes(f.id));
+  return <div className="discuss-stage">
+    <div className="stage-intro"><h3>Make room for the conversation.</h3><p>The chosen player brings one of their picks, the party talks it through, and the Warden turns it into a Vow.</p></div>
+    <section className="turn-card" aria-live="polite">
+      {!current ? <p className="turn-idle">{canSpin ? (warden ? 'Spin to choose who speaks next.' : 'Your Warden will spin for the next speaker.') : 'Everyone has had a turn.'}</p>
+        : s.phase === 'choosing' ? (current.userId === meId
+          ? <div className="turn-chooser"><h4>Your turn — choose a thought to discuss</h4><p>{fromOwn ? 'From the thoughts you picked.' : 'None of your picks are left — choose any thought.'}</p>
+              <ul>{choices.map(f => <li key={f.id}><button disabled={busy} onClick={() => onChoose(f.id)}><span className={`category-label ${f.category}`}>{cat(f)?.label}</span>{f.text}</button></li>)}</ul></div>
+          : <p className="turn-idle">{current.name} is choosing a thought…</p>)
+        : thought && <article key={thought.id} className="hall-fragment turn-thought"><Sparkles size={24} strokeWidth={1} /><span className={`category-label ${thought.category}`}>{cat(thought)?.label} · {cat(thought)?.plain}</span><p>{thought.text}</p><span>{current.name} brought this thought</span></article>}
+      {current && s.phase === 'vow' && (warden
+        ? <TurnVowBox key={s.thoughtId ?? ''} thought={thought?.text ?? ''} party={party} busy={busy} onMake={onMakeVow} onSkip={() => onSpeaker(finishTurn(s))} />
+        : <p className="turn-idle">The Warden is writing a Vow…</p>)}
+    </section>
+    {warden && <div className="hall-controls">
+      {!current && <button className="speaker-spin" disabled={busy || !canSpin} onClick={spin}>Spin</button>}
+      {current && s.phase === 'choosing' && <button disabled={busy || !canSpin} onClick={spin}>Spin again</button>}
+      {current && s.phase === 'discussing' && <button className="speaker-spin" disabled={busy} onClick={() => onSpeaker(startVow(s))}>Done discussing</button>}
+      <button disabled={busy} onClick={onTimer}><Clock3 size={16} />3-minute timer</button>
+    </div>}
+    <SpeakerPanel party={party} speaker={s} warden={warden} busy={busy} onChange={onSpeaker} />
+    {vows.length > 0 && <section className="turn-vows" aria-label="Vows made this voyage"><h4>Vows so far</h4><ul>{vows.map(v => <li key={v.id}>{v.text}</li>)}</ul></section>}
+  </div>;
+}
+```
+The test expects the chooser button text `'SparkThought f2'`: the label span text followed by the thought text.
+
+`SpeakerReel.tsx`:
+```tsx
+import { useEffect, useState } from 'react';
+import type { Backend, UserId } from '../backend/types';
+import { characterById } from '../data/characters';
+import { useReducedMotion } from '../hooks';
+import { Art } from './ui';
+import './speaker.css';
+
+type Member = { userId: UserId; name: string; characterId: string | null };
+/** The roulette every screen plays at the same moment when the Warden spins (cue topic 'speaker'). */
+export default function SpeakerReel({ backend, sessionId, party }: { backend: Backend; sessionId: string; party: Member[] }) {
+  const [frames, setFrames] = useState<UserId[] | null>(null); const [i, setI] = useState(0); const reduced = useReducedMotion();
+  useEffect(() => backend.on('speaker', data => {
+    const d = data as { sessionId?: string; frames?: UserId[] };
+    if (d?.sessionId === sessionId && Array.isArray(d.frames) && d.frames.length) { setFrames(d.frames); setI(reduced ? d.frames.length - 1 : 0); }
+  }), [backend, sessionId, reduced]);
+  useEffect(() => {
+    if (!frames) return;
+    if (i >= frames.length - 1) { const t = setTimeout(() => setFrames(null), 1800); return () => clearTimeout(t); }
+    const t = setTimeout(() => setI(i + 1), 70 + i * 18); return () => clearTimeout(t);   // slows down like a reel
+  }, [frames, i]);
+  if (!frames) return null;
+  const m = party.find(p => p.userId === frames[i]); const landed = i >= frames.length - 1;
+  return <div className={`speaker-reel${landed ? ' landed' : ''}`} role="status" aria-live="polite">
+    <Art character={characterById(m?.characterId)} kind="cutout" decorative /><strong>{m?.name ?? '…'}</strong>{landed && <span>speaks next</span>}
+  </div>;
+}
+```
+
+`speaker.css`:
+```css
+/* Resonance Hall turns: the turn card, the chooser, the tracker, the roulette reel, the spotlight. */
+.discuss-stage{display:grid;gap:14px}
+.turn-card{display:grid;gap:12px;min-height:90px}
+.turn-idle{margin:0;padding:18px;border:1px dashed #d8bf8255;text-align:center;font-family:'Marcellus',serif;font-size:18px;color:#e4ebf1}
+.turn-chooser h4{margin:0 0 2px;font-family:'Marcellus',serif;font-weight:400;font-size:20px;color:#fff4dc}
+.turn-chooser p{margin:0 0 10px;font-size:13px;color:#b9c6d2}
+.turn-chooser ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.turn-chooser li button{display:grid;gap:4px;width:100%;padding:10px 12px;border:1px solid #d8bf8244;background:#10233acc;color:#e4ebf1;font:inherit;font-size:14px;line-height:1.45;text-align:left;cursor:pointer}
+.turn-chooser li button:hover{border-color:#e9cf8f;box-shadow:0 0 14px #e9cf8f33}
+.turn-chooser li button:focus-visible,.hall-controls button:focus-visible,.speaker-panel button:focus-visible{outline:2px solid #fff4dc;outline-offset:2px}
+.turn-vow{margin:0}
+.turn-vows h4{margin:0 0 6px;font-family:'Marcellus',serif;font-weight:400;font-size:16px;color:#e9cf8f}
+.turn-vows ul{margin:0;padding-left:18px;display:grid;gap:4px;font-size:14px;color:#e4ebf1}
+.hall-controls{display:flex;flex-wrap:wrap;gap:8px}
+.hall-controls button{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 16px;border:1px solid #d8bf8299;background:#10233acc;color:#fff4dc;font:inherit;cursor:pointer}
+.speaker-spin{border-color:#f3dca0!important;background:linear-gradient(180deg,#e9cf8f,#c9a45a)!important;color:#1b2a3a!important;font-weight:700}
+.hall-controls button:disabled,.turn-vow button:disabled{opacity:.5;cursor:not-allowed}
+.speaker-panel{border-top:1px solid #d8bf8255;padding-top:12px;display:grid;gap:8px;color:#fff4dc}
+.speaker-panel header{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.speaker-panel h4{margin:0;font-family:'Marcellus',serif;font-weight:400;font-size:17px}
+.speaker-panel header p{margin:0;font-size:13px;color:#b9c6d2}
+.speaker-panel ul{list-style:none;margin:0;padding:0;display:flex;gap:8px;overflow-x:auto;scrollbar-width:thin}
+.speaker-panel li{flex:0 0 auto;display:grid;justify-items:center;gap:2px;width:84px;padding:6px 4px;border:1px solid #d8bf8233;background:#10233acc;font-size:12.5px}
+.speaker-panel li .character-art,.speaker-panel li .silhouette{height:58px;width:auto;object-fit:contain}
+.speaker-panel li small{font-size:11px;color:#b9c6d2}
+.speaker-panel li.mark-speaking{border-color:#f3dca0;box-shadow:0 0 16px #e9cf8f55}
+.speaker-panel li.mark-spoken{opacity:.6}
+.speaker-panel li.mark-skipped{opacity:.45;border-style:dashed}
+.speaker-panel li button{padding:2px 8px;border:1px solid #d8bf8266;background:transparent;color:#e9cf8f;font:inherit;font-size:11px;cursor:pointer}
+.speaker-reel{position:fixed;left:50%;top:22%;z-index:40;transform:translateX(-50%);display:grid;justify-items:center;gap:4px;padding:14px 26px 12px;border:1px solid #d8bf8299;background:radial-gradient(circle at 50% 30%,#1d3a5c,#0a1a2cf2);color:#fff4dc;pointer-events:none}
+.speaker-reel .character-art,.speaker-reel .silhouette{height:150px;width:auto;object-fit:contain}
+.speaker-reel strong{font-family:'Marcellus',serif;font-weight:400;font-size:24px}
+.speaker-reel span{font-size:13px;color:#e9cf8f}
+.speaker-reel.landed{box-shadow:0 0 40px #e9cf8f66;animation:speaker-land .5s var(--ease,ease-out)}
+@keyframes speaker-land{from{transform:translateX(-50%) scale(.92)}to{transform:translateX(-50%) scale(1)}}
+.speaker-your-turn{position:fixed;left:50%;top:84px;z-index:35;transform:translateX(-50%);margin:0;padding:10px 22px;border:1px solid #f3dca0;background:linear-gradient(180deg,#e9cf8f,#c9a45a);color:#1b2a3a;font-family:'Marcellus',serif;font-size:18px}
+.scene-character.speaker-spotlight::before{content:'';position:absolute;left:50%;bottom:0;width:140%;height:70%;transform:translateX(-50%);background:radial-gradient(ellipse at 50% 100%,#f3dca0aa,transparent 70%);pointer-events:none;z-index:-1}
+@media (prefers-reduced-motion:reduce){.speaker-reel.landed{animation:none}}
+```
+
+`Scene.tsx`:
+- Add the prop `speakerId?: string | null`.
+- In `fieldClass`, add `speakerId && speakerId === id ? 'speaker-spotlight' : '',` to the array.
+- After the gathering `useEffect`, add:
+```tsx
+  // Speaker turns: the chosen player walks to the beacon. Positions are self-broadcast, so only their own screen moves them.
+  const lastSpeaker = useRef(speakerId);
+  useEffect(() => {
+    const changed = lastSpeaker.current !== speakerId; lastSpeaker.current = speakerId;
+    if (changed && speakerId === me.id && movement) { keys.current.clear(); walkTo(gatherSpot({ x: MAP.beacon.x, y: MAP.beacon.y + 0.06 }, 0, 1), 2.2); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [speakerId]);
+```
+
+`screens.tsx` `RetroScreen`:
+- Before `backdrop`, add:
+```tsx
+  const speakerId = session.stage === 'hall' ? session.speaker?.currentId ?? null : null;
+  const changeSpeaker = (next: SpeakerState, frames?: UserId[]) => run(async () => { await backend.updateSession(session.id, { speaker: next }); if (frames) backend.emit('speaker', { sessionId: session.id, frames }); });
+```
+  Pass `speakerId={speakerId}` to `<Scene>`.
+- Replace the whole `{session.stage === 'hall' && …}` block with:
+```tsx
+      {session.stage === 'hall' && <DiscussStage speaker={session.speaker} meId={me.id} warden={warden} busy={busy} party={members} fragments={fragments} ownPicks={ownVotes} vows={vows.filter(v => v.sessionId === session.id)}
+        onSpeaker={changeSpeaker} onChoose={fid => run(() => backend.chooseTurnThought(session.id, fid))}
+        onMakeVow={(text, owner) => run(async () => { await backend.addVow(session.id, text, owner); await backend.updateSession(session.id, { speaker: finishTurn(session.speaker) }); }, 'A new Vow to carry forward.')}
+        onTimer={() => run(() => backend.updateSession(session.id, { timerEndsAt: Date.now() + 180000 }))} />}
+```
+- After `</VoyageWindow>`, add:
+```tsx
+    {session.stage === 'hall' && <SpeakerReel backend={backend} sessionId={session.id} party={members} />}
+    {speakerId === me.id && <p className="speaker-your-turn" role="status">Your turn — the hall is listening.</p>}
+```
+- Remove what only the old hall block used: `revealNext`, `ordered`, `current`, `currentIndex`, `hallRef`, the gsap `.hall-fragment` effect, and the `fragmentGlow`/`revealOrder`/`gsap` imports. Grep `screens.tsx` for each name first and remove only the ones nothing else uses. `tsc` here doesn't flag unused locals. Leave `revealOrder`/`fragmentGlow` defined in `logic/index.ts`.
+- Imports: `DiscussStage`, `SpeakerReel`, `finishTurn` from `./logic/speaker`, and the types `SpeakerState` and `UserId`.
+
+- [ ] **Step 4: Run the tests and watch them pass.** Run `cd interface && npx tsc --noEmit -p . && npx vitest run`. Expected: all green.
+- [ ] **Step 5: Browser check.**
+  1. Use the local demo with three tabs (jay, ana, bob), everyone checked in. Write 4 thoughts, and have Ana pick 3.
+  2. In the Hall, Jay spins: all tabs show the same reel.
+  3. If Ana is chosen, her tab lists only her picks, with no counts. The others see "Ana is choosing a thought…". Ana chooses one, and every tab shows it.
+  4. Jay presses Done discussing. The Vow box is pre-filled. Make Vow adds it to "Vows so far", and the tracker shows "Spoken 1".
+  5. Reload Ana's tab while she's choosing: her choices come back.
+  6. Skip removes an absent player, and Add back returns them.
+  7. Take screenshots at desktop and phone width.
+- [ ] **Step 6: Commit**
+```bash
+git add interface/src
+git commit -m "Game: Discuss turns — spin, the chosen player brings one of their picks, discuss, the Warden's Vow box; shared roulette, spotlight, walk to the beacon"
+```
+
+---
+
+### R2-6: Vow Altar review
+
+**Files:**
+- Modify: `interface/src/components/ThoughtPicker.tsx`, `ThoughtPicker.test.tsx` (undiscussed thoughts only, not ranked, no counts)
+- Create: `interface/src/components/VowEditRow.tsx`, `VowEditRow.test.tsx`
+- Modify: `interface/src/components/feedback.css`
+- Modify: `interface/src/screens.tsx` (Vow Altar block)
+
+**Interfaces:**
+- Consumes: `Session.speaker.discussed` (R2-4) and `backend.updateVow(id, { text, ownerId })`.
+- Produces:
+  - `ThoughtPicker({ fragments, onPick })`: the `votes` prop is removed. `rankByVotes` stays in `logic/report.ts` for the Homecoming report.
+  - `VowEditRow({ vow, party, busy, onSave(patch: { text: string; ownerId: UserId | null }) })`.
+
+- [ ] **Step 1: Write the failing tests**
+
+`ThoughtPicker.test.tsx` (replace the `describe` body; `render` no longer passes `votes`):
+```tsx
+describe('ThoughtPicker', () => {
+  it('lists the given thoughts oldest first, with no vote counts', async () => {
+    const { el } = await render();
+    expect([...el.querySelectorAll('li p')].map(p => p.textContent)).toEqual(['Standups ran long', 'Pairing helped']);
+    expect(el.textContent).not.toMatch(/\d+ votes?/);
+  });
+  it('fills the Vow box with the chosen thought', async () => {
+    const { el, onPick } = await render();
+    await act(async () => el.querySelector<HTMLButtonElement>('button[aria-label="Make a Vow from: Standups ran long"]')!.click());
+    expect(onPick).toHaveBeenCalledWith('Standups ran long');
+  });
+  it('renders nothing without thoughts', async () => {
+    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+    const el = document.createElement('div'); document.body.append(el);
+    await act(async () => createRoot(el).render(<ThoughtPicker fragments={[]} onPick={vi.fn()} />));
+    expect(el.innerHTML).toBe('');
+  });
+});
+```
+In that file's `render`, the element becomes `<ThoughtPicker fragments={fragments} onPick={onPick} />`.
+
+`VowEditRow.test.tsx`:
+```tsx
+// @vitest-environment jsdom
+import { act } from 'react';
+import { createRoot } from 'react-dom/client';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import VowEditRow from './VowEditRow';
+
+afterEach(() => { document.body.innerHTML = ''; vi.unstubAllGlobals(); });
+const vow = { id: 'v1', sessionId: 's', text: 'Fix CI', ownerId: null, status: 'open' as const, createdAt: 1 };
+const setValue = (el: HTMLTextAreaElement | HTMLSelectElement, value: string) => {
+  const proto = el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLSelectElement.prototype;
+  Object.getOwnPropertyDescriptor(proto, 'value')!.set!.call(el, value); el.dispatchEvent(new Event(el instanceof HTMLTextAreaElement ? 'input' : 'change', { bubbles: true }));
+};
+describe('VowEditRow', () => {
+  it('saves a changed text and owner; Save waits for a change', async () => {
+    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+    const el = document.createElement('div'); document.body.append(el); const onSave = vi.fn();
+    await act(async () => createRoot(el).render(<VowEditRow vow={vow} party={[{ userId: 'ana', name: 'Ana' }]} busy={false} onSave={onSave} />));
+    const save = el.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+    expect(save.disabled).toBe(true);
+    await act(async () => { setValue(el.querySelector('textarea')!, 'Fix CI this week'); setValue(el.querySelector('select')!, 'ana'); });
+    await act(async () => save.click());
+    expect(onSave).toHaveBeenCalledWith({ text: 'Fix CI this week', ownerId: 'ana' });
+  });
+});
+```
+
+- [ ] **Step 2: Run them and watch them fail.** Expected: FAIL (ThoughtPicker still ranks and shows counts; VowEditRow missing).
+
+- [ ] **Step 3: Implement**
+
+`ThoughtPicker.tsx`:
+```tsx
+import { ScrollText } from 'lucide-react';
+import type { Fragment } from '../backend/types';
+import { CATEGORIES } from '../data/categories';
+import './feedback.css';
+
+/** Vow Altar (Warden): thoughts nobody chose to discuss, oldest first; "Make a Vow" copies one into the Vow box. */
+export default function ThoughtPicker({ fragments, onPick }: { fragments: Fragment[]; onPick: (text: string) => void }) {
+  const list = [...fragments].sort((a, b) => a.createdAt - b.createdAt);
+  if (!list.length) return null;
+  return <section className="thought-picker" aria-label="Thoughts not discussed"><h4>Thoughts not discussed</h4>
+    <ol>{list.map(f => <li key={f.id}>
+      <span className={`category-label ${f.category}`}>{CATEGORIES.find(c => c.id === f.category)?.label}</span>
+      <p>{f.text}</p>
+      <button type="button" onClick={() => onPick(f.text)} aria-label={`Make a Vow from: ${f.text}`}><ScrollText size={14} />Make a Vow</button>
+    </li>)}</ol>
+  </section>;
+}
+```
+In `feedback.css`, the `.thought-picker li` grid becomes `grid-template-columns:auto 1fr`, and remove the `.thought-votes` rule.
+
+`VowEditRow.tsx`:
+```tsx
+import { useState } from 'react';
+import type { UserId, Vow } from '../backend/types';
+import './feedback.css';
+
+/** Vow Altar review (Warden): edit a Vow's words or owner. */
+export default function VowEditRow({ vow, party, busy, onSave }: { vow: Vow; party: { userId: UserId; name: string }[]; busy: boolean; onSave: (patch: { text: string; ownerId: UserId | null }) => void }) {
+  const [text, setText] = useState(vow.text); const [owner, setOwner] = useState(vow.ownerId ?? '');
+  const changed = text.trim() !== vow.text || (owner || null) !== vow.ownerId;
+  return <form className="vow-edit-row" aria-label={`Edit Vow: ${vow.text}`} onSubmit={e => { e.preventDefault(); if (changed && text.trim()) onSave({ text: text.trim(), ownerId: owner || null }); }}>
+    <textarea value={text} onChange={e => setText(e.target.value)} rows={2} maxLength={1000} aria-label="Vow text" />
+    <select value={owner} onChange={e => setOwner(e.target.value)} aria-label="Owner"><option value="">Shared by the team</option>{party.map(p => <option key={p.userId} value={p.userId}>{p.name}</option>)}</select>
+    <button type="submit" disabled={busy || !changed || !text.trim()}>Save</button>
+  </form>;
+}
+```
+`feedback.css` (append):
+```css
+.vow-edit-row{display:grid;grid-template-columns:1fr auto auto;align-items:start;gap:8px;padding:8px 0;border-bottom:1px dashed #d8bf8233}
+.vow-edit-row textarea{min-height:44px;padding:8px;border:1px solid #d8bf8244;background:#10233acc;color:#fff4dc;font:inherit;font-size:14px;resize:vertical}
+.vow-edit-row select{min-height:36px;border:1px solid #d8bf8244;background:#10233a;color:#fff4dc;font:inherit;font-size:13px}
+.vow-edit-row button{min-height:36px;padding:0 14px;border:1px solid #d8bf8299;background:transparent;color:#e9cf8f;font:inherit;cursor:pointer}
+.vow-edit-row button:disabled{opacity:.45;cursor:default}
+@media (max-width:560px){.vow-edit-row{grid-template-columns:1fr}}
+```
+
+`screens.tsx`, Vow Altar block:
+- Stage intro: `<h3>Review the Vows.</h3><p>Every turn in Discuss ended at the Vow box. Fix wording or owners, and add anything still missing.</p>`
+- Warden branch: the add form (unchanged), then the review list, then the undiscussed thoughts:
+```tsx
+{vows.filter(v => v.sessionId === session.id).map(v => <VowEditRow key={v.id} vow={v} party={members} busy={busy} onSave={patch => run(() => backend.updateVow(v.id, patch), 'Vow updated.')} />)}
+<ThoughtPicker fragments={fragments.filter(f => !(session.speaker?.discussed ?? []).includes(f.id))} onPick={t => setVowText(t.slice(0, 1000))} />
+```
+- Players keep the read-only `VowRow` list. Remove the old trailing `vows…map(VowRow)` for the Warden, since it's replaced by the edit rows.
+- Import `VowEditRow`.
+
+- [ ] **Step 4: Run the tests and watch them pass.** Run `cd interface && npx tsc --noEmit -p . && npx vitest run`. Expected: all green.
+- [ ] **Step 5: Browser check.** After two Discuss turns, the Vow Altar shows both Vows as editable rows for the Warden, and only the undiscussed thoughts below them. Save changes the Vow on the other tab. Take a screenshot.
+- [ ] **Step 6: Commit**
+```bash
+git add interface/src
+git commit -m "Game: Vow Altar becomes a review — edit Vows from Discuss; only undiscussed thoughts offered, unranked"
+```
+
+---
+
+### R2-7: Go live
+
+- [ ] **Step 1:** Jay runs `supabase/migrations/0007_picks_and_turns.sql` in the SQL Editor (project `sllaffecbkuayzjxvqju`).
+- [ ] **Step 2:** Claude confirms with a read-only query:
+```sql
+select (select position('already picked' in prosrc) > 0 from pg_proc where proname = 'cast_vote' and pronamespace = 'public'::regnamespace) as picks,
+       exists (select 1 from pg_proc where proname = 'choose_turn_thought' and pronamespace = 'public'::regnamespace) as turns;
+```
+  Expected: both `true`.
+- [ ] **Step 3:** Run `cd interface && npx tsc --noEmit -p . && npx vitest run && npm run build`. Expected: green.
+- [ ] **Step 4:** With Jay's OK, push `main` and watch the Pages run until it succeeds. Then check that the live bundle contains `Pick what you want to talk about` and `Done discussing`.
+- [ ] **Step 5:** Hand-off note:
+  - companions whose "three votes" lines now stay silent at the Vote stage;
+  - Seren's `stage_hall` clip ("most voted first") is unused;
+  - picks reveal the chooser's pick by design.

@@ -10,13 +10,14 @@
 |---|---|---|
 | 1 | Self Check-In | Gather (lobby): every member picks a voyage companion and checks in before the voyage can start |
 | 2 | Peer Feedback | Vow Altar (players' task while the Warden writes vows); still open at Homecoming |
-| 3 | Speaker turns | Resonance Hall |
+| 3 | Speaker turns (chosen player picks a thought, discuss, Vow) | Resonance Hall |
 | 4 | Full Homecoming report (+ Archives) | Homecoming, and Archives afterwards |
 | 5 | Download the report as an image | Homecoming and Archives |
 | 6 | Party Portrait | Homecoming (top of the report) |
 | 7 | Personal recognition card | Homecoming (each player's own) |
 | 8 | Lobby controls (lock party, remove player) | Gather (lobby); removing a player also works during the voyage |
-| 9 | Make a Vow from a thought | Vow Altar |
+| 9 | Make a Vow from a thought | Resonance Hall (a Vow box after each turn); Vow Altar review |
+| 10 | Vote as picks | Starlight Vote |
 
 Today, players have nothing to do at the Vow Altar ("Your Warden is capturing the team's action items"). In Rizzpective, feedback happens in the Guild Hall at the same moment, so feature 2 fills that gap. Self Check-In moves to the lobby: the voyage starts only when every member has chosen a companion and checked in.
 
@@ -129,27 +130,51 @@ Today, players have nothing to do at the Vow Altar ("Your Warden is capturing th
 
 ## 3. Speaker turns (Resonance Hall)
 
-**What:** so every voice gets a turn, the Warden can **Spin** to pick who speaks next.
+*Revised 2026-10-10.* Discuss is a loop of turns. In each turn, a chosen player brings one of the thoughts they picked, the party discusses it, and the Warden turns it into a Vow.
 
-**How it works:**
-- **The spin:** it picks at random among party members who haven't spoken yet. It plays as a short roulette reel of companion portraits that everyone sees at the same moment.
-- **The chosen speaker:**
-  - Their character walks to the beacon.
-  - They get a spotlight, and a "Your turn" banner on their own screen.
-- **Tracker:** "Spoken N · Remaining M", with each player's mark (spoken / waiting / skipped).
-- **Warden controls:**
-  - "Done" ends the turn.
-  - "Spin again" re-rolls.
-  - "Skip" takes an absent player out of the pool, and "Add back" returns them.
-- **Separate from thoughts:** this works alongside the existing "Reveal next thought". The Warden can reveal a thought, then spin for who answers it.
-- **One turn each:** everyone gets one turn per voyage (see open point D).
+**One turn:**
+1. **Spin:**
+   - The Warden spins. The same roulette reel of companion portraits plays on every screen at the same moment.
+   - It lands on a party member who hasn't had a turn yet. Skipped players are never picked.
+   - The chosen player's companion walks to the beacon and gets a spotlight. Their own screen shows "Your turn".
+2. **Choose:**
+   - The chosen player sees **their own picks** from the Vote stage that haven't been discussed yet, with **no pick counts and no ranking**, and chooses one.
+   - If none of their picks are left, or they picked nothing, they choose from any thought not yet discussed.
+   - Everyone else sees "Ana is choosing a thought…", then the chosen thought appears for everyone.
+3. **Discuss:** the party talks. The Warden's 3-minute timer is still available. The Warden presses **Done discussing**.
+4. **Vow:**
+   - A Vow box opens automatically for the Warden, pre-filled with the thought.
+   - The Warden edits it, picks an owner, then **Make Vow** or **Skip**.
+   - Players see "The Warden is writing a Vow…", then the Vow.
+5. **Next turn:** the player counts as spoken, the thought counts as discussed, and the Warden can spin again.
+
+**Tracker and Warden controls:**
+- "Spoken N · Remaining M", with each player's mark (speaking, spoken, waiting, skipped).
+- **Spin again** re-rolls while a player is still choosing.
+- **Skip** takes an absent player out of the pool, and **Add back** returns them.
+- When everyone has spoken, or whenever the Warden decides, **Next stage** goes to the Vow Altar.
+- **One turn each:** everyone gets one turn per voyage (open point D).
+- This replaces the Hall's old "Reveal next thought" controls.
+
+**Privacy:**
+- Choosing reveals that the chosen player picked that thought. The Vote board says so up front (feature 10).
+- Thought authors stay anonymous, as always.
 
 **Data:**
-- New `Session` field `speaker: { currentId, spoken: UserId[], skipped: UserId[] } | null`.
-- Only the Warden writes it, like the other session fields.
-- New cue topic `speaker` carries the spin, so every screen plays the same reel.
+- `Session.speaker` becomes `{ currentId, spoken[], skipped[], thoughtId, phase: 'choosing' | 'discussing' | 'vow' | null, discussed[] }`.
+- **The Warden** writes it through `set_session`, as before: spin, Done discussing, Make Vow/Skip.
+- **The chosen player** sets only their thought, through a new server function `choose_turn_thought(sessionId, fragmentId)`. It checks that:
+  - it's that player's turn;
+  - the phase is "choosing";
+  - the thought belongs to this voyage and hasn't been discussed;
+  - it's one of the caller's picks, unless none of their picks are left.
+- A cue topic `speaker` carries the spin, so every screen plays the same reel.
 
-**Done when:** everyone sees the same speaker, nobody is picked twice, and skipped players are never picked.
+**Done when:**
+- Everyone sees the same speaker and the same chosen thought.
+- Nobody is picked twice, and skipped players are never picked.
+- A player can only choose from their own undiscussed picks, with the fallback when none are left.
+- Every turn ends at the Vow box.
 
 ## 4. Full Homecoming report (+ Archives)
 
@@ -237,14 +262,49 @@ The card can be saved as an image (same mechanism as feature 5).
 
 ## 9. Make a Vow from a thought
 
+*Revised 2026-10-10.*
+
 **What:**
-- The Vow Altar lists the voyage's thoughts, most-voted first. Each has a "Make a Vow" button.
-- The button fills the Vow text box with that thought. The Warden edits it, picks an owner, and makes the Vow.
-- Typing a Vow from scratch still works.
+- **During Discuss:** every turn ends in a Vow box pre-filled with the discussed thought (feature 3).
+- **At the Vow Altar (now a review):**
+  - The Warden sees every Vow made this voyage and can edit it, re-assign it, or add one.
+  - The thoughts nobody chose to discuss are listed, each with a **Make a Vow** button that fills the Vow box. They're not ranked by votes.
+  - Typing a Vow from scratch still works.
+- Players do peer feedback here (feature 2).
 
 **Data:** none; this is UI only.
 
-**Done when:** one click fills the text box, and the Vow saves like any other.
+**Done when:**
+- Each turn's Vow box is pre-filled.
+- The Vow Altar lists the Vows made this voyage and only the undiscussed thoughts.
+
+---
+
+## 10. Vote as picks
+
+*Added 2026-10-10.*
+
+**What:** voting becomes picking the thoughts you want to discuss.
+- One pick per thought; there's no upper limit and no stacking.
+- Each player should pick **at least 3** (or every thought, if fewer than 3 were written).
+
+**How it works:**
+- Each card has a **Pick / Picked ✓** toggle. The header shows "You picked N · pick at least 3", with three pips that fill.
+- Copy: "Pick the thoughts you want to talk about. Your picks stay private until you're chosen to speak. Then you choose one to discuss."
+- **Next stage** with anyone under the minimum warns the Warden, e.g. "2 players picked fewer than 3 thoughts", with **Keep voting** / **Continue anyway**.
+- **Starlight:** each pick pays the "per vote" amount (50 by default), with no cap. The admin setting is renamed "Each thought picked".
+- Companion and Seren lines that mention "three votes" no longer play at the Vote stage.
+- Lobby briefing: "Pick at least 3 thoughts you want to discuss."
+
+**Data:**
+- `cast_vote` loses the 3-vote limit and refuses a second pick of the same thought.
+- Picks stay anonymous rows, as today (`votes` / `vote_owners`).
+- `votes_cast` counts picks.
+
+**Done when:**
+- A player can pick any number of thoughts, once each, and un-pick them.
+- The Warden is warned about anyone under the minimum.
+- Starlight counts every pick.
 
 ---
 
@@ -253,7 +313,7 @@ The card can be saved as an image (same mechanism as feature 5).
 - **A. Individual check-ins:** the Warden and admins see each player's answers, from Homecoming on. The alternative is averages only, for everyone.
 - **B. Starlight for feedback:** default is no extra Starlight for check-in or peer feedback. A small reward would get more people to finish.
 - **C. Small parties:** with 2–3 raters, a player can sometimes guess who rated what. Default: show results anyway, as Rizzpective does.
-- **D. Speaker pool:** default is one turn per player per voyage. The alternative is resetting the pool for each thought.
+- **D. Speaker pool:** one turn per player per voyage; each turn covers one thought the player picked (feature 3).
 - **E. Invite codes:** default is to keep today's open join, plus the lock (feature 8). Real codes would add "new code / revoke".
 
 ## Build order and launch risk
@@ -264,5 +324,10 @@ The card can be saved as an image (same mechanism as feature 5).
 4. Build feature **3**: speaker turns.
 5. Build features **4 and 6**: Homecoming report and Party Portrait.
 6. Build features **5 and 7**: image download and recognition card. These can slip past launch if time runs out.
+
+**Status (2026-10-10):**
+- Features 9, 8 and 1 are live.
+- Next: feature 10 together with the revised features 3 and 9 (they share the Vote → Discuss → Vow flow).
+- Then features 2, 4 + 6, and 5 + 7.
 
 **Risk:** launch is 2026-10-16 with the dry run on Oct 14, and online play itself is the top launch risk. If time is short, features 1, 2, 3, 4, 8 and 9 come first, because they are what the team uses during a retro.
