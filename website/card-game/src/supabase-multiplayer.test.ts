@@ -64,11 +64,11 @@ describe('Supabase client lifecycle', () => {
     expect(ana.connection.getState()!.G.current).toBe(1); expect(ana.connection.getState()!.G.hands[0]).toEqual([]);
     expect(ana.connection.getState()!.G.counts[0]).toBe(2);
   });
-  it('queues a click made while a move is still sending instead of dropping it, and stops after unmount', async () => {
+  it('ignores a duplicate click while the move is sending, and stops after unmount', async () => {
     const host = await connect(HOST); let calls = 0; host.connection.subscribe(() => calls++);
     host.connection.moves.act({ kind: 'draw' }); host.connection.moves.act({ kind: 'draw' }); await flush(); await flush();
-    // The second draw is sent after the first lands; it is then simply no longer the host's turn.
-    expect(raw!.state.hands[0]).toHaveLength(2); expect(host.sb.functions.invoke.mock.calls.filter(([, o]) => (o as { body: RoomRequest }).body.op === 'act')).toHaveLength(2);
+    // A repeated identical click is ignored while the first is still sending; nothing is shown as an error.
+    expect(raw!.state.hands[0]).toHaveLength(2); expect(host.sb.functions.invoke.mock.calls.filter(([, o]) => (o as { body: RoomRequest }).body.op === 'act')).toHaveLength(1);
     expect(host.errors.join(' ')).not.toContain('still finishing');
     host.connection.stop(); const afterStop = calls; host.sb.trigger(); await vi.advanceTimersByTimeAsync(30000);
     expect(calls).toBe(afterStop); expect(host.sb.removeChannel).toHaveBeenCalledTimes(1);
@@ -78,6 +78,13 @@ describe('Supabase client lifecycle', () => {
     raw!.version++; raw!.state.current = 1;
     await vi.advanceTimersByTimeAsync(15000); expect(host.connection.getState()!.G.current).toBe(1);
     host.connection.stop(); const resumed = await connect(HOST); expect(resumed.connection.getState()!.G).toEqual(host.connection.getState()!.G);
+  });
+  it('a double-clicked Draw under Attack draws once, not twice', async () => {
+    raw!.state.owed = 2; raw!.state.attacked = true;
+    const host = await connect(HOST);
+    host.connection.moves.act({ kind: 'draw' }); host.connection.moves.act({ kind: 'draw' }); await flush(); await flush();
+    expect(raw!.state.hands[0].map(c => c.id)).toEqual(['mine', 'drawn']); expect(raw!.state.owed).toBe(1); expect(raw!.state.current).toBe(0);
+    expect(host.errors.filter(Boolean)).toEqual([]);
   });
   it('moves a card twice on two quick arrow presses: reorders show at once and are sent in order', async () => {
     raw!.state.hands[0] = [{ id: 'a', type: 'skip' }, { id: 'b', type: 'favor' }, { id: 'c', type: 'nope' }]; raw!.state.counts[0] = 3;

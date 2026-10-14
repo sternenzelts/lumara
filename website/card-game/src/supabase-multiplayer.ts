@@ -48,6 +48,7 @@ export function supabaseConnection(sb: SupabaseClient, code: string, playerID: s
   let active = false, view: RoomSnapshot | null = null, connected = false;
   // Moves are sent one at a time in click order; nothing is dropped while an earlier move is in flight.
   let queue: Promise<void> = Promise.resolve();
+  const waiting = new Set<string>(); // identical moves already queued or sending
   // Hand reorders show immediately. Until every queued reorder is saved, newer server views keep the local order.
   let pendingOrders = 0, localOrder: string[] | null = null;
   const me = Number(playerID);
@@ -110,6 +111,10 @@ export function supabaseConnection(sb: SupabaseClient, code: string, playerID: s
     moves: { act: action => {
       if (!active || !view || !connected) { onError('Reconnect before playing your next card.'); return; }
       const reorder = action.kind === 'hand-order';
+      // The basis is what the player saw when they clicked, so a double click cannot act twice on a newer table.
+      const basis = view.G.lastEvent?.id ?? 0, key = reorder ? '' : JSON.stringify(action);
+      if (key && waiting.has(key)) return; // a repeated click on the same move
+      if (key) waiting.add(key);
       if (reorder) {
         // Show the new order at once so a second quick press builds on it.
         pendingOrders++; localOrder = [...action.order];
@@ -119,10 +124,9 @@ export function supabaseConnection(sb: SupabaseClient, code: string, playerID: s
         }
       }
       queue = queue.then(async () => {
-        if (!active || !view) return;
+        if (!active || !view) { if (key) waiting.delete(key); return; }
         try {
-          // The basis is read when the move is sent, so a queued move builds on the result of the one before it.
-          const next = await requestRoom(sb, { op: 'act', code, basis: view.G.lastEvent?.id ?? 0, action });
+          const next = await requestRoom(sb, { op: 'act', code, basis, action });
           if (reorder) pendingOrders--;
           accept(next); if (active) onError('');
         } catch (error) {
@@ -131,7 +135,7 @@ export function supabaseConnection(sb: SupabaseClient, code: string, playerID: s
           if (error instanceof MultiplayerError && error.snapshot) accept(error.snapshot);
           else { connected = false; publish(); void refresh(); }
           onError(error instanceof Error ? error.message : 'The move could not be completed.');
-        } finally { if (!pendingOrders) localOrder = null; }
+        } finally { if (key) waiting.delete(key); if (!pendingOrders) localOrder = null; }
       });
     } },
   };
