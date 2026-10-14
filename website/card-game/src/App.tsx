@@ -11,11 +11,13 @@ import { useEffectQueue } from './Effects';
 import { cardHint, danger } from './guide';
 import { ruleName, selectionAdvice } from './interaction';
 import HandControls from './HandControls';
+import { enterRoom, lazySupabaseConnection, usesSupabase } from './online-lazy';
+import type { TableConnection } from './supabase-multiplayer';
 
-type GameClient = ReturnType<typeof Client<GameState>>;
-interface Session { matchID: string; playerID: string; credentials?: string; practice?: boolean; edition?: Edition }
+type GameClient = TableConnection;
+interface Session { matchID: string; playerID: string; credentials?: string; practice?: boolean; edition?: Edition; transport?: 'supabase' }
 const serverURL = import.meta.env.VITE_GAME_SERVER || window.location.origin;
-/** Static hosting (GitHub Pages) has no game server, so only practice against bots is offered. */
+/** Keep production in practice mode until the Supabase backend rollout is complete. */
 const practiceOnly = import.meta.env.VITE_PRACTICE_ONLY === '1';
 const lobby = new LobbyClient({ server: serverURL });
 const safeRead = (key: string, fallback: string) => { try { return localStorage.getItem(key) || fallback; } catch { return fallback; } };
@@ -59,6 +61,11 @@ export default function App() {
     if (!validName || busy) return;
     setBusy(true); setError('');
     try {
+      if (usesSupabase) {
+        const profile = { name: name.trim(), companion };
+        const room = await enterRoom(create ? { op: 'create', players, edition, ...profile } : { op: 'join', code: roomCode.trim().toLowerCase(), ...profile });
+        enter({ matchID: room.code, playerID: room.playerID, transport: 'supabase' }); return;
+      }
       let id = roomCode.trim();
       if (create) { const match = await lobby.createMatch(LumaraGame.name!, { numPlayers: players, setupData: { edition } }); id = match.matchID; }
       if (!id || !/^[a-zA-Z0-9_-]{1,64}$/.test(id)) throw new Error('Enter the room code your host shared.');
@@ -70,7 +77,7 @@ export default function App() {
       if (!seat) throw new Error('This room is full. Resume your seat or ask the host for a new room.');
       const result = await lobby.joinMatch(LumaraGame.name!, id, { playerID: String(seat.id), playerName: name.trim() });
       enter({ matchID: id, playerID: String(seat.id), credentials: result.playerCredentials });
-    } catch (err) { const message = err instanceof Error ? err.message : ''; setError(message.includes('full') || message.startsWith('Enter') ? message : 'Couldn’t reach that room. Check the code and game server, then try again.'); }
+    } catch (err) { const message = err instanceof Error ? err.message : ''; setError(usesSupabase || message.includes('full') || message.startsWith('Enter') ? message : 'Couldn’t reach that room. Check the code and game server, then try again.'); }
     finally { setBusy(false); }
   };
   const leave = () => { setSession(null); history.replaceState(null, '', location.pathname); };
@@ -91,13 +98,13 @@ export default function App() {
           <div className="room-options"><label className="field">Deck<select value={edition} onChange={e => { const next = e.target.value as Edition; setEdition(next); setPlayers(p => Math.min(p, next === 'original' ? 5 : 10)); }}><option value="party">Party Pack · 2–10 players</option><option value="original">Original · 2–5 players</option></select></label><label className="field">Seats<select value={players} onChange={e => setPlayers(Number(e.target.value))}>{Array.from({ length: edition === 'party' ? 9 : 4 }, (_, i) => i + 2).map(n => <option key={n} value={n}>{n} players</option>)}</select></label></div>
           <button className="button primary create-room" type="button" disabled={!validName || busy} onClick={() => void online(true)}><Users size={17} /> {busy ? 'Connecting…' : 'Create a room'}<ArrowRight size={18} /></button>
           <div className="join-row"><label className="sr-only" htmlFor="room-code">Room code</label><input id="room-code" placeholder="Room code from a friend" value={roomCode} onChange={e => setRoomCode(e.target.value)} maxLength={64} autoCapitalize="none" spellCheck={false} /><button className="button secondary" disabled={!validName || !roomCode.trim() || busy} type="submit">Join room</button></div>
-          {resumable && <button type="button" className="text-link" onClick={() => enter(resumable)}>Resume your seat <ArrowRight size={16} /></button>}
+          {resumable && <button type="button" className="text-link" disabled={busy} onClick={() => enter(resumable)}>Resume your seat <ArrowRight size={16} /></button>}
           {error && <p className="error" role="alert">{error}</p>}
         </form>
         <button className="text-link practice-link" disabled={busy} onClick={() => enter({ matchID: `practice-${Date.now()}`, playerID: '0', practice: true, edition })}>Try a practice round <ArrowRight size={17} /></button><p className="practice-caption">You + three bots. No server needed.</p></>}
       </section>
     </main>}
-    <footer className="site-footer">Original Lumara artwork · Exploding Kittens gameplay<span>{practiceOnly ? 'Practice edition' : 'Local prototype'}</span></footer>
+    <footer className="site-footer">Original Lumara artwork · Exploding Kittens gameplay<span>{practiceOnly ? 'Practice edition' : usesSupabase ? 'Play with friends' : 'Local prototype'}</span></footer>
     {rules && <Rules close={() => setRules(false)} edition={edition} />}
   </div>;
 }
@@ -135,8 +142,10 @@ export function GameTable({ session, profile, leave, onEdition }: { session: Ses
     const local = session.practice ? Local() : undefined;
     const playerCount = session.practice ? 4 : undefined;
     const game = session.practice ? { ...LumaraGame, setup: ({ ctx }: { ctx: { numPlayers: number } }) => createState(ctx.numPlayers, session.edition || 'party') } : LumaraGame;
-    const human = Client({ game, playerID: session.playerID, matchID: session.matchID, credentials: session.credentials,
-      numPlayers: playerCount, multiplayer: local || SocketIO({ server: serverURL }), debug: false });
+    const human: TableConnection = session.transport === 'supabase' && !session.practice
+      ? lazySupabaseConnection(session.matchID, session.playerID, setTableError)
+      : Client({ game, playerID: session.playerID, matchID: session.matchID, credentials: session.credentials,
+        numPlayers: playerCount, multiplayer: local || SocketIO({ server: serverURL }), debug: false });
     const bots: GameClient[] = [];
     if (session.practice) for (let i = 1; i < 4; i++) bots.push(Client({ game, numPlayers: 4, playerID: String(i), matchID: session.matchID, multiplayer: local, debug: false }));
     // Bots wait after every table event so people can see who did what before the next move.
@@ -155,7 +164,7 @@ export function GameTable({ session, profile, leave, onEdition }: { session: Ses
       }
     }, 700);
     return () => { clearInterval(timer); off(); human.stop(); bots.forEach(bot => bot.stop()); };
-  }, [session.matchID, session.playerID, session.credentials, session.practice]);
+  }, [session.matchID, session.playerID, session.credentials, session.practice, session.transport]);
   useEffect(() => { setSelected([]); setTarget(''); }, [G?.current, !!G?.pending, G?.pending?.noped, G?.stage?.type]);
   useEffect(() => { setPosition(G?.deckSize || 0); }, [G?.stage?.type === 'defuse']);
   useEffect(() => { setFutureOrder(G?.future.map(c => c.id) || []); }, [G?.future.map(c => c.id).join(',')]);
@@ -193,7 +202,7 @@ export function GameTable({ session, profile, leave, onEdition }: { session: Ses
     else if (lost.length === 1 && e?.kind !== 'defuse') setReveal({ key: Date.now(), card: lost[0], lost: true, title: e?.kind === 'steal' && e.other === me ? `${name(e.seat)} took your` : 'You lost' });
   }, [G?.phase, G?.hands[me]?.map(c => c.id).join(',')]);
   useEffect(() => { if (!reveal) return; const timer = setTimeout(() => setReveal(null), 2300); return () => clearTimeout(timer); }, [reveal?.key]);
-  if (!G || !client) return <main className="loading-table"><Sparkles /><h1>Opening the table…</h1><p>If it takes a while, check that the game server is running.</p><button className="text-link" onClick={leave}>Back to rooms <ArrowLeft size={16} /></button></main>;
+  if (!G || !client) return <main className="loading-table"><Sparkles /><h1>Opening the table…</h1>{tableError ? <p className="error" role="alert">{tableError}</p> : <p>Connecting to your shared room.</p>}<button className="text-link" onClick={leave}>Back to rooms <ArrowLeft size={16} /></button></main>;
   const hand = G.hands[me] || [];
   const handLocked = !connected || !G.alive[me] || G.winner !== null || (G.stage?.type === 'steal' && G.stage.target === me);
   const movingIndex = hand.findIndex(c => c.id === movingCard);
@@ -265,7 +274,7 @@ export function GameTable({ session, profile, leave, onEdition }: { session: Ses
     <div className="opponent-row">{G.seats.map((seat, i) => i !== me && <div key={i} className={`opponent ${G.current === i && G.phase === 'playing' ? 'active' : ''} ${!G.alive[i] ? 'eliminated' : ''}`}><img src={companionFor(seat.companion).art} alt="" /><div><strong>{seat.name}</strong><span>{G.phase === 'lobby' ? seat.ready ? 'Ready' : 'Choosing a companion' : G.alive[i] ? `${G.counts[i]} cards` : 'Light extinguished'}</span></div>{G.phase === 'lobby' && seat.ready && <Check size={16} />}</div>)}</div>
     <section className={`table-arena ${G.phase === 'playing' ? 'playing-arena' : ''} ${myTurn ? 'your-turn' : ''}`} aria-label="Card table">
       <div className={`turn-heading ${actorSeat === me && G.winner === null ? 'mine' : ''}`}>{G.phase === 'playing' && <img className="turn-companion" src={companionFor(G.seats[G.winner ?? actorSeat].companion).art} alt="" />}<div><h1>{status}</h1>{G.phase === 'playing' && G.winner === null && <p>{turnInstruction}</p>}</div></div>
-      {G.phase === 'lobby' ? <div className="waiting-party"><Shield size={40} /><p>Share the room link. Everyone chooses a companion and readies up.</p>{!G.seats[me].ready ? <button className="button primary" disabled={!connected} onClick={() => act({ kind: 'seat', ...profile })}>Ready with {companionFor(profile.companion).name} <Check size={17} /></button> : <span className="ready-label"><Check size={18} /> You’re ready</span>}{me === 0 && <button className="button primary" disabled={!connected || !G.seats.every(s => s.ready)} onClick={() => act({ kind: 'start' })}>Deal the cards <ArrowRight size={17} /></button>}</div> : <>
+      {G.phase === 'lobby' ? <div className="waiting-party"><Shield size={40} /><p>Share the room link. Everyone chooses a companion and readies up.</p>{!G.seats[me].ready ? <button className="button primary" disabled={!connected} onClick={() => act({ kind: 'seat', companion: profile.companion, name: profile.name || G.seats[me].name })}>Ready with {companionFor(profile.companion).name} <Check size={17} /></button> : <span className="ready-label"><Check size={18} /> You’re ready</span>}{me === 0 && <button className="button primary" disabled={!connected || !G.seats.every(s => s.ready)} onClick={() => act({ kind: 'start' })}>Deal the cards <ArrowRight size={17} /></button>}</div> : <>
         <TableScene game={G} me={me} effect={effect}><div className="piles"><div className="draw-pile"><button className="deck-button" onClick={() => act({ kind: 'draw' })} disabled={!myTurn || !connected} aria-label="Draw a card"><CardFace back /></button><span>Draw pile · {G.deckSize}</span>{G.winner === null && <span className={`danger-meter ${odds.level}`} title="Chance that the next card drawn is a World Collapse"><Bomb size={13} /> {odds.bombs} Collapse{odds.bombs === 1 ? '' : 's'} inside{odds.oneIn ? ` · 1 in ${odds.oneIn}` : ''}</span>}</div><div className="discard-pile">{top ? <div key={top.id} className="just-played"><CardFace card={top} /></div> : <div className="empty-discard"><Swords size={26} /><span>No cards<br />played yet.</span></div>}<span>Discard pile</span></div></div></TableScene>
         <aside className="table-situation" aria-label="Table summary"><p className="players-left"><Users size={16} /> {G.alive.filter(Boolean).length} {G.alive.filter(Boolean).length === 1 ? 'player' : 'players'} remaining</p><p className="goal-line">Don’t draw a World Collapse without Protection. Last one standing wins.</p><h2>Recent plays</h2><ol className="recent-plays">{G.log.slice(0, 3).map((line, i) => <li key={(G.lastEvent?.id ?? 0) - i}>{line}</li>)}</ol></aside>
         {G.pending && G.alive[me] && <div className="response-bar" ref={responseControls}>{top && <img className="action-thumb" src={companionFor(cardDefs[G.pending.type === 'pair' || G.pending.type === 'trio' ? top.type : G.pending.type].companion).art} alt="" />}<div><strong>{pendingTitle}</strong><span>{pendingText}</span></div>{responded ? <span className="waiting-on">Waiting for anyone holding a Nope…</span> : <>{nope && <button className="button primary" disabled={!connected} onClick={() => act({ kind: 'nope', id: nope.id })}>{G.pending.noped ? 'Nope · restore action' : 'Nope · cancel action'}</button>}<button className="button secondary" disabled={!connected} onClick={() => act({ kind: 'pass' })}>Allow action</button></>}{canMoveOn && <button className="button secondary" title="Use this if someone is away and the game is stuck" onClick={() => act({ kind: 'force' })}>Move on</button>}</div>}

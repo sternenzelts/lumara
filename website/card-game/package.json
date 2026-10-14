@@ -5,11 +5,16 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 4180 --strictPort",
     "server:dev": "tsx watch src/server.ts",
-    "build": "tsc --noEmit && vite build && tsc -p tsconfig.server.json",
+    "build": "npm run edge:check && tsc --noEmit && vite build && tsc -p tsconfig.server.json",
     "start": "node build-server/server.js",
-    "test": "vitest run"
+    "test": "vitest run",
+    "edge:sync": "node scripts/sync-edge.mjs",
+    "edge:check": "node scripts/sync-edge.mjs --check && node scripts/bundle-edge.mjs --check",
+    "edge:bundle": "node scripts/bundle-edge.mjs",
+    "edge:typecheck": "deno check supabase/functions/last-light/index.ts"
   },
   "dependencies": {
+    "@supabase/supabase-js": "2.117.2",
     "boardgame.io": "0.50.2",
     "koa-static": "^5.0.0",
     "lucide-react": "^0.468.0",
@@ -17,11 +22,15 @@
     "react-dom": "^19.2.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.9",
     "@types/koa-static": "^4.0.4",
     "@types/node": "^22.0.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.0.0",
+    "deno": "^2.9.6",
+    "esbuild": "^0.28.2",
+    "jsdom": "^26.1.0",
     "tsx": "^4.20.6",
     "typescript": "~5.9.3",
     "vite": "^7.1.0",

@@ -1,0 +1,4 @@
+project_id = "lumara-last-light"
+
+[functions.last-light]
+verify_jwt = true
