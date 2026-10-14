@@ -11,11 +11,12 @@ import { useEffectQueue } from './Effects';
 import { cardHint, danger } from './guide';
 import { ruleName, selectionAdvice } from './interaction';
 import HandControls from './HandControls';
+import { cardSupabase, enterSupabaseRoom, supabaseConnection, usesSupabase, type TableConnection } from './supabase-multiplayer';
 
-type GameClient = ReturnType<typeof Client<GameState>>;
-interface Session { matchID: string; playerID: string; credentials?: string; practice?: boolean; edition?: Edition }
+type GameClient = TableConnection;
+interface Session { matchID: string; playerID: string; credentials?: string; practice?: boolean; edition?: Edition; transport?: 'supabase' }
 const serverURL = import.meta.env.VITE_GAME_SERVER || window.location.origin;
-/** Static hosting (GitHub Pages) has no game server, so only practice against bots is offered. */
+/** Keep production in practice mode until the Supabase backend rollout is complete. */
 const practiceOnly = import.meta.env.VITE_PRACTICE_ONLY === '1';
 const lobby = new LobbyClient({ server: serverURL });
 const safeRead = (key: string, fallback: string) => { try { return localStorage.getItem(key) || fallback; } catch { return fallback; } };
@@ -59,6 +60,11 @@ export default function App() {
     if (!validName || busy) return;
     setBusy(true); setError('');
     try {
+      if (usesSupabase) {
+        const profile = { name: name.trim(), companion };
+        const room = await enterSupabaseRoom(create ? { op: 'create', players, edition, ...profile } : { op: 'join', code: roomCode.trim().toLowerCase(), ...profile });
+        enter({ matchID: room.code, playerID: room.playerID, transport: 'supabase' }); return;
+      }
       let id = roomCode.trim();
       if (create) { const match = await lobby.createMatch(LumaraGame.name!, { numPlayers: players, setupData: { edition } }); id = match.matchID; }
       if (!id || !/^[a-zA-Z0-9_-]{1,64}$/.test(id)) throw new Error('Enter the room code your host shared.');
@@ -70,7 +76,7 @@ export default function App() {
       if (!seat) throw new Error('This room is full. Resume your seat or ask the host for a new room.');
       const result = await lobby.joinMatch(LumaraGame.name!, id, { playerID: String(seat.id), playerName: name.trim() });
       enter({ matchID: id, playerID: String(seat.id), credentials: result.playerCredentials });
-    } catch (err) { const message = err instanceof Error ? err.message : ''; setError(message.includes('full') || message.startsWith('Enter') ? message : 'Couldn’t reach that room. Check the code and game server, then try again.'); }
+    } catch (err) { const message = err instanceof Error ? err.message : ''; setError(usesSupabase || message.includes('full') || message.startsWith('Enter') ? message : 'Couldn’t reach that room. Check the code and game server, then try again.'); }
     finally { setBusy(false); }
   };
   const leave = () => { setSession(null); history.replaceState(null, '', location.pathname); };
@@ -91,13 +97,13 @@ export default function App() {
           <div className="room-options"><label className="field">Deck<select value={edition} onChange={e => { const next = e.target.value as Edition; setEdition(next); setPlayers(p => Math.min(p, next === 'original' ? 5 : 10)); }}><option value="party">Party Pack · 2–10 players</option><option value="original">Original · 2–5 players</option></select></label><label className="field">Seats<select value={players} onChange={e => setPlayers(Number(e.target.value))}>{Array.from({ length: edition === 'party' ? 9 : 4 }, (_, i) => i + 2).map(n => <option key={n} value={n}>{n} players</option>)}</select></label></div>
           <button className="button primary create-room" type="button" disabled={!validName || busy} onClick={() => void online(true)}><Users size={17} /> {busy ? 'Connecting…' : 'Create a room'}<ArrowRight size={18} /></button>
           <div className="join-row"><label className="sr-only" htmlFor="room-code">Room code</label><input id="room-code" placeholder="Room code from a friend" value={roomCode} onChange={e => setRoomCode(e.target.value)} maxLength={64} autoCapitalize="none" spellCheck={false} /><button className="button secondary" disabled={!validName || !roomCode.trim() || busy} type="submit">Join room</button></div>
-          {resumable && <button type="button" className="text-link" onClick={() => enter(resumable)}>Resume your seat <ArrowRight size={16} /></button>}
+          {resumable && <button type="button" className="text-link" disabled={busy} onClick={() => usesSupabase ? void online(false) : enter(resumable)}>Resume your seat <ArrowRight size={16} /></button>}
           {error && <p className="error" role="alert">{error}</p>}
         </form>
         <button className="text-link practice-link" disabled={busy} onClick={() => enter({ matchID: `practice-${Date.now()}`, playerID: '0', practice: true, edition })}>Try a practice round <ArrowRight size={17} /></button><p className="practice-caption">You + three bots. No server needed.</p></>}
       </section>
     </main>}
-    <footer className="site-footer">Original Lumara artwork · Exploding Kittens gameplay<span>{practiceOnly ? 'Practice edition' : 'Local prototype'}</span></footer>
+    <footer className="site-footer">Original Lumara artwork · Exploding Kittens gameplay<span>{practiceOnly ? 'Practice edition' : usesSupabase ? 'Play with friends' : 'Local prototype'}</span></footer>
     {rules && <Rules close={() => setRules(false)} edition={edition} />}
   </div>;
 }
@@ -135,8 +141,10 @@ export function GameTable({ session, profile, leave, onEdition }: { session: Ses
     const local = session.practice ? Local() : undefined;
     const playerCount = session.practice ? 4 : undefined;
     const game = session.practice ? { ...LumaraGame, setup: ({ ctx }: { ctx: { numPlayers: number } }) => createState(ctx.numPlayers, session.edition || 'party') } : LumaraGame;
-    const human = Client({ game, playerID: session.playerID, matchID: session.matchID, credentials: session.credentials,
-      numPlayers: playerCount, multiplayer: local || SocketIO({ server: serverURL }), debug: false });
+    const human: TableConnection = session.transport === 'supabase' && !session.practice
+      ? supabaseConnection(cardSupabase(), session.matchID, session.playerID, setTableError)
+      : Client({ game, playerID: session.playerID, matchID: session.matchID, credentials: session.credentials,
+        numPlayers: playerCount, multiplayer: local || SocketIO({ server: serverURL }), debug: false });
     const bots: GameClient[] = [];
     if (session.practice) for (let i = 1; i < 4; i++) bots.push(Client({ game, numPlayers: 4, playerID: String(i), matchID: session.matchID, multiplayer: local, debug: false }));
     // Bots wait after every table event so people can see who did what before the next move.
@@ -155,7 +163,7 @@ export function GameTable({ session, profile, leave, onEdition }: { session: Ses
       }
     }, 700);
     return () => { clearInterval(timer); off(); human.stop(); bots.forEach(bot => bot.stop()); };
-  }, [session.matchID, session.playerID, session.credentials, session.practice]);
+  }, [session.matchID, session.playerID, session.credentials, session.practice, session.transport]);
   useEffect(() => { setSelected([]); setTarget(''); }, [G?.current, !!G?.pending, G?.pending?.noped, G?.stage?.type]);
   useEffect(() => { setPosition(G?.deckSize || 0); }, [G?.stage?.type === 'defuse']);
   useEffect(() => { setFutureOrder(G?.future.map(c => c.id) || []); }, [G?.future.map(c => c.id).join(',')]);
@@ -193,7 +201,7 @@ export function GameTable({ session, profile, leave, onEdition }: { session: Ses
     else if (lost.length === 1 && e?.kind !== 'defuse') setReveal({ key: Date.now(), card: lost[0], lost: true, title: e?.kind === 'steal' && e.other === me ? `${name(e.seat)} took your` : 'You lost' });
   }, [G?.phase, G?.hands[me]?.map(c => c.id).join(',')]);
   useEffect(() => { if (!reveal) return; const timer = setTimeout(() => setReveal(null), 2300); return () => clearTimeout(timer); }, [reveal?.key]);
-  if (!G || !client) return <main className="loading-table"><Sparkles /><h1>Opening the table…</h1><p>If it takes a while, check that the game server is running.</p><button className="text-link" onClick={leave}>Back to rooms <ArrowLeft size={16} /></button></main>;
+  if (!G || !client) return <main className="loading-table"><Sparkles /><h1>Opening the table…</h1>{tableError ? <p className="error" role="alert">{tableError}</p> : <p>Connecting to your shared room.</p>}<button className="text-link" onClick={leave}>Back to rooms <ArrowLeft size={16} /></button></main>;
   const hand = G.hands[me] || [];
   const handLocked = !connected || !G.alive[me] || G.winner !== null || (G.stage?.type === 'steal' && G.stage.target === me);
   const movingIndex = hand.findIndex(c => c.id === movingCard);

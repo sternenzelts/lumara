@@ -27,15 +27,15 @@ Open http://127.0.0.1:51399. The Node process serves the built website, lobby AP
 
 For development, run `npm run server:dev` and `npm run dev` in separate terminals. Vite opens at http://127.0.0.1:4180 and proxies game requests to port 51399.
 
-## Hosting
+## Hosting with the existing Supabase project
 
-**Live practice edition:** the Pages workflow (`.github/workflows/pages.yml`) builds this game with `VITE_PRACTICE_ONLY=1` and publishes it at `/cards/` (https://sternenzelts.github.io/lumara/cards/). That build hides online rooms and offers practice against bots, because GitHub Pages cannot run the game server. Online rooms need the Node service below.
+The card game now supports the retrospective's existing Supabase project. Rooms persist in a separate private schema; the `last-light` Edge Function runs the same tested rules, validates the authenticated seat, and returns only that player's private hand. Realtime sends only version updates, with polling and reconnect refreshes recovering missed changes. The card game does not read or write retrospective tables.
 
-Use a Node service with WebSocket support, such as a container host. This multiplayer game needs a running server; static hosting alone only supports practice. Build/start commands are `npm ci && npm run build` and `npm start`. Set `PORT` to the host's assigned port and `SERVER_ORIGINS` to the exact HTTPS origin of the deployed site. Serve one instance: rooms currently live in memory and disappear on restart. Persistent match storage and load testing remain prerequisites for a durable public service.
+Follow [supabase/DEPLOY.md](supabase/DEPLOY.md) for the reviewed SQL, a single-file function that can be pasted into the Supabase dashboard, and the release sequence. The Pages workflow publishes `/cards/` in practice mode until the backend is deployed and the repository variable `LAST_LIGHT_MULTIPLAYER_READY=1` is set. It then builds with `VITE_CARD_MULTIPLAYER=supabase` and reuses the existing `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` secrets. Merge alone does not enable online rooms.
 
-Keep the frontend and server on the same origin where possible. For separate services, set `VITE_GAME_SERVER` at build time to the server's HTTPS URL and allow the frontend origin through `SERVER_ORIGINS`. HTTPS/WSS must be configured by the hosting provider. This repository does not deploy anything automatically.
+For local Supabase development, set the four `VITE_*` values documented in `.env.example`. Practice still uses the existing local bot engine. Rooms last seven days, survive function restarts, and resume the same seat for the same Supabase identity. Different friends need separate browsers/profiles or devices; two tabs with the same identity share a seat.
 
-The Dockerfile builds and starts the combined service. Example: `docker build -t lumara-last-light .`, then `docker run --rm -p 51399:51399 -e SERVER_ORIGINS=http://localhost:51399 lumara-last-light`.
+The optional local Node/Socket.IO service and Dockerfile remain available for development. That service keeps its rooms in memory. A separately hosted Node service can still use `VITE_GAME_SERVER` and `SERVER_ORIGINS`; the Supabase path requires no such service.
 
 ## Rules and implementation
 
@@ -43,10 +43,10 @@ See [RULES.md](RULES.md) for verified deck counts, mappings and the online respo
 
 The [DomiIRL fan repository](https://github.com/DomiIRL/exploding-kittens) was reviewed as a reference. Its work-in-progress gameplay code was not copied: the audit found inconsistent Attack turn accounting and deck counts. This app implements the rules directly using the MIT-licensed boardgame.io multiplayer framework. No publisher illustrations or branding are included.
 
-Character choices are cosmetic. Hidden cards and future views are filtered on the authoritative server; undo and move-log payloads are disabled/redacted. Host-only dealing, card ownership, targets and permutations are validated server-side. Production room moderation, quotas and durable storage are not implemented.
+Character choices are cosmetic. Hidden cards and future views are filtered by the authoritative backend; undo and move-log payloads are disabled/redacted. Host-only dealing, card ownership, targets and permutations are validated server-side. Supabase provides durable rooms, private views, atomic version checks and a five-active-room creation limit per identity. Public moderation and load testing remain outside this prototype.
 
 ## Validation and artwork
 
-`npm test` covers public-seat rendering, privacy, special-action actors, elimination, escaped player names, invalid actions, deck counts, stacked Attacks, Nullify chains, Protection insertion, private reorder, gifts and combos. Hand-flow tests exercise arrow movement, shuffle, keyboard focus and face-down stealing through the real Local multiplayer transport. The suite also simulates 72 full games across 2/3/4/7/8/10 seats. `npm run build` validates TypeScript and compiles both client and server.
+`npm test` covers public-seat rendering, privacy, special-action actors, elimination, escaped player names, invalid actions, deck counts, stacked Attacks, Nullify chains, Protection insertion, private reorder, gifts and combos. Hand-flow tests exercise arrow movement, shuffle, keyboard focus and face-down stealing through the real Local multiplayer transport. Supabase tests apply the actual SQL to local Postgres, check permissions and competing requests, and run the exact bundled function with the real SDK. Client tests cover private refreshes, missed updates, resume, duplicate clicks, cleanup and late responses. The suite also simulates 72 full games across 2/3/4/7/8/10 seats. `npm run build` validates TypeScript, generated function copies and the deployment bundle, then compiles the client and optional Node server. `npm run edge:typecheck` checks the function source in Deno. No test writes to the live database.
 
 The generated card assets are in `public/chibi/`. Exact prompts, original character references and the built-in ImageGen provenance are recorded in [art-prompts.json](art-prompts.json). The parent website's original splash images remain untouched.
