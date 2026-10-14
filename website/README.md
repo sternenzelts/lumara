@@ -16,7 +16,11 @@ The artwork viewer remains manually controlled and includes the selected compani
 
 ## Entry trailer
 
-On a fresh visit, **Tap to enter** opens **Watch the trailer?** with **Watch trailer** and **Skip trailer**. Watching starts the reviewed 90-second Lumara/ANIMA trailer with sound, inline native playback controls, and a visible skip action. Finishing, skipping, or pressing Escape continues into the website. Entry is remembered for the browser-tab session, so reloading after entry goes straight to Lumara.
+On a fresh visit, **Tap to enter** opens **Watch the trailer?** with **Watch trailer** and **Skip trailer**. Watching starts the reviewed 90-second Lumara/ANIMA trailer at **50% volume**, with inline native playback controls and a visible skip action. Finishing, skipping, or pressing Escape continues into the website. Entry is remembered for the browser-tab session, so reloading after entry goes straight to Lumara.
+
+After entry, **Watch trailer** below the opening discovery actions reopens the same cinema from the beginning at 50% volume. **Return to Lumara**, Escape, or completion returns focus to that button. Replay pauses Kenka and stops companion voices; it resumes Kenka only if music was playing before replay and the tab stayed visible. A muted choice stays muted. Closing releases the video source and restores scrolling; the video remains lazy-loaded until Watch is pressed.
+
+Media-controls verification (2026-10-10): production build, TypeScript, and static asset checks pass. Browser checks covered first-visit lazy loading and playback, replay, Return, Escape, completion, music pause/resume and muted preservation, keyboard volume changes, and persistence after reload. Desktop 1440×900 and phone 375×812 captures are in `.impeccable/review/media-controls/`; the phone layout has no horizontal overflow. The finish review approved the changed controls.
 
 The video is mounted without a source and uses `preload="none"`; its source is assigned only when Watch is pressed. Background Kenka stays paused throughout the welcome screen, invitation, and trailer, then follows the existing entry music behavior. If playback is blocked or fails, native controls, retry, and skip remain available. The native modal keeps the website behind it inert. Closing pauses the video, cancels pending playback, and restores page scrolling and focus. Reduced motion removes the exit delay.
 
@@ -26,7 +30,7 @@ Verification: the final production build passed TypeScript and static asset chec
 
 Only optional Google Fonts load externally; all artwork and bundled JavaScript are local. All shipping rasters include provenance, and `npm run build` checks static output limits.
 
-Background music uses the user-supplied Kenka MP3 in `public/audio/kenka.mp3`. The fixed lower-right control starts playback only after a click, loops at 25% volume, and mutes by pausing while preserving position for resume. Hidden tabs pause playback; returning requires pressing play. Load failures offer retry. Audio is independent of motion settings and is not preloaded. Source attribution is in `public/audio/SOURCE.md`.
+Background music uses the user-supplied Kenka MP3 in `public/audio/kenka.mp3`. The lower-right music controls (in the header on phones) offer play/mute and **Music volume**. The keyboard-accessible 0–100% slider defaults to 25% and remembers its setting in `lumara.music.volume`; Escape or clicking outside closes its panel. Muting pauses while preserving position for resume. Hidden tabs pause playback; returning requires pressing play. Load failures offer retry. Audio is independent of motion settings and is not preloaded. Source attribution is in `public/audio/SOURCE.md`.
 
 ## Current overview refresh (2026-09-27)
 
@@ -34,7 +38,7 @@ The world story now follows the Dimming, four nations around Aurelis, and twelve
 
 The S++ campaign at `#legends` presents the original 1672 x 941 Mahesvara, Keira, and Ayaka landscape PNGs. Selection is manual with keyboard-accessible controls. An interrupted selection cancels its previous voice. The short artwork reveal uses a light sweep and clipping; existing motion pause and reduced-motion controls apply. Landscape originals are also available in each character's artwork viewer.
 
-`CharacterVoice.tsx` provides click-only Japanese voice playback with supplied English subtitles for Mahesvara, Keira, Ayaka, and Seren. Each click cycles to another recorded line; only one voice plays at a time. Stop, character changes, hidden tabs, and unmount cancel playback. Background Kenka ducks from 25% to 5% during speech and returns to 25% afterward. Missing recordings are explicitly disabled; no synthetic voices are invented. Add new clips through `src/voice-lines.json` and `public/audio/voices/<character>/`.
+`CharacterVoice.tsx` provides click-only Japanese voice playback with supplied English subtitles for Mahesvara, Keira, Ayaka, and Seren. Each click cycles to another recorded line; only one voice plays at a time. Stop, character changes, hidden tabs, and unmount cancel playback. Background Kenka ducks to one-fifth of the chosen music volume during speech and returns to that chosen level afterward. Missing recordings are explicitly disabled; no synthetic voices are invented. Add new clips through `src/voice-lines.json` and `public/audio/voices/<character>/`.
 
 Seren's happy/thinking/proud portraits accompany the voyage steps; her chibi joins the follow-through explanation. No Seren video is used. Face-framed companion selectors and overview portraits are drawn from original cutouts using `CompanionPortrait.tsx`; all thirteen characters remain available with grade filters and region names.
 

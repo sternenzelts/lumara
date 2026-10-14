@@ -43,10 +43,21 @@
 .form-choice:disabled,.form-pause:disabled{opacity:.55;cursor:default}
 .form-loading{max-width:170px;font-size:10px;color:var(--muted);line-height:1.5}
 .form-pause{background:transparent}
-.background-music{position:fixed;right:20px;bottom:20px;z-index:20}
+.background-music{position:fixed;right:20px;bottom:20px;z-index:20;display:flex;align-items:center;gap:6px}
 .music-toggle{display:flex;align-items:center;justify-content:center;gap:9px;min-height:44px;padding:10px 15px;background:var(--paper);color:var(--ink);border:1px solid var(--line);font-size:12px;font-weight:600}
 .music-toggle:hover{background:#e6edf2}
 .music-toggle[aria-pressed=true]{color:var(--gold)}
+.music-settings{position:relative}
+.music-settings summary{display:flex;align-items:center;justify-content:center;width:44px;height:44px;list-style:none;cursor:pointer;background:var(--paper);color:var(--ink);border:1px solid var(--line)}
+.music-settings summary::-webkit-details-marker{display:none}
+.music-settings summary:hover,.music-settings[open] summary{background:#e6edf2}
+.music-volume-panel{position:absolute;right:0;bottom:calc(100% + 12px);width:240px;padding:18px 20px;background:var(--paper);color:var(--ink);box-shadow:0 8px 28px #213a4a30}
+.music-volume-panel label{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:12px;font-weight:600}
+.music-volume-panel output{font-variant-numeric:tabular-nums;color:var(--muted)}
+.music-volume-panel input{display:block;width:100%;height:44px;margin-top:6px;accent-color:var(--gold);cursor:pointer}
+.hero-trailer{display:inline-flex;align-items:center;gap:9px;min-height:44px;margin-top:18px;padding:0 12px;background:var(--paper);border:1px solid var(--line)}
+.hero-trailer>span{font-size:10px;color:var(--muted);margin-left:8px;font-weight:400}
+@media(max-width:760px){.music-settings summary{border-radius:50%;background:#173444;color:#fff5df;border-color:#d2b377}.music-settings summary:hover,.music-settings[open] summary{background:#2c485c}.music-volume-panel{top:calc(100% + 14px);bottom:auto;right:-50px;width:min(260px,calc(100vw - 32px))}.hero-trailer{margin-top:12px;font-size:11px}.hero-trailer>span{font-size:9px}}
 .hero-baseline{padding-right:145px}
 .music-error{position:absolute;bottom:52px;right:0;width:230px;padding:12px 16px;background:var(--paper);color:var(--ink);font-size:12px;border:1px solid var(--line)}
 @media(max-width:760px){.background-music{right:12px;bottom:max(12px,env(safe-area-inset-bottom))}.music-toggle{font-size:11px;padding:10px 12px}.hero-baseline{padding-right:0}.hero-baseline .motion-toggle{position:absolute;right:124px;bottom:0;width:44px;justify-content:center}.hero-baseline .motion-toggle span{display:none}.mascot-caption div>span{max-width:145px}}
