@@ -14,6 +14,7 @@ export function botAction(G: GameState, actor: number, rng: () => number = Math.
   if (G.stage) {
     if (G.stage.actor !== actor) return null;
     if (G.stage.type === 'defuse') return { kind: 'defuse', position: G.deckSize };
+    if (G.stage.type === 'steal') return { kind: 'steal', index: Math.min(G.counts[G.stage.target!] - 1, Math.floor(rng() * G.counts[G.stage.target!])) };
     if (G.stage.type === 'future') return { kind: 'future' };
     if (G.stage.type === 'alter') return { kind: 'future', order: [...G.future].sort((a, b) => Number(a.type === 'collapse') - Number(b.type === 'collapse')).map(c => c.id) };
     const card = [...hand].sort((a, b) => Number(a.type === 'defuse') - Number(b.type === 'defuse'))[0];

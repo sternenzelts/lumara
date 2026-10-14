@@ -6,7 +6,7 @@ export type Edition = 'original' | 'party';
 export interface Card { id: string; type: CardType }
 export interface Seat { name: string; companion: string; ready: boolean }
 export interface Pending { actor: number; type: CardType | 'pair' | 'trio'; target?: number; request?: CardType; noped: boolean; passes: number[] }
-export interface Stage { type: 'defuse' | 'future' | 'alter' | 'favor'; actor: number; recipient?: number }
+export interface Stage { type: 'defuse' | 'future' | 'alter' | 'favor' | 'steal'; actor: number; recipient?: number; target?: number }
 export interface GameState {
   edition: Edition; phase: 'lobby' | 'playing'; seats: Seat[]; hands: Card[][]; counts: number[];
   alive: boolean[]; deck: Card[]; deckSize: number; discard: Card[]; current: number;
@@ -26,7 +26,8 @@ export type Action =
   | { kind: 'start' } | { kind: 'draw' } | { kind: 'nope'; id: string }
   | { kind: 'play'; ids: string[]; target?: number; request?: CardType }
   | { kind: 'pass' } | { kind: 'force' } | { kind: 'defuse'; position: number }
-  | { kind: 'future'; order?: string[] } | { kind: 'give'; id: string };
+  | { kind: 'future'; order?: string[] } | { kind: 'give'; id: string }
+  | { kind: 'steal'; index: number } | { kind: 'hand-order'; order: string[] };
 
 export function createState(count: number, edition: Edition = 'party'): GameState {
   return { edition, phase: 'lobby', seats: Array.from({ length: count }, (_, i) => ({ name: `Player ${i + 1}`, companion: companions[i % companions.length].id, ready: false })),
@@ -125,9 +126,16 @@ function resolve(G: GameState, random: RandomSource) {
       if (G.hands[p.target!].length) { G.stage = { type: 'favor', actor: p.target!, recipient: actor }; record(G, `${G.seats[actor].name} asks ${G.seats[p.target!].name} for a card.`, actor, 'favor', { other: p.target! }); }
       else record(G, `${G.seats[p.target!].name} has no cards to give.`, p.target!, 'miss', { other: actor });
       break;
-    case 'pair': case 'trio': {
+    case 'pair': {
+      if (G.hands[p.target!].length) {
+        G.stage = { type: 'steal', actor, target: p.target! };
+        record(G, `${G.seats[actor].name} is choosing a face-down card from ${G.seats[p.target!].name}.`, actor, 'info', { other: p.target! });
+      } else record(G, `${G.seats[p.target!].name} has no cards to steal.`, p.target!, 'miss', { other: actor });
+      break;
+    }
+    case 'trio': {
       const hand = G.hands[p.target!];
-      const index = p.type === 'pair' ? Math.floor(random.number() * hand.length) : hand.findIndex(c => c.type === p.request);
+      const index = hand.findIndex(c => c.type === p.request);
       if (index >= 0 && hand.length) { G.hands[actor].push(...hand.splice(index, 1)); record(G, `${G.seats[actor].name} took a card from ${G.seats[p.target!].name}.`, actor, 'steal', { other: p.target! }); }
       else record(G, `${G.seats[p.target!].name} did not have the requested card.`, p.target!, 'miss', { other: actor });
       break;
@@ -160,6 +168,14 @@ export function applyAction(G: GameState, actor: number, action: Action, random:
     G.deck = random.shuffle(G.deck); G.phase = 'playing'; record(G, 'The cards are dealt. Keep your hand secret.', null, 'deal'); sync(G); return true;
   }
   if (G.phase !== 'playing' || !G.alive[actor]) return false;
+  if (action.kind === 'hand-order') {
+    // Freeze the offered hand until the thief picks, so a click always takes the shown position.
+    if (G.stage?.type === 'steal' && G.stage.target === actor) return false;
+    const hand = G.hands[actor], ids = action.order;
+    if (!Array.isArray(ids) || ids.length !== hand.length || new Set(ids).size !== ids.length || !ids.every(id => hand.some(c => c.id === id))) return false;
+    G.hands[actor] = ids.map(id => hand.find(c => c.id === id)!);
+    return true;
+  }
   if (action.kind === 'nope') {
     const index = G.hands[actor].findIndex(c => c.id === action.id && c.type === 'nope');
     if (!G.pending || index < 0) return false;
@@ -178,6 +194,13 @@ export function applyAction(G: GameState, actor: number, action: Action, random:
     record(G, `${G.seats[0].name} moved the action on.`, 0, 'force'); resolve(G, random); sync(G); return true;
   }
   if (G.pending) return false;
+  if (action.kind === 'steal') {
+    if (G.stage?.type !== 'steal' || G.stage.actor !== actor) return false;
+    const target = G.stage.target!, hand = G.hands[target];
+    if (!Number.isInteger(action.index) || action.index < 0 || action.index >= hand.length) return false;
+    G.hands[actor].push(...hand.splice(action.index, 1)); G.stage = null;
+    record(G, `${G.seats[actor].name} took a card from ${G.seats[target].name}.`, actor, 'steal', { other: target }); sync(G); return true;
+  }
   if (action.kind === 'defuse') {
     if (G.stage?.type !== 'defuse' || G.stage.actor !== actor || !G.danger || !Number.isInteger(action.position) || action.position < 0 || action.position > G.deck.length) return false;
     G.deck.splice(action.position, 0, G.danger); G.danger = null; G.stage = null;

@@ -10,6 +10,10 @@ How to play has six illustrated lessons using the real cards, interactive surviv
 
 Practice starts immediately with three bots. A name is optional for practice; leaving it blank uses Guest. Online room creation and joining still require a name.
 
+Matching pairs now open the opponent's face-down hand after Nullify responses finish: choose one card back to steal, then continue your turn. Card faces and IDs stay private. Three matching cards still request a specific title.
+
+**Arrange hand** lets you drag cards into order, move a chosen card with the left/right buttons (including on phones), or use the keyboard arrow keys. **Shuffle hand** randomizes only your own hand. Both are available between turns and preserve your cards and the draw pile. The offered hand is locked while another player chooses a card to steal, then unlocks afterward.
+
 Requires Node 22 or newer.
 
 ```powershell
@@ -43,6 +47,6 @@ Character choices are cosmetic. Hidden cards and future views are filtered on th
 
 ## Validation and artwork
 
-`npm test` runs 48 checks, including public-seat rendering, privacy, special-action actors, elimination, escaped player names, invalid actions, deck counts, stacked Attacks, Nullify chains, Protection insertion, private reorder, gifts and combos. It also simulates 72 full games across 2/3/4/7/8/10 seats. `npm run build` validates TypeScript and compiles both client and server.
+`npm test` covers public-seat rendering, privacy, special-action actors, elimination, escaped player names, invalid actions, deck counts, stacked Attacks, Nullify chains, Protection insertion, private reorder, gifts and combos. Hand-flow tests exercise arrow movement, shuffle, keyboard focus and face-down stealing through the real Local multiplayer transport. The suite also simulates 72 full games across 2/3/4/7/8/10 seats. `npm run build` validates TypeScript and compiles both client and server.
 
 The generated card assets are in `public/chibi/`. Exact prompts, original character references and the built-in ImageGen provenance are recorded in [art-prompts.json](art-prompts.json). The parent website's original splash images remain untouched.

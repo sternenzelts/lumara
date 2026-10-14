@@ -80,7 +80,29 @@ describe('Favor and special combos', () => {
     expect(G.stage).toBeNull(); expect(G.pending).toBeNull(); expect(G.current).toBe(0);
   });
   it('the requested player chooses their gift; no other player can give for them', () => { const G = game(); G.hands[0] = [c('f', 'favor')]; G.hands[1] = [c('d', 'defuse'), c('s', 'skip')]; act(G, 0, { kind: 'play', ids: ['f'], target: 1 }); allow(G); expect(act(G, 0, { kind: 'give', id: 'd' })).toBe(false); expect(act(G, 1, { kind: 'give', id: 's' })).toBe(true); expect(G.hands[0].map(c => c.id)).toEqual(['s']); expect(G.hands[1].map(c => c.id)).toEqual(['d']); });
-  it('any matching pair steals randomly without executing either original effect', () => { const G = game(); G.hands[0] = [c('a', 'attack'), c('b', 'attack')]; G.hands[1] = [c('gift', 'defuse')]; act(G, 0, { kind: 'play', ids: ['a', 'b'], target: 1 }); allow(G); expect(G.hands[0][0].id).toBe('gift'); expect(G.current).toBe(0); expect(G.owed).toBe(1); });
+  it('any matching pair waits for a blind pick without executing either original effect', () => { const G = game(); G.hands[0] = [c('a', 'attack'), c('b', 'attack')]; G.hands[1] = [c('gift', 'defuse')]; act(G, 0, { kind: 'play', ids: ['a', 'b'], target: 1 }); allow(G); expect(G.stage).toEqual({ type: 'steal', actor: 0, target: 1 }); expect(G.hands[0]).toEqual([]); expect(act(G, 0, { kind: 'steal', index: 0 })).toBe(true); expect(G.hands[0][0].id).toBe('gift'); expect(G.current).toBe(0); expect(G.owed).toBe(1); });
+  it('takes the chosen position, hides every opponent card, and rejects unauthorized or invalid picks', () => {
+    const G = game(); G.hands[0] = [c('a', 'rook'), c('b', 'rook')]; G.hands[1] = [c('first', 'defuse'), c('second', 'skip')];
+    act(G, 0, { kind: 'play', ids: ['a', 'b'], target: 1 });
+    for (const viewer of ['0', '2', null]) expect(playerView(G, viewer).hands[1]).toEqual([]);
+    expect(playerView(G, '0').counts[1]).toBe(2);
+    const before = JSON.stringify(G);
+    expect(act(G, 1, { kind: 'steal', index: 0 })).toBe(false);
+    for (const index of [-1, 2, 0.5, NaN]) expect(act(G, 0, { kind: 'steal', index })).toBe(false);
+    expect(act(G, 0, { kind: 'draw' })).toBe(false); expect(JSON.stringify(G)).toBe(before);
+    expect(act(G, 0, { kind: 'steal', index: 1 })).toBe(true);
+    expect(G.hands[0].map(c => c.id)).toEqual(['second']); expect(G.hands[1].map(c => c.id)).toEqual(['first']);
+    expect(G.counts).toEqual([1, 1, 0]); expect(G.stage).toBeNull();
+    expect(act(G, 0, { kind: 'steal', index: 0 })).toBe(false);
+  });
+  it('does not open a picker for a cancelled pair or an emptied target hand', () => {
+    const G = game(); G.hands[0] = [c('a', 'rook'), c('b', 'rook')]; G.hands[1] = [c('n', 'nope')];
+    act(G, 0, { kind: 'play', ids: ['a', 'b'], target: 1 }); act(G, 1, { kind: 'nope', id: 'n' }); allow(G);
+    expect(G.stage).toBeNull(); expect(G.hands[0]).toEqual([]);
+    const H = game(); H.hands[0] = [c('a', 'rook'), c('b', 'rook'), c('n2', 'nope')]; H.hands[1] = [c('n', 'nope')];
+    act(H, 0, { kind: 'play', ids: ['a', 'b'], target: 1 }); act(H, 1, { kind: 'nope', id: 'n' }); act(H, 0, { kind: 'nope', id: 'n2' }); allow(H);
+    expect(H.stage).toBeNull(); expect(H.lastEvent?.kind).toBe('miss');
+  });
   it('a trio requests a specific type, with no steal if the target lacks it', () => { const G = game(); G.hands[0] = [c('a', 'rook'), c('b', 'rook'), c('c', 'rook')]; G.hands[1] = [c('gift', 'skip')]; act(G, 0, { kind: 'play', ids: ['a', 'b', 'c'], target: 1, request: 'defuse' }); allow(G); expect(G.hands[0]).toEqual([]); expect(G.hands[1]).toHaveLength(1); });
   it('Feral matches a companion but never an action', () => { const G = game(); G.hands[0] = [c('w', 'wild'), c('c', 'rook'), c('s', 'skip')]; G.hands[1] = [c('gift', 'defuse')]; expect(act(G, 0, { kind: 'play', ids: ['w', 's'], target: 1 })).toBe(false); expect(act(G, 0, { kind: 'play', ids: ['w', 'c'], target: 1 })).toBe(true); });
   it('special combos can be Noped', () => { const G = game(); G.hands[0] = [c('a', 'rook'), c('b', 'rook')]; G.hands[1] = [c('n', 'nope'), c('gift', 'defuse')]; act(G, 0, { kind: 'play', ids: ['a', 'b'], target: 1 }); act(G, 1, { kind: 'nope', id: 'n' }); allow(G); expect(G.hands[0]).toHaveLength(0); expect(G.hands[1]).toHaveLength(1); });
@@ -157,6 +179,7 @@ describe('table event list for effects', () => {
   it('never puts a hidden card in draw, steal or gift events', () => {
     const G = game(); G.hands[0] = [c('a', 'rook'), c('b', 'rook'), c('f', 'favor')]; G.hands[1] = [c('secret', 'defuse'), c('s2', 'skip')];
     act(G, 0, { kind: 'play', ids: ['a', 'b'], target: 1 });
+    act(G, 0, { kind: 'steal', index: 0 });
     act(G, 0, { kind: 'play', ids: ['f'], target: 1 }); act(G, 1, { kind: 'give', id: G.hands[1][0].id });
     act(G, 0, { kind: 'draw' });
     const kinds = G.events.map(e => e.kind);
@@ -167,6 +190,33 @@ describe('table event list for effects', () => {
     const G = game(); G.deck = Array.from({ length: 20 }, (_, i) => c(`s${i}`, 'skip'));
     for (let i = 0; i < 20; i++) act(G, G.current, { kind: 'draw' });
     expect(G.events.length).toBeLessThanOrEqual(8); expect(G.events.at(-1)!.id).toBe(G.lastEvent!.id);
+  });
+});
+
+describe('private hand arrangement', () => {
+  it('reorders only the owner hand off turn without changing the deck, turn, selection count or public log', () => {
+    const G = game(); G.hands[1] = [c('a', 'defuse'), c('b', 'skip'), c('c', 'rook')]; G.counts = [0, 3, 0];
+    const deck = [...G.deck], event = G.lastEvent;
+    expect(act(G, 1, { kind: 'hand-order', order: ['c', 'a', 'b'] })).toBe(true);
+    expect(G.hands[1].map(c => c.id)).toEqual(['c', 'a', 'b']); expect(G.deck).toEqual(deck);
+    expect(G.current).toBe(0); expect(G.owed).toBe(1); expect(G.counts).toEqual([0, 3, 0]); expect(G.lastEvent).toBe(event);
+    expect(playerView(G, '0').hands[1]).toEqual([]);
+    for (const order of [['a', 'a', 'b'], ['a', 'b'], ['a', 'b', 'forged']]) {
+      const before = JSON.stringify(G); expect(act(G, 1, { kind: 'hand-order', order })).toBe(false); expect(JSON.stringify(G)).toBe(before);
+    }
+    expect(act(G, 0, { kind: 'hand-order', order: ['a', 'b', 'c'] })).toBe(false);
+  });
+  it('locks the offered hand during a steal, then lets the owner arrange it afterward', () => {
+    const G = game(); G.hands[0] = [c('a', 'rook'), c('b', 'rook')]; G.hands[1] = [c('first', 'skip'), c('second', 'defuse'), c('third', 'future')];
+    act(G, 0, { kind: 'play', ids: ['a', 'b'], target: 1 });
+    expect(act(G, 1, { kind: 'hand-order', order: ['third', 'second', 'first'] })).toBe(false);
+    expect(act(G, 0, { kind: 'steal', index: 1 })).toBe(true);
+    expect(act(G, 1, { kind: 'hand-order', order: ['third', 'first'] })).toBe(true);
+  });
+  it('practice bots choose a back using the public count, without seeing the target hand', () => {
+    const G = game(); G.stage = { type: 'steal', actor: 1, target: 0 }; G.counts = [4, 0, 0];
+    expect(botAction(playerView(G, '1'), 1, () => .75)).toEqual({ kind: 'steal', index: 3 });
+    expect(botAction(playerView(G, '2'), 2)).toBeNull();
   });
 });
 

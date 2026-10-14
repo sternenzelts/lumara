@@ -9,7 +9,9 @@ Sources checked: publisher English Original and Party Pack instructions, linked 
 
 Each player receives seven safe cards and one Protection. Add one fewer Collapse than the number of players. Playing actions is optional; drawing ends one turn. A Collapse consumes Protection and is secretly reinserted at any position. Without Protection, the player and their remaining hand are removed privately. The last survivor wins.
 
-Attack passes two turns; an already attacked player passes remaining turns plus two. Skip ends one turn. A matching pair of any title steals a random card; a matching trio requests a specific title. Digital Mimic substitutes only for Companion cards. Nullify can cancel another Nullify, but cannot cancel a Collapse or Protection. See Future reveals the top three privately; Alter Future rearranges those three privately. Favor's recipient chooses their gift. Bottom Draw draws the bottom card and ends one turn.
+Attack passes two turns; an already attacked player passes remaining turns plus two. Skip ends one turn. A matching pair of any title steals one card chosen blind from the target's face-down hand after Nullify responses finish; a matching trio requests a specific title. Digital Mimic substitutes only for Companion cards. Nullify can cancel another Nullify, but cannot cancel a Collapse or Protection. See Future reveals the top three privately; Alter Future rearranges those three privately. Favor's recipient chooses their gift. Bottom Draw draws the bottom card and ends one turn.
+
+Players may rearrange or shuffle their own hand without spending a turn or changing the draw pile. Hand order is private and is frozen only while that hand is offered for a blind steal.
 
 Online adaptation: there is no timer. A pending action waits only for living players who hold a Nullify; everyone else passes automatically. Each player sees only their own response, so waiting never reveals who holds a Nullify. After each Nullify, the remaining Nullify holders decide again. If someone is away and the action is stuck, the host can Move on — never on their own card, and only after responding themselves.
 
