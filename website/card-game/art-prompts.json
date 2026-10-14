@@ -1,0 +1,105 @@
+{
+  "generator": "Built-in ImageGen",
+  "created": "2026-10-11",
+  "styleReference": "art-source/seren-v1.png",
+  "assets": [
+    {
+      "id": "seren",
+      "prompt": "Use case: illustration-story. Asset: one original cute chibi fantasy party-card illustration, square 1024x1024, no card border or lettering. Reference image 1 is Seren's character design ONLY, not its realistic rendering. Draw Seren with her long silver hair, blue eyes, gold leaf hair ornament, white-and-navy gold-trimmed knight outfit as a tiny 2-head-tall chibi. Comic gag: she proudly shields a tiny sputtering red magical bomb under a comically oversized golden umbrella, smiling with blush cheeks while the sparks bounce harmlessly away. Big head, tiny mitten hands and boots, clear expressive face. Style: humorous doodle comic party-game illustration, thick slightly wobbly dark ink outlines, simple rounded shapes, flat pastel colors, very minimal cel shadow, cheerful mischievous energy. Light warm ivory background, sparse little motion marks and stars. Full subject and umbrella visible, fill central 85% of square. Readable at 130px thumbnail. Original Lumara character; no cats, logos, text, watermark, photorealism, detailed landscape, or glossy anime splash rendering.",
+      "generatedSource": "C:\\Users\\hp\\.codex\\generated_images\\01a12653-e5e8-7bf1-9df8-6c4e8312a2f7\\exec-7d345b22-b933-4e83-a2ad-81b245b8d3cd.png",
+      "output": "public/chibi/seren-v1.webp",
+      "reference": "../public/art/seren/seren_splash_v3.webp"
+    },
+    {
+      "id": "azrenth",
+      "prompt": "Use case: illustration-story. Asset: one original square chibi fantasy party-card illustration, no card frame or words. Reference 1 supplies character identity ONLY. Reference 2 is the chibi Seren illustration: match its cute rounded proportions, thick wobbly ink outlines, expressive blushing face, simple pastel colors and warm ivory paper background. 2-head-tall chibi, tiny mitten hands, full body visible, very sparse background. One clear funny gag readable at 130px. No logos, text, watermark, realism, epic scenery, or glossy anime splash.\nSubject and gag: Azrenth has tousled black hair, red eyes, black-and-white gold-trimmed aristocratic coat with red cape lining. Gag: smug little demon king has accidentally cracked a tiny red globe like an egg, and now panics with a sweat drop as silly puff clouds and little flames pop out. Keep funny and harmless, not scary.",
+      "generatedSource": "C:\\Users\\hp\\.codex\\generated_images\\01a12653-e5e8-7bf1-9df8-6c4e8312a2f7\\exec-e6c9e8f0-d104-473e-96ea-e1df9ec3a359.png",
+      "output": "public/chibi/azrenth-v1.webp",
+      "reference": "../public/art/azrenth/azrenth_splash_v2.webp"
+    },
+    {
+      "id": "dax",
+      "prompt": "Use case: illustration-story. Asset: one original square chibi fantasy party-card illustration, no card frame or words. Reference 1 supplies character identity ONLY. Reference 2 is the chibi Seren illustration: match its cute rounded proportions, thick wobbly ink outlines, expressive blushing face, simple pastel colors and warm ivory paper background. 2-head-tall chibi, tiny mitten hands, full body visible, very sparse background. One clear funny gag readable at 130px. No logos, text, watermark, realism, epic scenery, or glossy anime splash.\nSubject and gag: Dax has spiky orange hair, orange eyes, nose bandage, black-and-orange martial outfit, wrist wraps. Gag: beaming overconfident tiny brawler punches with TWO comically oversized fiery boxing gloves, two little impact stars, legs planted. Joyful dynamic action.",
+      "generatedSource": "C:\\Users\\hp\\.codex\\generated_images\\01a12653-e5e8-7bf1-9df8-6c4e8312a2f7\\exec-3accd1dc-8038-4a42-976c-3aa46465c643.png",
+      "output": "public/chibi/dax-v1.webp",
+      "reference": "../public/art/dax/dax_splash_v1.webp"
+    },
+    {
+      "id": "suvara",
+      "prompt": "Use case: illustration-story. Asset: one original square chibi fantasy party-card illustration, no card frame or words. Reference 1 supplies character identity ONLY. Reference 2 is the chibi Seren illustration: match its cute rounded proportions, thick wobbly ink outlines, expressive blushing face, simple pastel colors and warm ivory paper background. 2-head-tall chibi, tiny mitten hands, full body visible, very sparse background. One clear funny gag readable at 130px. No logos, text, watermark, realism, epic scenery, or glossy anime splash.\nSubject and gag: Suvara has long silver hair, golden eyes, jade-and-gold hair ornaments, elegant white-and-teal gold-trimmed outfit. Gag: tiny regal girl issues a challenge by pointing a comically oversized toy broadsword forward, while a small fluffy white-and-gold baby dragon peeks around her shoulder with the same determined face.",
+      "generatedSource": "C:\\Users\\hp\\.codex\\generated_images\\01a12653-e5e8-7bf1-9df8-6c4e8312a2f7\\exec-24d71822-d56b-4fdf-99d5-19ca7f1f8fd3.png",
+      "output": "public/chibi/suvara-v1.webp",
+      "reference": "../public/art/suvara/suvara_splash_v3.webp"
+    },
+    {
+      "id": "ashvane",
+      "prompt": "Use case: illustration-story. Asset: one original square chibi fantasy party-card illustration, no card frame or words. Reference 1 supplies character identity ONLY. Reference 2 is the chibi Seren illustration: match its cute rounded proportions, thick wobbly ink outlines, expressive blushing face, simple pastel colors and warm ivory paper background. 2-head-tall chibi, tiny mitten hands, full body visible, very sparse background. One clear funny gag readable at 130px. No logos, text, watermark, realism, epic scenery, or glossy anime splash.\nSubject and gag: Ashvane has tousled dark brown hair, amber eyes, dark armor with gold accents and red scarf, long spear. Gag: stoic retired tiny warrior leans sleepily on an oversized spear while secretly cuddling a round cozy pillow, eyes half closed, a tiny fallen autumn leaf beside his boot.",
+      "generatedSource": "C:\\Users\\hp\\.codex\\generated_images\\01a12653-e5e8-7bf1-9df8-6c4e8312a2f7\\exec-3dbb365a-8f59-45dd-b753-af9d97cb416c.png",
+      "output": "public/chibi/ashvane-v1.webp",
+      "reference": "../public/art/ashvane/ashvane_splash_v2.webp"
+    },
+    {
+      "id": "sollene",
+      "prompt": "Use case: illustration-story. Asset: one original square chibi fantasy party-card illustration, no card frame or words. Reference 1 supplies character identity ONLY. Reference 2 is the chibi Seren illustration: match its cute rounded proportions, thick wobbly ink outlines, expressive blushing face, simple pastel colors and warm ivory paper background. 2-head-tall chibi, tiny mitten hands, full body visible, very sparse background. One clear funny gag readable at 130px. No logos, text, watermark, realism, epic scenery, or glossy anime splash.\nSubject and gag: Sollene has long pale blonde hair, violet eyes, enormous white-and-navy wide-brimmed priestess hat with crescent ornament, white-and-blue robe and crescent staff. Gag: shy smiling tiny priestess hugs an oversized plush crescent moon, hat so big it flops over one eye, two tiny stars.",
+      "generatedSource": "C:\\Users\\hp\\.codex\\generated_images\\01a12653-e5e8-7bf1-9df8-6c4e8312a2f7\\exec-ca39015f-4da0-4209-ab22-58ca0e134787.png",
+      "output": "public/chibi/sollene-v1.webp",
+      "reference": "../public/art/sollene/sollene_splash_v1.webp"
+    },
+    {
+      "id": "rook",
+      "prompt": "Use case: illustration-story. Asset: one original square chibi fantasy party-card illustration, no card frame or words. Reference 1 supplies character identity ONLY. Reference 2 is the chibi Seren illustration: match its cute rounded proportions, thick wobbly ink outlines, expressive blushing face, simple pastel colors and warm ivory paper background. 2-head-tall chibi, tiny mitten hands, full body visible, very sparse background. One clear funny gag readable at 130px. No logos, text, watermark, realism, epic scenery, or glossy anime splash.\nSubject and gag: Rook has tousled dark brown hair with a bold amber streak, amber eyes, cheek scar, charcoal long duster with gold details. Gag: smug tiny gunslinger twirls a whimsical gold revolver which shoots a harmless star-shaped lightning spark, then is startled by a static puff making his hair stick up. No gore or threatening target.",
+      "generatedSource": "C:\\Users\\hp\\.codex\\generated_images\\01a12653-e5e8-7bf1-9df8-6c4e8312a2f7\\exec-c16535f8-eed9-46ab-b3be-03b5b08fbc38.png",
+      "output": "public/chibi/rook-v1.webp",
+      "reference": "../public/art/rook/rook_splash_v1.webp"
+    },
+    {
+      "id": "kairo",
+      "prompt": "Use case: illustration-story. Asset: one original square chibi fantasy party-card illustration, no card frame or words. Reference 1 supplies character identity ONLY. Reference 2 is the chibi Seren illustration: match its cute rounded proportions, thick wobbly ink outlines, expressive blushing face, simple pastel colors and warm ivory paper background. 2-head-tall chibi, tiny mitten hands, full body visible, very sparse background. One clear funny gag readable at 130px. No logos, text, watermark, realism, epic scenery, or glossy anime splash.\nSubject and gag: Kairo has long sea-green hair tied back, pale teal eyes, white kimono with teal wave edges and coral orange sash, sheathed katana. Gag: peacefully meditating tiny swordsman sits in a very small puddle balancing a teacup on his head, while one little wave splashes his boot. Eyes closed, serene blushing smile.",
+      "generatedSource": "C:\\Users\\hp\\.codex\\generated_images\\01a12653-e5e8-7bf1-9df8-6c4e8312a2f7\\exec-45d73bd5-e901-4710-8835-5ac4f81734c5.png",
+      "output": "public/chibi/kairo-v1.webp",
+      "reference": "../public/art/kairo/kairo_splash_v1.webp"
+    },
+    {
+      "id": "ayaka",
+      "prompt": "Use case: illustration-story. Asset: one original square chibi fantasy party-card illustration, no card frame or words. Reference 1 supplies character identity ONLY. Reference 2 is the chibi Seren illustration: match its cute rounded proportions, thick wobbly ink outlines, expressive blushing face, simple pastel colors and warm ivory paper background. 2-head-tall chibi, tiny mitten hands, full body visible, very sparse background. One clear funny gag readable at 130px. No logos, text, watermark, realism, epic scenery, or glossy anime splash.\nSubject and gag: Ayaka has long pale silver-lavender hair, icy blue eyes, a small gold-and-blue snowflake crown, covered white-and-blue gown. Gag: sleepy prodigy yawns and presses one mitten palm against a giant frozen alarm clock while comfortably hugging a pillow; the clock's hands are trapped in a funny ice cube.",
+      "generatedSource": "C:\\Users\\hp\\.codex\\generated_images\\01a12653-e5e8-7bf1-9df8-6c4e8312a2f7\\exec-be6c1a59-bd9c-4208-8920-c78432375248.png",
+      "output": "public/chibi/ayaka-v1.webp",
+      "reference": "../public/art/ayaka/ayaka_timestop_splash_v2.webp"
+    },
+    {
+      "id": "keira",
+      "prompt": "Use case: illustration-story. Asset: one original square chibi fantasy party-card illustration, no card frame or words. Reference 1 supplies character identity ONLY. Reference 2 is the chibi Seren illustration: match its cute rounded proportions, thick wobbly ink outlines, expressive blushing face, simple pastel colors and warm ivory paper background. 2-head-tall chibi, tiny mitten hands, full body visible, very sparse background. One clear funny gag readable at 130px. No logos, text, watermark, realism, epic scenery, or glossy anime splash.\nSubject and gag: Keira has long pink hair, pink eyes, white-and-pink gold-trimmed futuristic armor. Gag: gleeful girl tosses a messy swirl of blank playing cards into the air, with two tiny pixel ghost copies of herself peeking from the swirl. Pink square glitch confetti, cheeky wink.",
+      "generatedSource": "C:\\Users\\hp\\.codex\\generated_images\\01a12653-e5e8-7bf1-9df8-6c4e8312a2f7\\exec-251e7d79-2dba-41ae-a4cd-8ba47f201c86.png",
+      "output": "public/chibi/keira-v1.webp",
+      "reference": "../public/art/keira/keira_splash_v3.webp"
+    },
+    {
+      "id": "lucien",
+      "prompt": "Use case: illustration-story. Asset: one original square chibi fantasy party-card illustration, no card frame or words. Reference 1 supplies character identity ONLY. Reference 2 is the chibi Seren illustration: match its cute rounded proportions, thick wobbly ink outlines, expressive blushing face, simple pastel colors and warm ivory paper background. 2-head-tall chibi, tiny mitten hands, full body visible, very sparse background. One clear funny gag readable at 130px. No logos, text, watermark, realism, epic scenery, or glossy anime splash.\nSubject and gag: Lucien has tousled dark blue hair, tired gray-blue eyes, navy-and-white gold-trimmed noble coat. Gag: weary tiny count peers through an oversized magnifying glass at exactly THREE hovering blank playing cards, revealing one little red bomb doodle; one nervous sweat drop and a tiny purple moon.",
+      "generatedSource": "C:\\Users\\hp\\.codex\\generated_images\\01a12653-e5e8-7bf1-9df8-6c4e8312a2f7\\exec-75dab7e2-3c7d-4f98-8545-30609d70b499.png",
+      "output": "public/chibi/lucien-v1.webp",
+      "reference": "../public/art/lucien/lucien_splash_v1.webp"
+    },
+    {
+      "id": "wren",
+      "prompt": "Use case: illustration-story. Asset: one original square chibi fantasy party-card illustration, no card frame or words. Reference 1 supplies character identity ONLY. Reference 2 is the chibi Seren illustration: match its cute rounded proportions, thick wobbly ink outlines, expressive blushing face, simple pastel colors and warm ivory paper background. 2-head-tall chibi, tiny mitten hands, full body visible, very sparse background. One clear funny gag readable at 130px. No logos, text, watermark, realism, epic scenery, or glossy anime splash.\nSubject and gag: Wren has jade-green short fluffy hair, golden eyes, feather hairclip, green-and-white archer outfit and small bow. Gag: delighted tiny archer rides a swirling green gust upside down and sneaks a blank card from underneath a teetering deck of cards. Playful mischievous upside-down pose.",
+      "generatedSource": "C:\\Users\\hp\\.codex\\generated_images\\01a12653-e5e8-7bf1-9df8-6c4e8312a2f7\\exec-f84c6dbf-1a01-47e4-a2a5-7a7646fd3c23.png",
+      "output": "public/chibi/wren-v1.webp",
+      "reference": "../public/art/wren/wren_splash_v1.webp"
+    },
+    {
+      "id": "calla",
+      "prompt": "Use case: illustration-story. Asset: one original square chibi fantasy party-card illustration, no card frame or words. Reference 1 supplies character identity ONLY. Reference 2 is the chibi Seren illustration: match its cute rounded proportions, thick wobbly ink outlines, expressive blushing face, simple pastel colors and warm ivory paper background. 2-head-tall chibi, tiny mitten hands, full body visible, very sparse background. One clear funny gag readable at 130px. No logos, text, watermark, realism, epic scenery, or glossy anime splash.\nSubject and gag: Calla has long wavy violet hair, emerald eyes, gold monocle, purple-and-white alchemist coat, green flask. Gag: crafty tiny alchemist offers a bubbling oversized green potion in one hand and extends the other hand for a blank playing card with an irresistibly cheeky smile. Covered simplified chibi outfit.",
+      "generatedSource": "C:\\Users\\hp\\.codex\\generated_images\\01a12653-e5e8-7bf1-9df8-6c4e8312a2f7\\exec-567d8074-e6a2-490d-ba91-8a841d0d1d5c.png",
+      "output": "public/chibi/calla-v1.webp",
+      "reference": "../public/art/calla/calla_splash_v1.webp"
+    },
+    {
+      "id": "mahesvara",
+      "prompt": "Use case: illustration-story. Asset: one original square chibi fantasy party-card illustration, no card frame or words. Reference 1 supplies character identity ONLY. Reference 2 is the chibi Seren illustration: match its cute rounded proportions, thick wobbly ink outlines, expressive blushing face, simple pastel colors and warm ivory paper background. 2-head-tall chibi, tiny mitten hands, full body visible, very sparse background. One clear funny gag readable at 130px. No logos, text, watermark, realism, epic scenery, or glossy anime splash.\nSubject and gag: Mahesvara is the black-haired blue-eyed figure on the LEFT of reference 1, with dark navy long coat and blue crystal details. Draw ONLY ONE character. Gag: deadpan tiny genius raises a mitten hand to halt a flying red spell which poofs into harmless blue bubbles, with an exaggerated unimpressed face and one raised eyebrow. No text stop sign.",
+      "generatedSource": "C:\\Users\\hp\\.codex\\generated_images\\01a12653-e5e8-7bf1-9df8-6c4e8312a2f7\\exec-e58e62d9-3692-46c0-9aee-17cb0b68fa80.png",
+      "output": "public/chibi/mahesvara-v1.webp",
+      "reference": "../public/art/mahesvara/mahesvara_mirror_splash_v2.webp"
+    }
+  ]
+}

@@ -1,0 +1,2 @@
+/* Keep the familiar effect name readable beside the Lumara title. */
+.immersive-table .hand-card .card-caption > span { font-size: 11px; line-height: 1.4; }

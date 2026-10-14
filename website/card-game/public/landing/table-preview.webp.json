@@ -1,0 +1,5 @@
+{
+  "derivedFrom": "mockups/seated-table-v1.png (approved seated-table mockup, see mockups/seated-table-v1-prompt.md)",
+  "processing": "Cropped to 1586x796 (removed the mock header strip and mock action bar so no fake controls appear), WebP quality 84 with Pillow. Decorative landing backdrop only; never interactive.",
+  "createdAt": "2026-10-14"
+}

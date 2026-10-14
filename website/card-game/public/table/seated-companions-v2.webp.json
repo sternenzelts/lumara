@@ -1,0 +1,5 @@
+{
+  "derivedFrom": "public/table/seated-companions-v1.webp (same ImageGen source PNG, see table-art-prompts.json)",
+  "processing": "Alpha cleanup only: alpha < 64 set to 0 (removes stray fringe specks), alpha >= 236 set to 255 (body fully opaque), linear ramp between. Encoded WebP quality 90 with Pillow.",
+  "createdAt": "2026-10-14"
+}
