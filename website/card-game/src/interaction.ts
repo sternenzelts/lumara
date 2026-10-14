@@ -15,6 +15,6 @@ export function selectionAdvice(cards: Card[], matching: boolean, needsTarget: b
     if (type === 'collapse') return 'An Exploding Kitten cannot be played from your hand.';
   }
   if (needsTarget && !target) return cards.length === 3 ? 'Choose a player and the card you want to request, then play the trio.' : 'Choose a player below, then play your selected card or pair.';
-  if (cards.length > 1) return cards.length === 2 ? 'Play this pair to steal one random card. Your turn continues afterward.' : 'Play this trio to request a specific card. Your turn continues afterward.';
+  if (cards.length > 1) return cards.length === 2 ? 'Play this pair, then choose one face-down card from their hand. Your turn continues afterward.' : 'Play this trio to request a specific card. Your turn continues afterward.';
   return cards.length ? cardDefs[cards[0].type].text : 'Select an action card and press Play, or draw to end your turn.';
 }
