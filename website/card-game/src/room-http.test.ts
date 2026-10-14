@@ -33,4 +33,9 @@ describe('Edge Function authentication boundary', () => {
     service.mockRejectedValueOnce(new RoomError(409, 'The table changed.', snapshot));
     const conflict = await handler(request()); expect(conflict.status).toBe(409); expect((await conflict.json()).snapshot).toEqual(snapshot);
   });
+  it('allows the headers supabase-js may send on preflight', async () => {
+    const { handler } = setup();
+    const allowed = (await handler(new Request('https://example.test', { method: 'OPTIONS', headers: { origin } }))).headers.get('access-control-allow-headers')!.split(/,\s*/);
+    for (const header of ['authorization', 'apikey', 'content-type', 'x-client-info', 'x-retry-count', 'traceparent', 'tracestate', 'baggage']) expect(allowed).toContain(header);
+  });
 });

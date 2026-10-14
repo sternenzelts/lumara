@@ -8,7 +8,7 @@ In the existing project's SQL Editor, paste and run the complete contents of [mi
 
 This must happen before enabling the frontend. The migration is transactional and may be deliberately rerun. It registers only the room-version table with Realtime. Complete game state and member identities are in a private schema, unavailable to browser roles. The authenticated function validates moves and returns only each player's hand and permitted private future view.
 
-Anonymous sign-in is already used by the retrospective. Keep it enabled in Authentication â†’ Sign In / Providers. Card-game visits reuse a current session and create an anonymous identity only after the visitor chooses Create or Join.
+Anonymous sign-in is already used by the retrospective. Keep it enabled in Authentication → Sign In / Providers. Card-game visits reuse a current session and create an anonymous identity only after the visitor chooses Create or Join.
 
 ## 2. Deploy one Supabase Edge Function
 
@@ -35,7 +35,7 @@ Do not run `supabase db push`: the project agreement is that Jay applies the rev
 
 Merge the Supabase multiplayer PR. The Pages workflow continues to publish practice mode until the repository variable below is set. It reuses the existing `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` GitHub Actions secrets; no new browser credential is required.
 
-In GitHub â†’ Settings â†’ Secrets and variables â†’ Actions â†’ Variables, add:
+In GitHub → Settings → Secrets and variables → Actions → Variables, add:
 
 ```text
 LAST_LIGHT_MULTIPLAYER_READY=1
@@ -70,4 +70,4 @@ npm run edge:bundle
 
 The normal build and CI fail if the generated copies or single-file deployment bundle are stale. Deploy the updated function before publishing frontend changes that require it.
 
-Rooms remain available for seven days, including after function restarts. Each identity may create up to five unfinished, unexpired rooms. Expired rows are retained for now; there is no automatic deletion job. Supabase's existing project quotas apply. Public moderation and a room-management screen are outside this change.
+Rooms stay available until seven days after their last move, including after function restarts. Each identity may have up to five active rooms: unfinished, unexpired, and used recently (an idle lobby stops counting after an hour, an idle game after a day). Expired rows are retained for now; there is no automatic deletion job. Supabase's existing project quotas apply. Public moderation and a room-management screen are outside this change.

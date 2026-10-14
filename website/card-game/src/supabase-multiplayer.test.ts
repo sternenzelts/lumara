@@ -11,10 +11,10 @@ const callbacks: (() => void)[] = [];
 const store: RoomStore = {
   create: async room => { raw = structuredClone(room); },
   load: async () => raw ? structuredClone(raw) : null,
-  commit: async (room, expected) => {
+  commit: async (room, expected, notify = true) => {
     if (!raw || raw.version !== expected) return false;
     raw = { ...structuredClone(room), version: expected + 1 };
-    callbacks.forEach(fn => queueMicrotask(fn)); return true;
+    if (notify) callbacks.forEach(fn => queueMicrotask(fn)); return true;
   },
 };
 const service = createRoomService(store, { number: () => .5, shuffle: cards => [...cards] }, () => code);
@@ -64,10 +64,12 @@ describe('Supabase client lifecycle', () => {
     expect(ana.connection.getState()!.G.current).toBe(1); expect(ana.connection.getState()!.G.hands[0]).toEqual([]);
     expect(ana.connection.getState()!.G.counts[0]).toBe(2);
   });
-  it('does not submit duplicate clicks and stops callbacks and polling after unmount', async () => {
+  it('queues a click made while a move is still sending instead of dropping it, and stops after unmount', async () => {
     const host = await connect(HOST); let calls = 0; host.connection.subscribe(() => calls++);
-    host.connection.moves.act({ kind: 'draw' }); host.connection.moves.act({ kind: 'draw' }); await flush();
-    expect(raw!.state.hands[0]).toHaveLength(2); expect(host.errors).toContain('Your previous move is still finishing. Please wait.');
+    host.connection.moves.act({ kind: 'draw' }); host.connection.moves.act({ kind: 'draw' }); await flush(); await flush();
+    // The second draw is sent after the first lands; it is then simply no longer the host's turn.
+    expect(raw!.state.hands[0]).toHaveLength(2); expect(host.sb.functions.invoke.mock.calls.filter(([, o]) => (o as { body: RoomRequest }).body.op === 'act')).toHaveLength(2);
+    expect(host.errors.join(' ')).not.toContain('still finishing');
     host.connection.stop(); const afterStop = calls; host.sb.trigger(); await vi.advanceTimersByTimeAsync(30000);
     expect(calls).toBe(afterStop); expect(host.sb.removeChannel).toHaveBeenCalledTimes(1);
   });
@@ -76,6 +78,16 @@ describe('Supabase client lifecycle', () => {
     raw!.version++; raw!.state.current = 1;
     await vi.advanceTimersByTimeAsync(15000); expect(host.connection.getState()!.G.current).toBe(1);
     host.connection.stop(); const resumed = await connect(HOST); expect(resumed.connection.getState()!.G).toEqual(host.connection.getState()!.G);
+  });
+  it('moves a card twice on two quick arrow presses: reorders show at once and are sent in order', async () => {
+    raw!.state.hands[0] = [{ id: 'a', type: 'skip' }, { id: 'b', type: 'favor' }, { id: 'c', type: 'nope' }]; raw!.state.counts[0] = 3;
+    const host = await connect(HOST);
+    const handIds = () => host.connection.getState()!.G.hands[0].map(c => c.id);
+    const moveRight = () => { const ids = handIds(), i = ids.indexOf('a'); [ids[i], ids[i + 1]] = [ids[i + 1], ids[i]]; host.connection.moves.act({ kind: 'hand-order', order: ids }); };
+    moveRight(); expect(handIds()).toEqual(['b', 'a', 'c']);
+    moveRight(); expect(handIds()).toEqual(['b', 'c', 'a']);
+    await flush(); await flush();
+    expect(raw!.state.hands[0].map(c => c.id)).toEqual(['b', 'c', 'a']); expect(handIds()).toEqual(['b', 'c', 'a']); expect(host.errors.filter(Boolean)).toEqual([]);
   });
   it('does not regress to a stale view that arrives after a newer move', async () => {
     const host = await connect(HOST);

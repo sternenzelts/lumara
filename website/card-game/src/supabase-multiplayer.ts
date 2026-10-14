@@ -45,7 +45,19 @@ export async function enterSupabaseRoom(request: Extract<RoomRequest, { op: 'cre
 
 /** Realtime is a wakeup only; every full view comes from the authenticated function. */
 export function supabaseConnection(sb: SupabaseClient, code: string, playerID: string, onError: (message: string) => void): TableConnection {
-  let active = false, view: RoomSnapshot | null = null, connected = false, moving = false;
+  let active = false, view: RoomSnapshot | null = null, connected = false;
+  // Moves are sent one at a time in click order; nothing is dropped while an earlier move is in flight.
+  let queue: Promise<void> = Promise.resolve();
+  // Hand reorders show immediately. Until every queued reorder is saved, newer server views keep the local order.
+  let pendingOrders = 0, localOrder: string[] | null = null;
+  const me = Number(playerID);
+  const withLocalOrder = (next: RoomSnapshot): RoomSnapshot => {
+    if (!pendingOrders || !localOrder) return next;
+    const hand = next.G.hands[me] || [];
+    if (hand.length !== localOrder.length || !localOrder.every(id => hand.some(c => c.id === id))) return next;
+    const hands = [...next.G.hands]; hands[me] = localOrder.map(id => hand.find(c => c.id === id)!);
+    return { ...next, G: { ...next.G, hands } };
+  };
   let refreshing = false, refreshAgain = false;
   let channel: ReturnType<SupabaseClient['channel']> | null = null;
   let timer: ReturnType<typeof setInterval> | undefined;
@@ -56,7 +68,7 @@ export function supabaseConnection(sb: SupabaseClient, code: string, playerID: s
     if (!active) return;
     if (next.playerID !== playerID) throw new MultiplayerError('This browser belongs to a different seat. Return to Rooms and join again.');
     const recovering = !connected;
-    if (!view || next.version >= view.version) view = next;
+    if (!view || next.version >= view.version) view = withLocalOrder(next);
     connected = true; publish(); if (recovering) onError('');
   };
   const refresh = async () => {
@@ -97,15 +109,30 @@ export function supabaseConnection(sb: SupabaseClient, code: string, playerID: s
     },
     moves: { act: action => {
       if (!active || !view || !connected) { onError('Reconnect before playing your next card.'); return; }
-      if (moving) { onError('Your previous move is still finishing. Please wait.'); return; }
-      moving = true;
-      void requestRoom(sb, { op: 'act', code, version: view.version, action }).then(next => { accept(next); if (active) onError(''); })
-        .catch(error => {
+      const reorder = action.kind === 'hand-order';
+      if (reorder) {
+        // Show the new order at once so a second quick press builds on it.
+        pendingOrders++; localOrder = [...action.order];
+        const hands = [...view.G.hands]; const hand = hands[me] || [];
+        if (hand.length === localOrder.length && localOrder.every(id => hand.some(c => c.id === id))) {
+          hands[me] = localOrder.map(id => hand.find(c => c.id === id)!); view = { ...view, G: { ...view.G, hands } }; publish();
+        }
+      }
+      queue = queue.then(async () => {
+        if (!active || !view) return;
+        try {
+          // The basis is read when the move is sent, so a queued move builds on the result of the one before it.
+          const next = await requestRoom(sb, { op: 'act', code, basis: view.G.lastEvent?.id ?? 0, action });
+          if (reorder) pendingOrders--;
+          accept(next); if (active) onError('');
+        } catch (error) {
+          if (reorder) { pendingOrders--; localOrder = null; }
           if (!active) return;
           if (error instanceof MultiplayerError && error.snapshot) accept(error.snapshot);
           else { connected = false; publish(); void refresh(); }
           onError(error instanceof Error ? error.message : 'The move could not be completed.');
-        }).finally(() => { moving = false; });
+        } finally { if (!pendingOrders) localOrder = null; }
+      });
     } },
   };
 }

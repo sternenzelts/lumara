@@ -11,7 +11,8 @@ import { useEffectQueue } from './Effects';
 import { cardHint, danger } from './guide';
 import { ruleName, selectionAdvice } from './interaction';
 import HandControls from './HandControls';
-import { cardSupabase, enterSupabaseRoom, supabaseConnection, usesSupabase, type TableConnection } from './supabase-multiplayer';
+import { enterRoom, lazySupabaseConnection, usesSupabase } from './online-lazy';
+import type { TableConnection } from './supabase-multiplayer';
 
 type GameClient = TableConnection;
 interface Session { matchID: string; playerID: string; credentials?: string; practice?: boolean; edition?: Edition; transport?: 'supabase' }
@@ -62,7 +63,7 @@ export default function App() {
     try {
       if (usesSupabase) {
         const profile = { name: name.trim(), companion };
-        const room = await enterSupabaseRoom(create ? { op: 'create', players, edition, ...profile } : { op: 'join', code: roomCode.trim().toLowerCase(), ...profile });
+        const room = await enterRoom(create ? { op: 'create', players, edition, ...profile } : { op: 'join', code: roomCode.trim().toLowerCase(), ...profile });
         enter({ matchID: room.code, playerID: room.playerID, transport: 'supabase' }); return;
       }
       let id = roomCode.trim();
@@ -97,7 +98,7 @@ export default function App() {
           <div className="room-options"><label className="field">Deck<select value={edition} onChange={e => { const next = e.target.value as Edition; setEdition(next); setPlayers(p => Math.min(p, next === 'original' ? 5 : 10)); }}><option value="party">Party Pack · 2–10 players</option><option value="original">Original · 2–5 players</option></select></label><label className="field">Seats<select value={players} onChange={e => setPlayers(Number(e.target.value))}>{Array.from({ length: edition === 'party' ? 9 : 4 }, (_, i) => i + 2).map(n => <option key={n} value={n}>{n} players</option>)}</select></label></div>
           <button className="button primary create-room" type="button" disabled={!validName || busy} onClick={() => void online(true)}><Users size={17} /> {busy ? 'Connecting…' : 'Create a room'}<ArrowRight size={18} /></button>
           <div className="join-row"><label className="sr-only" htmlFor="room-code">Room code</label><input id="room-code" placeholder="Room code from a friend" value={roomCode} onChange={e => setRoomCode(e.target.value)} maxLength={64} autoCapitalize="none" spellCheck={false} /><button className="button secondary" disabled={!validName || !roomCode.trim() || busy} type="submit">Join room</button></div>
-          {resumable && <button type="button" className="text-link" disabled={busy} onClick={() => usesSupabase ? void online(false) : enter(resumable)}>Resume your seat <ArrowRight size={16} /></button>}
+          {resumable && <button type="button" className="text-link" disabled={busy} onClick={() => enter(resumable)}>Resume your seat <ArrowRight size={16} /></button>}
           {error && <p className="error" role="alert">{error}</p>}
         </form>
         <button className="text-link practice-link" disabled={busy} onClick={() => enter({ matchID: `practice-${Date.now()}`, playerID: '0', practice: true, edition })}>Try a practice round <ArrowRight size={17} /></button><p className="practice-caption">You + three bots. No server needed.</p></>}
@@ -142,7 +143,7 @@ export function GameTable({ session, profile, leave, onEdition }: { session: Ses
     const playerCount = session.practice ? 4 : undefined;
     const game = session.practice ? { ...LumaraGame, setup: ({ ctx }: { ctx: { numPlayers: number } }) => createState(ctx.numPlayers, session.edition || 'party') } : LumaraGame;
     const human: TableConnection = session.transport === 'supabase' && !session.practice
-      ? supabaseConnection(cardSupabase(), session.matchID, session.playerID, setTableError)
+      ? lazySupabaseConnection(session.matchID, session.playerID, setTableError)
       : Client({ game, playerID: session.playerID, matchID: session.matchID, credentials: session.credentials,
         numPlayers: playerCount, multiplayer: local || SocketIO({ server: serverURL }), debug: false });
     const bots: GameClient[] = [];

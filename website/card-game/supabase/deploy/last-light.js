@@ -393,13 +393,18 @@ function createRoomService(store2, random, makeCode) {
     if (!userID) throw new RoomError(401, "Sign in again to reconnect.");
     if (!request || typeof request !== "object") throw new RoomError(400, "Invalid room request.");
     if (request.op === "create") {
-      const seat = profile(request.name, request.companion);
+      const seat2 = profile(request.name, request.companion);
       if (!["party", "original"].includes(request.edition) || !Number.isInteger(request.players) || request.players < 2 || request.players > (request.edition === "original" ? 5 : 10)) throw new RoomError(400, "Choose a valid deck and number of players.");
       const state = createState(request.players, request.edition);
-      state.seats[0] = seat;
+      state.seats[0] = seat2;
       const room = { code: makeCode(), version: 1, state, users: Array(request.players).fill(null) };
       room.users[0] = userID;
-      await store2.create(room, userID);
+      try {
+        await store2.create(room, userID);
+      } catch (error) {
+        if (error.code === "LL429") throw new RoomError(429, "You already have five active rooms. Finish a game before creating another.");
+        throw error;
+      }
       return snapshot(room, 0);
     }
     if (!["view", "join", "act"].includes(request.op) || typeof request.code !== "string" || !/^[a-z0-9]{12}$/.test(request.code)) throw new RoomError(400, "Enter the 12-character room code your host shared.");
@@ -410,10 +415,10 @@ function createRoomService(store2, random, makeCode) {
       if (request.op === "join") {
         if (actor >= 0) return snapshot(room, actor);
         if (room.state.phase !== "lobby") throw new RoomError(409, "This game has already started. Ask the host for a new room.");
-        const seat = profile(request.name, request.companion), empty = room.users.indexOf(null);
+        const seat2 = profile(request.name, request.companion), empty = room.users.indexOf(null);
         if (empty < 0) throw new RoomError(409, "This room is full. Ask the host for a new room.");
         room.users[empty] = userID;
-        room.state.seats[empty] = seat;
+        room.state.seats[empty] = seat2;
         if (await store2.commit(room, loaded.version)) {
           room.version++;
           return snapshot(room, empty);
@@ -422,9 +427,10 @@ function createRoomService(store2, random, makeCode) {
       }
       if (actor < 0) throw new RoomError(403, "Join this room before opening its table.");
       if (request.op === "view") return snapshot(room, actor);
-      if (!Number.isSafeInteger(request.version) || request.version !== room.version) throw new RoomError(409, "The table changed. Check the latest cards and try again.", snapshot(room, actor));
       const action = request.action;
       if (!action || typeof action !== "object" || typeof action.kind !== "string") throw new RoomError(400, "Choose a valid game action.");
+      if (!Number.isSafeInteger(request.basis)) throw new RoomError(400, "Choose a valid game action.");
+      if (action.kind !== "hand-order" && (room.state.lastEvent?.id ?? 0) !== request.basis) throw new RoomError(409, "The table changed. Check the latest cards and try again.", snapshot(room, actor));
       if (action.kind === "start" && room.users.some((id) => !id)) throw new RoomError(409, "Wait for every player to join and ready up.");
       let valid = false;
       try {
@@ -433,14 +439,14 @@ function createRoomService(store2, random, makeCode) {
         throw new RoomError(400, "Choose a valid game action.");
       }
       if (!valid) throw new RoomError(409, "That move is no longer available. Check the table and choose again.", snapshot(loaded, actor));
-      if (!await store2.commit(room, loaded.version)) {
-        const latest = await store2.load(request.code);
-        throw new RoomError(409, "Another player acted first. Check the latest table and try again.", latest ? snapshot(latest, actor) : void 0);
+      if (await store2.commit(room, loaded.version, action.kind !== "hand-order")) {
+        room.version++;
+        return snapshot(room, actor);
       }
-      room.version++;
-      return snapshot(room, actor);
     }
-    throw new RoomError(409, "Several players joined together. Press Join room again.");
+    if (request.op === "join") throw new RoomError(409, "Several players joined together. Press Join room again.");
+    const latest = await store2.load(request.code), seat = latest ? latest.users.indexOf(userID) : -1;
+    throw new RoomError(409, "The table is busy. Check the latest cards and try again.", latest && seat >= 0 ? snapshot(latest, seat) : void 0);
   };
 }
 
@@ -450,7 +456,7 @@ function roomHttpHandler({ authenticate, service: service2, origins: origins2 })
     const origin = req.headers.get("origin");
     const headers = {
       "Access-Control-Allow-Origin": origin && origins2.includes(origin) ? origin : origins2[0],
-      "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info",
+      "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info, x-retry-count, traceparent, tracestate, baggage",
       "Access-Control-Allow-Methods": "POST, OPTIONS",
       "Vary": "Origin",
       "Cache-Control": "no-store"
@@ -475,7 +481,6 @@ function roomHttpHandler({ authenticate, service: service2, origins: origins2 })
       return response(await service2(user, body));
     } catch (error) {
       if (error instanceof RoomError) return response({ error: error.message, snapshot: error.snapshot }, error.status);
-      if (error instanceof Error && error.message.startsWith("You already have five")) return response({ error: error.message }, 429);
       return response({ error: "The room could not be updated. Try again shortly." }, 503);
     }
   };
@@ -488,13 +493,13 @@ var admin = createClient(url, key, { auth: { persistSession: false, autoRefreshT
 var origins = (Deno.env.get("LAST_LIGHT_ORIGINS") || "https://sternenzelts.github.io,http://127.0.0.1:4180,http://127.0.0.1:4181").split(",").map((s) => s.trim());
 var rpc = async (name, args) => {
   const { data, error } = await admin.rpc(name, args);
-  if (error) throw new Error(error.message);
+  if (error) throw Object.assign(new Error(error.message), { code: error.code });
   return data;
 };
 var store = {
   create: (room, owner) => rpc("last_light_create", { p_code: room.code, p_owner: owner, p_users: room.users, p_state: room.state }),
   load: (code) => rpc("last_light_load", { p_code: code }),
-  commit: (room, expectedVersion) => rpc("last_light_commit", { p_code: room.code, p_version: expectedVersion, p_users: room.users, p_state: room.state })
+  commit: (room, expectedVersion, notify = true) => rpc("last_light_commit", { p_code: room.code, p_version: expectedVersion, p_users: room.users, p_state: room.state, p_notify: notify })
 };
 var number = () => crypto.getRandomValues(new Uint32Array(1))[0] / 4294967296;
 var service = createRoomService(store, {
@@ -511,8 +516,11 @@ var service = createRoomService(store, {
 Deno.serve(roomHttpHandler({
   origins,
   service,
+  // getClaims verifies the JWT locally with the project's signing keys (asymmetric keys: no Auth
+  // round-trip per request) and falls back to the Auth server only for legacy symmetric secrets.
   authenticate: async (token) => {
-    const { data, error } = await admin.auth.getUser(token);
-    return !error && data.user ? data.user.id : null;
+    const { data, error } = await admin.auth.getClaims(token);
+    const sub = data?.claims?.sub;
+    return !error && typeof sub === "string" && sub ? sub : null;
   }
 }));

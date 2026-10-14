@@ -9,7 +9,7 @@ export function roomHttpHandler({ authenticate, service, origins }: {
   return async (req: Request): Promise<Response> => {
     const origin = req.headers.get('origin');
     const headers = { 'Access-Control-Allow-Origin': origin && origins.includes(origin) ? origin : origins[0],
-      'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-client-info', 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Vary': 'Origin', 'Cache-Control': 'no-store' };
+      'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-client-info, x-retry-count, traceparent, tracestate, baggage', 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Vary': 'Origin', 'Cache-Control': 'no-store' };
     const response = (body: object, status = 200) => Response.json(body, { status, headers });
     if (origin && !origins.includes(origin)) return response({ error: 'This origin is not allowed.' }, 403);
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers });
@@ -26,7 +26,6 @@ export function roomHttpHandler({ authenticate, service, origins }: {
       return response(await service(user, body));
     } catch (error) {
       if (error instanceof RoomError) return response({ error: error.message, snapshot: error.snapshot }, error.status);
-      if (error instanceof Error && error.message.startsWith('You already have five')) return response({ error: error.message }, 429);
       return response({ error: 'The room could not be updated. Try again shortly.' }, 503);
     }
   };

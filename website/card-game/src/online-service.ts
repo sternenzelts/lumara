@@ -5,7 +5,8 @@ export interface Room { code: string; version: number; users: (string | null)[];
 export interface RoomStore {
   create(room: Room, owner: string): Promise<void>;
   load(code: string): Promise<Room | null>;
-  commit(room: Room, expectedVersion: number): Promise<boolean>;
+  /** `notify: false` saves without waking other players (private hand reorders). */
+  commit(room: Room, expectedVersion: number, notify?: boolean): Promise<boolean>;
 }
 export interface RoomSnapshot { code: string; playerID: string; version: number; G: GameState }
 export class RoomError extends Error {
@@ -15,7 +16,8 @@ export type RoomRequest =
   | { op: 'create'; players: number; edition: Edition; name: string; companion: string }
   | { op: 'join'; code: string; name: string; companion: string }
   | { op: 'view'; code: string }
-  | { op: 'act'; code: string; version: number; action: Action };
+  /** `basis` is the id of the last public table event the player saw (0 before any). */
+  | { op: 'act'; code: string; basis: number; action: Action };
 
 const profile = (name: unknown, companion: unknown) => {
   if (typeof name !== 'string' || !name.trim() || name.trim().length > 32) throw new RoomError(400, 'Choose a name with 1–32 characters.');
@@ -34,7 +36,12 @@ export function createRoomService(store: RoomStore, random: RandomSource, makeCo
       if (!['party', 'original'].includes(request.edition) || !Number.isInteger(request.players) || request.players < 2 || request.players > (request.edition === 'original' ? 5 : 10)) throw new RoomError(400, 'Choose a valid deck and number of players.');
       const state = createState(request.players, request.edition); state.seats[0] = seat;
       const room: Room = { code: makeCode(), version: 1, state, users: Array(request.players).fill(null) }; room.users[0] = userID;
-      await store.create(room, userID); return snapshot(room, 0);
+      try { await store.create(room, userID); }
+      catch (error) {
+        if ((error as { code?: string }).code === 'LL429') throw new RoomError(429, 'You already have five active rooms. Finish a game before creating another.');
+        throw error;
+      }
+      return snapshot(room, 0);
     }
     if (!['view', 'join', 'act'].includes(request.op) || typeof request.code !== 'string' || !/^[a-z0-9]{12}$/.test(request.code)) throw new RoomError(400, 'Enter the 12-character room code your host shared.');
     for (let attempt = 0; attempt < 4; attempt++) {
@@ -52,19 +59,22 @@ export function createRoomService(store: RoomStore, random: RandomSource, makeCo
       }
       if (actor < 0) throw new RoomError(403, 'Join this room before opening its table.');
       if (request.op === 'view') return snapshot(room, actor);
-      if (!Number.isSafeInteger(request.version) || request.version !== room.version) throw new RoomError(409, 'The table changed. Check the latest cards and try again.', snapshot(room, actor));
       const action = request.action;
       if (!action || typeof action !== 'object' || typeof action.kind !== 'string') throw new RoomError(400, 'Choose a valid game action.');
+      // A move only conflicts with public events the player has not seen yet. Responses that record no
+      // event (another player's Allow) and private hand reorders never invalidate it; reordering your own
+      // hand is checked against your current cards instead.
+      if (!Number.isSafeInteger(request.basis)) throw new RoomError(400, 'Choose a valid game action.');
+      if (action.kind !== 'hand-order' && (room.state.lastEvent?.id ?? 0) !== request.basis) throw new RoomError(409, 'The table changed. Check the latest cards and try again.', snapshot(room, actor));
       if (action.kind === 'start' && room.users.some(id => !id)) throw new RoomError(409, 'Wait for every player to join and ready up.');
       let valid = false;
       try { valid = applyAction(room.state, actor, action, random); } catch { throw new RoomError(400, 'Choose a valid game action.'); }
       if (!valid) throw new RoomError(409, 'That move is no longer available. Check the table and choose again.', snapshot(loaded, actor));
-      if (!await store.commit(room, loaded.version)) {
-        const latest = await store.load(request.code);
-        throw new RoomError(409, 'Another player acted first. Check the latest table and try again.', latest ? snapshot(latest, actor) : undefined);
-      }
-      room.version++; return snapshot(room, actor);
+      if (await store.commit(room, loaded.version, action.kind !== 'hand-order')) { room.version++; return snapshot(room, actor); }
+      // Someone else saved first (or the room expired): reload and re-check against the new table.
     }
-    throw new RoomError(409, 'Several players joined together. Press Join room again.');
+    if (request.op === 'join') throw new RoomError(409, 'Several players joined together. Press Join room again.');
+    const latest = await store.load(request.code), seat = latest ? latest.users.indexOf(userID) : -1;
+    throw new RoomError(409, 'The table is busy. Check the latest cards and try again.', latest && seat >= 0 ? snapshot(latest, seat) : undefined);
   };
 }
