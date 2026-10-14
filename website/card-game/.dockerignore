@@ -1,0 +1,9 @@
+node_modules
+dist
+build-server
+.impeccable
+.env
+.data
+*.log
+scripts
+art-source/

@@ -1,0 +1,1 @@
+{"extends":"./tsconfig.json","compilerOptions":{"module":"CommonJS","moduleResolution":"Node","outDir":"build-server","types":["node"]},"include":["src/server.ts","src/game.ts","src/catalog.ts"],"exclude":["src/*.test.ts"]}

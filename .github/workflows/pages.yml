@@ -19,7 +19,12 @@ jobs:
         working-directory: interface
       - run: npm ci && npm run build
         working-directory: website
+      # Last Light card game: static Pages has no game server, so it ships as practice vs bots only.
+      - run: npm ci && npm test && npx tsc --noEmit && npx vite build
+        working-directory: website/card-game
+        env: { VITE_PRACTICE_ONLY: '1' }
       - run: mkdir -p website/dist/play && cp -r interface/dist/. website/dist/play/ && touch website/dist/.nojekyll
+      - run: mkdir -p website/dist/cards && cp -r website/card-game/dist/. website/dist/cards/
       - uses: actions/upload-pages-artifact@v3
         with: { path: website/dist }
   deploy:
