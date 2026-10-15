@@ -15,7 +15,7 @@ import WorldMap from './screens/WorldMap';
 import Opening from './screens/Opening';
 import { gateRoute, openingKind, type OpeningKind } from './logic/opening';
 import { withNicknames } from './logic/names';
-import { welcomeRollsRemaining } from './logic/welcome';
+import { homecomingWishesRemaining, welcomeRollsRemaining } from './logic/welcome';
 import GameShell, { VowJournal } from './components/GameShell';
 import { Button } from './components/ui';
 import { AdminScreen, ArchivesScreen, BannerScreen, CollectionScreen, ExchangeScreen, RetroScreen } from './screens';
@@ -135,7 +135,7 @@ function AppContent({ backend }: { backend: Backend }) {
   const pull = async (source: PullRecord['source'], count = 1, chosen?: string) => run(async () => {
     if (source === 'welcome' && (!tutorial || chosen || !Number.isInteger(count) || count < 1 || count > welcomeRollsRemaining(player))) throw new Error('Your free welcome wishes are already claimed or unavailable.');
     if (source === 'opening' && (!session || !['rewards', 'completed'].includes(session.stage))) throw new Error('Your free wish waits at Homecoming.');
-    if (source === 'opening' && player?.pulls.some(p => p.source === 'opening' && p.sessionId === session?.id)) throw new Error('You already claimed this voyage’s free wish.');
+    if (source === 'opening' && count > homecomingWishesRemaining(player, session!.id)) throw new Error('You already claimed this voyage’s free wishes.');
     if (source === 'banner' && starlight < settings.starlight.pullCost * count) throw new Error(`You need ${settings.starlight.pullCost * count} Starlight for ${count === 1 ? 'a wish' : 'these wishes'}.`);
     const bannerId = source === 'banner' ? selectedBanner() : undefined;
     const records: PullRecord[] = []; const history = [...(player?.pulls || [])]; const owned = { ...(player?.owned || {}) };

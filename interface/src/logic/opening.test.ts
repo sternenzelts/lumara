@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BEAT_VOICE, beatsFor, canSkip, gateRoute, openingKind } from './opening';
 import type { Player } from '../backend/types';
-import { WELCOME_TEN_FROM, welcomeRollsRemaining } from './welcome';
+import { homecomingWishesRemaining, WELCOME_TEN_FROM, welcomeRollsRemaining } from './welcome';
 
 const p = (nickname: string | null, introSeen = false): Player => ({ userId: 'ana', displayCharacterId: null, owned: {}, pulls: [], nickname, introSeen });
 
@@ -52,5 +52,14 @@ describe('gateRoute', () => {
   it('sends a late joiner through the story', () => { expect(gateRoute({ route: 'retro', player: p('Moon'), playerLoaded: true })).toBe('welcome'); });
   it('never redirects a returning player', () => {
     for (const route of ['sanctuary', 'retro', 'map']) expect(gateRoute({ route, player: {...p('Moon', true), owned:{wren:1}}, playerLoaded: true })).toBeNull();
+  });
+});
+describe('Homecoming wishes', () => {
+  const opening = (sessionId: string) => ({ at: 1, characterId: 'wren', grade: 'A' as const, source: 'opening' as const, duplicate: false, sessionId });
+  it('gives ten free wishes per voyage, counting only that voyage’s claims', () => {
+    expect(homecomingWishesRemaining(null, 's1')).toBe(10);
+    expect(homecomingWishesRemaining({ ...p('Moon', true), pulls: [opening('s1')] }, 's1')).toBe(9);   // took the old single wish: nine more
+    expect(homecomingWishesRemaining({ ...p('Moon', true), pulls: Array.from({ length: 10 }, () => opening('s1')) }, 's1')).toBe(0);
+    expect(homecomingWishesRemaining({ ...p('Moon', true), pulls: Array.from({ length: 10 }, () => opening('s0')) }, 's1')).toBe(10);
   });
 });

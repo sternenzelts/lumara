@@ -8,7 +8,7 @@ export const VOYAGE_BRIEFING = {
   vote: { title: 'Vote', text: 'Pick at least 3 thoughts you want to discuss. Your picks stay private until you’re chosen to speak.' },
   hall: { title: 'Discuss', text: 'The Warden spins for a speaker. They bring their picks one at a time, the party discusses each, and it becomes a Vow.' },
   vow_altar: { title: 'New vows', text: 'Review the Vows made in Discuss and add any that are missing.' },
-  rewards: { title: 'Homecoming', text: 'Back on the plaza: see what you shared, collect your Starlight and claim your free wish.' },
+  rewards: { title: 'Homecoming', text: 'Back on the plaza: see what you shared, collect your Starlight and claim your 10 free wishes.' },
 } satisfies Record<Exclude<Stage, 'register' | 'completed' | 'opening_pull'>, { title: string; text: string }>;
 
 /** The stages after Gather, in order, following the same rules as nextStage. */

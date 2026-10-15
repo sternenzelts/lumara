@@ -13,3 +13,9 @@ export function welcomeRollsRemaining(player: Player | null): number {
   if (player && (player.pulls.length || Object.values(player.owned).some(n => n > 0))) return 0;
   return WELCOME_ROLLS;
 }
+
+/** Free wishes each player claims at a voyage's Homecoming (was one). The server allows the same number per voyage. */
+export const HOMECOMING_WISHES = 10;
+export function homecomingWishesRemaining(player: Player | null, sessionId: string): number {
+  return Math.max(0, HOMECOMING_WISHES - (player?.pulls.filter(p => p.source === 'opening' && p.sessionId === sessionId).length ?? 0));
+}
