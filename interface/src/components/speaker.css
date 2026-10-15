@@ -6,6 +6,8 @@
 .turn-chooser p{margin:0 0 10px;font-size:13px;color:#b9c6d2}
 .turn-chooser ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .turn-chooser li button{display:grid;gap:4px;width:100%;padding:10px 12px;border:1px solid #d8bf8244;background:#10233acc;color:#e4ebf1;font:inherit;font-size:14px;line-height:1.45;text-align:left;cursor:pointer}
+.turn-choice-tags{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.turn-discussed{padding:1px 7px;border:1px solid #b9c6d266;font-size:11px;letter-spacing:.04em;color:#b9c6d2}
 .turn-chooser li button:hover{border-color:#e9cf8f;box-shadow:0 0 14px #e9cf8f33}
 .turn-chooser li button:focus-visible,.hall-controls button:focus-visible,.speaker-panel button:focus-visible{outline:2px solid #fff4dc;outline-offset:2px}
 .turn-vow{margin:0}

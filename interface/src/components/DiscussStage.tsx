@@ -1,4 +1,4 @@
-import { Clock3, Sparkles } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import type { Fragment, SpeakerState, UserId, Vow } from '../backend/types';
 import { CATEGORIES } from '../data/categories';
 import { finishTurn, nextThought, NO_SPEAKER, reelFrames, speakerPool, spinSpeaker, startVow, turnChoices } from '../logic/speaker';
@@ -7,9 +7,9 @@ import TurnVowBox from './TurnVowBox';
 import './speaker.css';
 
 /** Resonance Hall (feature 3): spin → the chosen player brings their picks one at a time → the party discusses each → the Warden turns it into a Vow → the Warden finishes the turn. */
-export default function DiscussStage({ speaker, meId, warden, busy, party, fragments, ownPicks, vows, onSpeaker, onChoose, onMakeVow, onTimer }: {
+export default function DiscussStage({ speaker, meId, warden, busy, party, fragments, ownPicks, vows, onSpeaker, onChoose, onMakeVow }: {
   speaker: SpeakerState | null; meId: UserId; warden: boolean; busy: boolean; party: SpeakerMember[]; fragments: Fragment[]; ownPicks: string[]; vows: Vow[];
-  onSpeaker: (next: SpeakerState, frames?: UserId[]) => void; onChoose: (fragmentId: string) => void; onMakeVow: (text: string, ownerId: UserId | null) => void; onTimer: () => void;
+  onSpeaker: (next: SpeakerState, frames?: UserId[]) => void; onChoose: (fragmentId: string) => void; onMakeVow: (text: string, ownerId: UserId | null) => void;
 }) {
   const s = speaker ?? NO_SPEAKER; const ids = party.map(p => p.userId);
   const current = party.find(p => p.userId === s.currentId); const thought = fragments.find(f => f.id === s.thoughtId);
@@ -23,8 +23,8 @@ export default function DiscussStage({ speaker, meId, warden, busy, party, fragm
       {!current ? <p className="turn-idle">{canSpin ? (warden ? 'Spin to choose who speaks next.' : 'Your Warden will spin for the next speaker.') : 'Everyone has had a turn.'}</p>
         : s.phase === 'choosing' ? (current.userId === meId
           ? !choices.length ? <p className="turn-idle">That’s all your picks. Your Warden will finish your turn.</p>
-          : <div className="turn-chooser"><h4>{turnDone.length ? 'Choose your next thought to discuss' : 'Your turn — choose a thought to discuss'}</h4><p>{fromOwn ? 'From the thoughts you picked.' : 'None of your picks are left — choose any thought.'}</p>
-              <ul>{choices.map(f => <li key={f.id}><button disabled={busy} onClick={() => onChoose(f.id)}><span className={`category-label ${f.category}`}>{cat(f)?.label}</span>{f.text}</button></li>)}</ul></div>
+          : <div className="turn-chooser"><h4>{turnDone.length ? 'Choose your next thought to discuss' : 'Your turn — choose a thought to discuss'}</h4><p>{fromOwn ? 'From the thoughts you picked.' : 'You didn’t pick any thoughts — choose any one.'}</p>
+              <ul>{choices.map(f => <li key={f.id}><button disabled={busy} onClick={() => onChoose(f.id)}><span className="turn-choice-tags"><span className={`category-label ${f.category}`}>{cat(f)?.label}</span>{s.discussed.includes(f.id) && <span className="turn-discussed">Discussed</span>}</span>{f.text}</button></li>)}</ul></div>
           : <p className="turn-idle">{current.name} is choosing a thought…</p>)
         : thought && <article key={thought.id} className="hall-fragment turn-thought"><Sparkles size={24} strokeWidth={1} /><span className={`category-label ${thought.category}`}>{cat(thought)?.label} · {cat(thought)?.plain}</span><p>{thought.text}</p><span>{current.name} brought this thought</span></article>}
       {current && s.phase === 'vow' && (warden
@@ -37,7 +37,6 @@ export default function DiscussStage({ speaker, meId, warden, busy, party, fragm
         ? <button className="speaker-spin" disabled={busy} onClick={() => onSpeaker(finishTurn(s))}>Finish turn</button>
         : <button disabled={busy || !canSpin} onClick={spin}>Spin again</button>)}
       {current && s.phase === 'discussing' && <button className="speaker-spin" disabled={busy} onClick={() => onSpeaker(startVow(s))}>Done discussing</button>}
-      <button disabled={busy} onClick={onTimer}><Clock3 size={16} />3-minute timer</button>
     </div>}
     <SpeakerPanel party={party} speaker={s} warden={warden} busy={busy} onChange={onSpeaker} />
     {vows.length > 0 && <section className="turn-vows" aria-label="Vows made this voyage"><h4>Vows so far</h4><ul>{vows.map(v => <li key={v.id}>{v.text}</li>)}</ul></section>}

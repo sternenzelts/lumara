@@ -14,7 +14,7 @@ const turn = (p: Partial<SpeakerState>): SpeakerState => ({ ...NO_SPEAKER, ...p 
 async function render(p: Partial<Parameters<typeof DiscussStage>[0]> = {}) {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   const el = document.createElement('div'); document.body.append(el);
-  const props = { speaker: null, meId: 'jay', warden: true, busy: false, party, fragments, ownPicks: [] as string[], vows: [], onSpeaker: vi.fn(), onChoose: vi.fn(), onMakeVow: vi.fn(), onTimer: vi.fn(), ...p };
+  const props = { speaker: null, meId: 'jay', warden: true, busy: false, party, fragments, ownPicks: [] as string[], vows: [], onSpeaker: vi.fn(), onChoose: vi.fn(), onMakeVow: vi.fn(), ...p };
   await act(async () => createRoot(el).render(<DiscussStage {...props} />));
   return { el, props };
 }
@@ -25,22 +25,23 @@ describe('DiscussStage', () => {
     await act(async () => btn(el, 'Spin')!.click());
     const [next, frames] = (props.onSpeaker as ReturnType<typeof vi.fn>).mock.calls[0];
     expect(next.phase).toBe('choosing'); expect(['jay', 'ana']).toContain(next.currentId); expect(frames.at(-1)).toBe(next.currentId);
+    expect(el.textContent).not.toContain('timer');
   });
-  it('shows the chosen player only their own undiscussed picks, with no counts', async () => {
+  it('shows the chosen player only their own picks, with no counts; one someone else discussed is marked but still choosable', async () => {
     const { el, props } = await render({ meId: 'ana', warden: false, speaker: turn({ currentId: 'ana', phase: 'choosing', discussed: ['f1'] }), ownPicks: ['f1', 'f2'] });
-    const choices = [...el.querySelectorAll('.turn-chooser li button')];
-    expect(choices.map(b => b.textContent)).toEqual(['SparkThought f2']);
+    const choices = [...el.querySelectorAll('.turn-chooser li button')] as HTMLButtonElement[];
+    expect(choices.map(b => b.textContent)).toEqual(['SparkDiscussedThought f1', 'SparkThought f2']);
     expect(el.querySelector('.turn-chooser')?.textContent).not.toMatch(/\d+ (pick|vote)/);
-    await act(async () => (choices[0] as HTMLButtonElement).click());
-    expect(props.onChoose).toHaveBeenCalledWith('f2');
+    await act(async () => choices[0].click());
+    expect(props.onChoose).toHaveBeenCalledWith('f1');
   });
-  it('falls back to any undiscussed thought when none of their picks are left', async () => {
-    const { el } = await render({ meId: 'ana', warden: false, speaker: turn({ currentId: 'ana', phase: 'choosing', discussed: ['f1'] }), ownPicks: ['f1'] });
+  it('falls back to any undiscussed thought when they picked nothing', async () => {
+    const { el } = await render({ meId: 'ana', warden: false, speaker: turn({ currentId: 'ana', phase: 'choosing', discussed: ['f1'] }), ownPicks: [] });
     expect(el.querySelectorAll('.turn-chooser li').length).toBe(2);
-    expect(el.textContent).toContain('None of your picks are left');
+    expect(el.textContent).toContain('You didn’t pick any thoughts');
   });
   it('tells the speaker when all their picks are discussed instead of offering every thought', async () => {
-    const { el } = await render({ meId: 'ana', warden: false, speaker: turn({ currentId: 'ana', phase: 'choosing', discussed: ['f1', 'f2'], turnDone: ['f2'] }), ownPicks: ['f1', 'f2'] });
+    const { el } = await render({ meId: 'ana', warden: false, speaker: turn({ currentId: 'ana', phase: 'choosing', discussed: ['f1', 'f2'], turnDone: ['f1', 'f2'] }), ownPicks: ['f1', 'f2'] });
     expect(el.querySelectorAll('.turn-chooser li').length).toBe(0);
     expect(el.textContent).toContain('That’s all your picks');
   });

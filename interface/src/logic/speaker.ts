@@ -39,9 +39,10 @@ export function speakerCounts(party: UserId[], s: SpeakerState | null) {
 export function reelFrames(party: UserId[], pickedId: UserId, rng = Math.random, length = 14): UserId[] {
   return [...Array.from({ length: length - 1 }, () => party[Math.min(party.length - 1, Math.floor(rng() * party.length))]), pickedId];
 }
-/** What the chosen player may choose: their own undiscussed picks. With none left at the start of their turn, every undiscussed thought; later in the turn, nothing. Oldest first — no counts, no ranking. */
+/** What the chosen player may choose: their own picks not yet discussed this turn, including ones someone else already discussed.
+ *  With no picks at all, any undiscussed thought, for their first thought only. Oldest first — no counts, no ranking. */
 export function turnChoices(fragments: Fragment[], ownPicks: string[], discussed: string[], turnDone: string[] = []): Fragment[] {
-  const open = fragments.filter(f => !discussed.includes(f.id)).sort((a, b) => a.createdAt - b.createdAt);
-  const mine = open.filter(f => ownPicks.includes(f.id));
-  return mine.length || turnDone.length ? mine : open;
+  const all = [...fragments].sort((a, b) => a.createdAt - b.createdAt);
+  const mine = all.filter(f => ownPicks.includes(f.id) && !turnDone.includes(f.id));
+  return mine.length || turnDone.length ? mine : all.filter(f => !discussed.includes(f.id));
 }

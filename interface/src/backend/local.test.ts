@@ -53,7 +53,7 @@ describe('local demo contract', () => {
     const pub = JSON.parse(localStorage.getItem('lumara.demo.v1')!).peerRatings as object[];   // the shared store never holds the rater
     expect(pub.every(r => Object.keys(r).sort().join() === 'id,scores,sessionId,targetId')).toBe(true);
   });
-  it('turns: only the chosen player chooses, from their own undiscussed picks, with a fallback', async () => {
+  it('turns: only the chosen player chooses, from their own picks (even ones already discussed), with a fallback', async () => {
     const jay = createLocalBackend('jay'), ana = createLocalBackend('ana');
     const s = await jay.createSession('Turns'); await ana.join(s.id); checkInEveryone(s.id);
     await jay.updateSession(s.id, { stage: 'fragment_drop' });
@@ -68,8 +68,13 @@ describe('local demo contract', () => {
     let now: Session | null = null; jay.watchActiveSession(x => now = x);
     expect((now as Session | null)?.speaker).toMatchObject({ thoughtId: f1, phase: 'discussing' });
     await expect(ana.chooseTurnThought(s.id, f2)).rejects.toThrow('your turn');   // already discussing
-    await turn({ discussed: [f1] }); await expect(ana.chooseTurnThought(s.id, f1)).rejects.toThrow('already discussed');
-    await turn({ discussed: [f1, f2] }); await ana.chooseTurnThought(s.id, f3);   // none of her picks left: any undiscussed thought
+    await turn({ discussed: [f1] }); await ana.chooseTurnThought(s.id, f1);   // discussed by someone else: still hers to bring
+    await turn({ discussed: [f1], turnDone: [f1] }); await expect(ana.chooseTurnThought(s.id, f1)).rejects.toThrow('this turn');
+    await turn({ discussed: [f1, f2], turnDone: [f1, f2] }); await expect(ana.chooseTurnThought(s.id, f3)).rejects.toThrow('all your picks');
+    const jayTurn = (patch: Partial<SpeakerState>) => jay.updateSession(s.id, { speaker: { ...NO_SPEAKER, currentId: 'jay', phase: 'choosing', ...patch } });
+    await jayTurn({ discussed: [f1] }); await expect(jay.chooseTurnThought(s.id, f1)).rejects.toThrow('already discussed');   // no picks: any undiscussed thought
+    await jay.chooseTurnThought(s.id, f3);
+    await jayTurn({ discussed: [f1, f3], turnDone: [f3] }); await expect(jay.chooseTurnThought(s.id, f2)).rejects.toThrow('all your picks');
   });
   it('reads a speaker saved before turns had thoughts as an empty turn state', async () => {
     localStorage.setItem('lumara.demo.v1', JSON.stringify({ sessions: [{ id: 'old', sprintName: 'Old', stage: 'hall', status: 'active', wardenId: 'jay', currentFragmentId: null, timerEndsAt: null, createdAt: 1, partyLocked: false, speaker: { currentId: 'ana', spoken: [], skipped: [] } }], attendance: [], fragments: [], votes: [], vows: [], players: [] }));

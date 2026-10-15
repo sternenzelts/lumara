@@ -43,11 +43,13 @@ describe('turns', () => {
     const f = reelFrames(party, 'c', seq(0.1, 0.5, 0.9), 6);
     expect(f).toHaveLength(6); expect(f.at(-1)).toBe('c');
   });
-  it('offers the chooser their own undiscussed picks, oldest first; else every undiscussed thought', () => {
+  it('offers the chooser their own picks, oldest first, even ones others discussed; with no picks, every undiscussed thought', () => {
     const fs = [frag('f3', 3), frag('f1', 1), frag('f2', 2)];
     expect(turnChoices(fs, ['f2', 'f3'], []).map(f => f.id)).toEqual(['f2', 'f3']);
-    expect(turnChoices(fs, ['f2', 'f3'], ['f2', 'f3']).map(f => f.id)).toEqual(['f1']);
+    expect(turnChoices(fs, ['f2', 'f3'], ['f2', 'f3']).map(f => f.id)).toEqual(['f2', 'f3']);   // discussed by someone else: still theirs to bring
+    expect(turnChoices(fs, ['f2', 'f3'], ['f2', 'f3'], ['f3']).map(f => f.id)).toEqual(['f2']);   // f3 already discussed this turn
+    expect(turnChoices(fs, ['f2', 'f3'], ['f2', 'f3'], ['f2', 'f3'])).toEqual([]);   // their picks are used up this turn
     expect(turnChoices(fs, [], ['f1']).map(f => f.id)).toEqual(['f2', 'f3']);
-    expect(turnChoices(fs, ['f2', 'f3'], ['f2', 'f3'], ['f3'])).toEqual([]);   // their picks are used up this turn: nothing else to choose
+    expect(turnChoices(fs, [], ['f1', 'f2'], ['f2'])).toEqual([]);   // no picks: one thought per turn
   });
 });
