@@ -31,7 +31,8 @@ export default function Preregister({ background, emblem }: { background: string
         </div>
         <p className="prereg-reward"><strong>{REWARD.toLocaleString()} Starlight</strong> waits for every Warden on 16 October.</p>
         {done
-          ? <p className="prereg-done" role="status">You&apos;re registered, <strong>{done}</strong>. See you on 16 October.</p>
+          ? <><p className="prereg-done" role="status">You&apos;re registered, <strong>{done}</strong>. See you on 16 October.</p>
+            <a className="button button-primary prereg-enter" href="./play/">Enter Lumara <ArrowRight size={18} /></a></>
           : <form className="prereg-form" onSubmit={submit}>
             <label className="sr-only" htmlFor="prereg-name">Your Warden name</label>
             <input id="prereg-name" value={name} onChange={e => setName(e.target.value)} placeholder="Your Warden name" maxLength={16} autoComplete="nickname" />
