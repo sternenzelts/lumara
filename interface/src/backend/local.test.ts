@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createLocalBackend, DEFAULT_SETTINGS } from './local';
 import type { Attendance, CheckIn, Fragment, Player, Session, SpeakerState, Stage, Vote } from './types';
 import { NO_SPEAKER } from '../logic/speaker';
+import { WELCOME_TEN_FROM } from '../logic/welcome';
 
 /** Test shortcut: move a voyage's stage directly in the demo store (skips the Warden and check-in rules). */
 const setStage = (sid: string, stage: Stage) => {
@@ -160,15 +161,15 @@ describe('local demo contract', () => {
     await jay.updateSession(s.id,{status:'ended'});
     await expect(ana.grantCurrency('bob','starlight',200)).rejects.toThrow('party');
   });
-  it('grants five welcome rolls once, keeps the balance, and refuses a sixth after reload', async () => {
+  it('grants ten welcome rolls once, keeps the balance, and refuses an eleventh after reload', async () => {
     const ana = createLocalBackend('ana'); await ana.setMyNickname('Moon'); await ana.markIntroSeen();
-    const record = { at: 1, characterId: 'wren', grade: 'A' as const, source: 'welcome' as const, duplicate: false };
-    for (let i = 0; i < 5; i++) await ana.appendMyPull({ ...record, at: i });
+    const record = { at: WELCOME_TEN_FROM, characterId: 'wren', grade: 'A' as const, source: 'welcome' as const, duplicate: false };
+    for (let i = 0; i < 10; i++) await ana.appendMyPull({ ...record, at: WELCOME_TEN_FROM + i });
     await expect(createLocalBackend('ana').appendMyPull(record)).rejects.toThrow('already claimed');
     const store = JSON.parse(localStorage.getItem('lumara.demo.v1')!);
-    expect(store.players[0].pulls).toHaveLength(5); expect(store.players[0].owned.wren).toBe(5);
+    expect(store.players[0].pulls).toHaveLength(10); expect(store.players[0].owned.wren).toBe(10);
     await ana.appendMyPull({ ...record, source: 'banner' });
-    expect(JSON.parse(localStorage.getItem('lumara.demo.v1')!).players[0].pulls).toHaveLength(6);
+    expect(JSON.parse(localStorage.getItem('lumara.demo.v1')!).players[0].pulls).toHaveLength(11);
   });
   it('does not let an established player claim a first-time gift', async () => {
     const ana = createLocalBackend('ana'); await ana.setMyNickname('Moon'); await ana.markIntroSeen();

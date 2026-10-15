@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BEAT_VOICE, beatsFor, canSkip, gateRoute, openingKind } from './opening';
 import type { Player } from '../backend/types';
+import { WELCOME_TEN_FROM, welcomeRollsRemaining } from './welcome';
 
 const p = (nickname: string | null, introSeen = false): Player => ({ userId: 'ana', displayCharacterId: null, owned: {}, pulls: [], nickname, introSeen });
 
@@ -28,11 +29,17 @@ describe('openingKind', () => {
 
 describe('gateRoute', () => {
   it('gates companion-less named players to the Banner', () => { for (const route of ['sanctuary','retro','map','collection']) expect(gateRoute({route,player:p('Moon',true),playerLoaded:true})).toBe('banner'); expect(gateRoute({route:'banner',player:p('Moon',true),playerLoaded:true})).toBeNull(); });
-  it('resumes an interrupted welcome gift without granting more than five', () => {
-    const roll = { at:1, characterId:'wren', grade:'A' as const, duplicate:false, source:'welcome' as const };
+  it('resumes an interrupted welcome gift without granting more than ten', () => {
+    const roll = { at:WELCOME_TEN_FROM, characterId:'wren', grade:'A' as const, duplicate:false, source:'welcome' as const };
     const player = {...p('Moon',true),owned:{wren:1},pulls:[roll]};
+    expect(welcomeRollsRemaining(player)).toBe(9);
     expect(gateRoute({route:'sanctuary',player,playerLoaded:true})).toBe('banner');
-    expect(gateRoute({route:'sanctuary',player:{...player,pulls:Array.from({length:5},()=>roll)},playerLoaded:true})).toBeNull();
+    expect(gateRoute({route:'sanctuary',player:{...player,pulls:Array.from({length:10},()=>roll)},playerLoaded:true})).toBeNull();
+  });
+  it('gives no top-up to players who took the old five-wish gift', () => {
+    const old = { at:WELCOME_TEN_FROM - 1, characterId:'wren', grade:'A' as const, duplicate:false, source:'welcome' as const };
+    expect(welcomeRollsRemaining({...p('Moon',true),owned:{wren:5},pulls:Array.from({length:5},()=>old)})).toBe(0);
+    expect(welcomeRollsRemaining(p('Moon',true))).toBe(10);
   });
   it('never redirects before the player record has loaded', () => { expect(gateRoute({ route: 'sanctuary', player: null, playerLoaded: false })).toBeNull(); });
   it('sends an unnamed player to the opening from any game screen', () => {
