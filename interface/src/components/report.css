@@ -1,10 +1,10 @@
 /* Homecoming report, Party Portrait, recognition card. A mission report, not a dashboard: gold rules, Marcellus numerals, the plaza behind the party. */
-.party-portrait{margin:0;display:grid;gap:4px;padding:18px 12px 10px;background:linear-gradient(180deg,#0a1a2c00 45%,#0a1a2cb3),var(--plaza) center 50%/cover;border:1px solid #d8bf8266}
+.party-portrait{margin:0;display:grid;gap:4px;padding:56px 16px 14px;background:linear-gradient(180deg,#0a1a2c00 45%,#0a1a2cb3),var(--plaza) center 50%/cover;border:1px solid #d8bf8266}
 .portrait-row{display:flex;justify-content:center;align-items:flex-end;gap:clamp(4px,2%,22px);min-width:0}
-.portrait-member{display:grid;justify-items:center;flex:0 1 128px;min-width:0}
-.portrait-member .character-art,.portrait-member .silhouette{height:clamp(96px,20vw,190px);width:auto;max-width:100%;object-fit:contain;filter:drop-shadow(0 8px 12px #0a1a2c)}
-.party-portrait.crowded .portrait-member{flex-basis:92px}
-.party-portrait.crowded .portrait-member .character-art,.party-portrait.crowded .portrait-member .silhouette{height:clamp(70px,13vw,120px)}
+.portrait-member{display:grid;justify-items:center;flex:0 1 180px;min-width:0}
+.portrait-member .character-art,.portrait-member .silhouette{height:clamp(140px,28vw,320px);width:auto;max-width:100%;object-fit:contain;filter:drop-shadow(0 8px 12px #0a1a2c)}
+.party-portrait.crowded .portrait-member{flex-basis:120px}
+.party-portrait.crowded .portrait-member .character-art,.party-portrait.crowded .portrait-member .silhouette{height:clamp(100px,17vw,190px)}
 .portrait-member span{display:grid;justify-items:center;font-family:'Marcellus',serif;font-size:14px;color:#fff4dc;text-shadow:0 1px 6px #0a1a2c;text-align:center}
 .portrait-member small{font-family:'Manrope',sans-serif;font-size:11px;color:#d8bf82}
 .homecoming-report{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;color:#fff4dc;text-align:left}

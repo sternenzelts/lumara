@@ -41,6 +41,10 @@ describe('HomecomingReport', () => {
     expect(el.querySelector('section[aria-label="Peer feedback"]')?.textContent).toContain('No peer results to show yet');
     expect(el.textContent).toContain('Nobody checked in'); expect(el.textContent).toContain('—');
   });
+  it('gives the portrait backdrop an absolute URL (a relative one in a CSS variable resolves against the built stylesheet in /assets/)', async () => {
+    const el = await render(report());
+    expect(el.querySelector('.party-portrait')?.getAttribute('style')).toMatch(/--plaza: url\("?https?:\/\/[^)]*\/art\/sanctuary\/homecoming_bg\.webp"?\)/);
+  });
   it('lays out 8 companions in two rows', async () => {
     const el = await render(report({ portrait: Array.from({ length: 8 }, (_, i) => ({ userId: 'u' + i, name: 'P' + i, characterId: 'wren', warden: false })) }));
     expect([...el.querySelectorAll('.portrait-row')].map(r => r.children.length)).toEqual([4, 4]);

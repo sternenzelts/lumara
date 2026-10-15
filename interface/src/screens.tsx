@@ -127,7 +127,7 @@ export function RetroScreen() {
   const warden = useWarden();
   const [ownIds, setOwnIds] = useState<string[]>([]); const [ownVotes, setOwnVotes] = useState<string[]>([]); const [editThought, setEditThought] = useState<{ id: string; text: string; category: FragmentCategory } | null>(null);
   const [vowText, setVowText] = useState(''); const [owner, setOwner] = useState(''); const [selectedCharacter, setSelectedCharacter] = useState('');
-  const [now, setNow] = useState(Date.now()); const hallRef = useRef<HTMLDivElement>(null); const reduced = useReducedMotion();
+  const hallRef = useRef<HTMLDivElement>(null); const reduced = useReducedMotion();
   const [windowOpen, setWindowOpen] = useState(!['fragment_drop', 'vote'].includes(session?.stage ?? ''));
   const [journalOpen, setJournalOpen] = useState(false);
   const [myCheck, setMyCheck] = useState<CheckIn | null>(null); const [cardOpen, setCardOpen] = useState(false);
@@ -139,7 +139,6 @@ export function RetroScreen() {
   const [checkins] = useWatch<CheckIn[]>(cb => session && warden ? backend.watchCheckIns(session.id, cb) : (() => {}), [], [backend, session?.id, warden]);
   useEffect(() => { let live = true; if (!session || session.stage !== 'register') return; backend.myCheckIn(session.id).then(c => { if (live) setMyCheck(c); }).catch(() => {}); return () => { live = false; }; }, [backend, session?.id, session?.stage]);
   useEffect(() => { setWindowOpen(!['fragment_drop', 'vote'].includes(session?.stage ?? '')); setJournalOpen(false); setEditThought(null); setCardOpen(false); }, [session?.id, session?.stage]);
-  useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer); }, []);
   useEffect(() => { let live = true; if (!session) { setOwnIds([]); setOwnVotes([]); return; } Promise.all([backend.myFragmentIds(session.id), backend.myVotes(session.id)]).then(([ids, myVotes]) => { if (live) { setOwnIds(ids); setOwnVotes(myVotes); } }).catch(e => tell(String(e), true)); return () => { live = false; }; }, [backend, session?.id, fragments, votes]);
   useEffect(() => { if (!hallRef.current || reduced) return; const ctx = gsap.context(() => gsap.fromTo('.hall-fragment', { filter: 'blur(8px)', y: 18, opacity: .4 }, { filter: 'blur(0px)', y: 0, opacity: 1, duration: .8, ease: 'expo.out' }), hallRef); return () => ctx.revert(); }, [session?.speaker?.thoughtId, reduced]);
   if (!session) return <><div className="page-heading"><div><h1>A new voyage awaits.</h1><p>Retrospective · gather your team for the next chapter.</p></div></div><Empty title="Your party hasn’t gathered yet."><p>{me.isAdmin ? 'Start a retro and share its code with your teammates.' : 'Ask your Warden for a code when the next retro begins.'}</p><Button onClick={me.isAdmin ? openCreate : openJoin}>{me.isAdmin ? 'Start a Retro' : 'Join Retro'}<ArrowRight size={16} /></Button></Empty></>;
@@ -147,7 +146,6 @@ export function RetroScreen() {
   const priorSession = sessions.find(s => s.status === 'ended');
   const previousVows = vows.filter(v => v.sessionId !== session.id && (v.sessionId === priorSession?.id || ['open', 'not_yet', 'carried'].includes(v.status)));
   const index = STAGES.findIndex(s => s.id === session.stage); const stage = STAGES[index] || STAGES[7];
-  const remaining = session.timerEndsAt ? Math.max(0, Math.ceil((session.timerEndsAt - now) / 1000)) : null;
   const advance = () => run(async () => { const stage = nextStage(session.stage, settings, previousVows.length > 0); await backend.updateSession(session.id, { stage, status: stage === 'completed' ? 'ended' : 'active', timerEndsAt: null, currentFragmentId: null }); if (stage === 'completed') navigate('sanctuary'); });
   const ownedCharacters = CHARACTERS.filter(c => player?.owned[c.id]);
   const hasPrev = previousVows.length > 0;
@@ -186,7 +184,6 @@ export function RetroScreen() {
       nextWarning={session.stage === 'vote' && pickWarning ? { title: 'Move on to Discuss?', text: pickWarning, stay: 'Keep voting', go: 'Continue anyway' } : finishWarning ? { title: 'Finish the voyage?', text: finishWarning, stay: 'Keep going', go: 'Finish anyway' } : null}
       partyControls={warden ? <PartyControls members={members} busy={busy} onRemove={removePlayer} /> : undefined} />
     <VoyageWindow title={brief.title} open={windowOpen} onClose={() => setWindowOpen(false)} variant={session.stage === 'vow_review' ? 'vow-review' : session.stage === 'rewards' || session.stage === 'completed' ? 'homecoming' : undefined}>
-      {remaining !== null && <span className="timer" aria-label={`${remaining} seconds remaining`}><Clock3 size={15} />{Math.floor(remaining / 60)}:{String(remaining % 60).padStart(2, '0')}</span>}
       {session.status === 'paused' && !warden ? <Empty title="A moment to catch our breath."><p>Your Warden has paused the voyage. This screen will follow when the party is ready.</p></Empty> : <>
       {session.stage === 'vow_review' && <div className="vow-review-content"><div className="stage-intro"><h3>What became of our promises?</h3><p>No punishment. No shame. Recognize what happened, and decide what to carry forward.</p></div>{previousVows.length ? <VowReviewList vows={previousVows} editable={warden} /> : <Empty title="A fresh page."><p>No previous action items to review. Continue to writing thoughts.</p></Empty>}<div className="review-lamps"><Flame size={20} /><strong>{Math.min(12, vows.filter(v => v.status === 'fulfilled').length)} / 12 lights restored</strong><span>Each fulfilled Vow brings the Sanctuary to life.</span></div></div>}
       {session.stage === 'fragment_drop' && <div className="fragment-workspace"><aside className="own-thoughts"><h3>Your thoughts</h3><p>Walk to a crystal to write a thought.</p><p>Only you see which ones are yours.</p>{fragments.filter(f => ownIds.includes(f.id)).map(f => <div className="own-fragment" key={f.id}><span className={`category-label ${f.category}`}>{CATEGORIES.find(c => c.id === f.category)?.label}</span><p>{f.text}</p><div><button aria-label={`Edit thought: ${f.text}`} disabled={busy} onClick={() => { setEditThought({ id: f.id, text: f.text, category: f.category }); setWindowOpen(false); }}><Pencil size={13} />Edit</button><button aria-label={`Delete thought: ${f.text}`} disabled={busy} onClick={() => run(() => backend.deleteMyFragment(session.id, f.id))}><Trash2 size={13} />Delete</button></div></div>)}{!ownIds.length && <p className="small-copy">Your first thought will appear here.</p>}</aside></div>}
