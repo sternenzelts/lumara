@@ -1,6 +1,6 @@
 import { characterById } from '../data/characters';
 import { PEER_TRAITS } from '../data/feedback';
-import { MAP } from '../data/sanctuaryMap';
+import { HOMECOMING_BACKDROP } from '../data/sanctuaryMap';
 import { PEER_ANON_NOTE, peerEmptyText } from './feedback';
 import { portraitGroups, type VoyageReport } from './report';
 
@@ -43,7 +43,7 @@ export async function renderReportImage(r: VoyageReport, viewerSeesAll: boolean)
   const rows = reportLines(r, viewerSeesAll).flatMap(l => { g.font = FONT[l.kind]; return wrap(g, l.text, W - PAD * 2).map((text, k) => ({ ...l, text, first: k === 0 })); });
   c.width = W; c.height = PAD + BAND + 28 + rows.reduce((h, l) => h + (l.first ? GAP[l.kind] : 30), 0) + PAD; g = c.getContext('2d')!;
   g.fillStyle = '#0a1a2c'; g.fillRect(0, 0, c.width, c.height);
-  const plaza = await loadImage(MAP.image);
+  const plaza = await loadImage(HOMECOMING_BACKDROP);
   if (plaza) { const s = Math.max(W / plaza.width, BAND / plaza.height); g.globalAlpha = .8; g.drawImage(plaza, (W - plaza.width * s) / 2, PAD - (plaza.height * s - BAND) * .58, plaza.width * s, plaza.height * s); g.globalAlpha = 1; }
   g.fillStyle = '#0a1a2c'; g.fillRect(0, 0, W, PAD); g.fillRect(0, PAD + BAND, W, c.height);   // crop the plaza to its band
   const groups = portraitGroups(r.portrait); const rowH = BAND / Math.max(1, groups.length);

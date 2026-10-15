@@ -1,5 +1,5 @@
 /* Homecoming report, Party Portrait, recognition card. A mission report, not a dashboard: gold rules, Marcellus numerals, the plaza behind the party. */
-.party-portrait{margin:0;display:grid;gap:4px;padding:18px 12px 10px;background:linear-gradient(180deg,#0a1a2c33,#0a1a2ccc),var(--plaza) center 58%/cover;border:1px solid #d8bf8266}
+.party-portrait{margin:0;display:grid;gap:4px;padding:18px 12px 10px;background:linear-gradient(180deg,#0a1a2c00 45%,#0a1a2cb3),var(--plaza) center 50%/cover;border:1px solid #d8bf8266}
 .portrait-row{display:flex;justify-content:center;align-items:flex-end;gap:clamp(4px,2%,22px);min-width:0}
 .portrait-member{display:grid;justify-items:center;flex:0 1 128px;min-width:0}
 .portrait-member .character-art,.portrait-member .silhouette{height:clamp(96px,20vw,190px);width:auto;max-width:100%;object-fit:contain;filter:drop-shadow(0 8px 12px #0a1a2c)}

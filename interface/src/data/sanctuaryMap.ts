@@ -23,3 +23,6 @@ export const MAP = {
   /** Walkable floor: the plaza inside its rim. */
   floor: { cx: 757 / SRC.w, cy: 486 / SRC.h, rx: 532 / SRC.w, ry: 338 / SRC.h },
 };
+
+/** Homecoming's dusk plaza behind the Party Portrait (screen and saved voyage record). */
+export const HOMECOMING_BACKDROP = `${import.meta.env.BASE_URL}art/sanctuary/homecoming_bg.webp`;
