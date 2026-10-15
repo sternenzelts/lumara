@@ -39,6 +39,21 @@ describe('DiscussStage', () => {
     expect(el.querySelectorAll('.turn-chooser li').length).toBe(2);
     expect(el.textContent).toContain('None of your picks are left');
   });
+  it('tells the speaker when all their picks are discussed instead of offering every thought', async () => {
+    const { el } = await render({ meId: 'ana', warden: false, speaker: turn({ currentId: 'ana', phase: 'choosing', discussed: ['f1', 'f2'], turnDone: ['f2'] }), ownPicks: ['f1', 'f2'] });
+    expect(el.querySelectorAll('.turn-chooser li').length).toBe(0);
+    expect(el.textContent).toContain('That’s all your picks');
+  });
+  it('offers the speaker their next pick after one is discussed', async () => {
+    const { el } = await render({ meId: 'ana', warden: false, speaker: turn({ currentId: 'ana', phase: 'choosing', discussed: ['f1'], turnDone: ['f1'] }), ownPicks: ['f1', 'f3'] });
+    expect([...el.querySelectorAll('.turn-chooser li button')].map(b => b.textContent)).toEqual(['SparkThought f3']);
+  });
+  it('lets the Warden finish the turn once the speaker has discussed a thought (no Spin again)', async () => {
+    const { el, props } = await render({ speaker: turn({ currentId: 'ana', phase: 'choosing', discussed: ['f1'], turnDone: ['f1'] }) });
+    expect(btn(el, 'Spin again')).toBeUndefined();
+    await act(async () => btn(el, 'Finish turn')!.click());
+    expect(props.onSpeaker).toHaveBeenCalledWith(expect.objectContaining({ currentId: null, spoken: ['ana'] }));
+  });
   it('tells everyone else who is choosing, and lets the Warden spin again', async () => {
     const { el } = await render({ speaker: turn({ currentId: 'ana', phase: 'choosing' }) });
     expect(el.textContent).toContain('Ana is choosing a thought…');
@@ -50,14 +65,14 @@ describe('DiscussStage', () => {
     await act(async () => btn(el, 'Done discussing')!.click());
     expect(props.onSpeaker).toHaveBeenCalledWith(expect.objectContaining({ phase: 'vow', thoughtId: 'f2' }));
   });
-  it('opens the Warden’s Vow box pre-filled; Make Vow or Skip ends the turn', async () => {
+  it('opens the Warden’s Vow box pre-filled; Skip moves the same speaker on to their next thought', async () => {
     const speaker = turn({ currentId: 'ana', phase: 'vow', thoughtId: 'f2' });
     const { el, props } = await render({ speaker });
     expect(el.querySelector('textarea')?.value).toBe('Thought f2');
     await act(async () => btn(el, 'Make Vow')!.click());
     expect(props.onMakeVow).toHaveBeenCalledWith('Thought f2', null);
     await act(async () => btn(el, 'Skip this Vow')!.click());
-    expect(props.onSpeaker).toHaveBeenCalledWith(expect.objectContaining({ currentId: null, spoken: ['ana'], discussed: ['f2'] }));
+    expect(props.onSpeaker).toHaveBeenCalledWith(expect.objectContaining({ currentId: 'ana', phase: 'choosing', thoughtId: null, spoken: [], discussed: ['f2'], turnDone: ['f2'] }));
   });
   it('tells players the Warden is writing a Vow', async () => {
     const { el } = await render({ warden: false, speaker: turn({ currentId: 'ana', phase: 'vow', thoughtId: 'f2' }) });

@@ -33,7 +33,7 @@ import PartyProgress from './components/PartyProgress';
 import { finishWarningText, pendingPeerFeedback } from './logic/feedback';
 import DiscussStage from './components/DiscussStage';
 import SpeakerReel from './components/SpeakerReel';
-import { finishTurn } from './logic/speaker';
+import { nextThought } from './logic/speaker';
 import TutorialWish from './components/TutorialWish';
 
 const STAGES: { id: Stage; label: string; plain: string }[] = [
@@ -193,7 +193,7 @@ export function RetroScreen() {
       {session.stage === 'vote' && <VoteBoard fragments={fragments} votes={votes} ownVotes={ownVotes} busy={busy} onVote={id => run(() => backend.castVote(session.id, id))} onUnvote={id => run(() => backend.removeMyVote(session.id, id))} />}
       {session.stage === 'hall' && <div ref={hallRef}><DiscussStage speaker={session.speaker} meId={me.id} warden={warden} busy={busy} party={members} fragments={fragments} ownPicks={ownVotes} vows={vows.filter(v => v.sessionId === session.id)}
         onSpeaker={changeSpeaker} onChoose={fid => run(() => backend.chooseTurnThought(session.id, fid))}
-        onMakeVow={(text, owner) => run(async () => { await backend.addVow(session.id, text, owner); await backend.updateSession(session.id, { speaker: finishTurn(session.speaker) }); }, 'A new Vow to carry forward.')}
+        onMakeVow={(text, owner) => run(async () => { await backend.addVow(session.id, text, owner); if (session.speaker) await backend.updateSession(session.id, { speaker: nextThought(session.speaker) }); }, 'A new Vow to carry forward.')}
         onTimer={() => run(() => backend.updateSession(session.id, { timerEndsAt: Date.now() + 180000 }))} /></div>}
       {session.stage === 'vow_altar' && <><div className="stage-intro"><h3>Review the Vows.</h3><p>Every turn in Discuss ended at the Vow box. Fix wording or owners, and add anything still missing.</p></div>{warden ? <><form className="vow-form" onSubmit={e => { e.preventDefault(); run(async () => { await backend.addVow(session.id, vowText, owner || null); setVowText(''); }, 'A new Vow to carry forward.'); }}><label>Vow · action item<textarea value={vowText} onChange={e => setVowText(e.target.value)} rows={3} maxLength={1000} required placeholder="What will we do differently next sprint?" /></label><div><label>Owner · optional<select value={owner} onChange={e => setOwner(e.target.value)}><option value="">Shared by the team</option>{attendance.map(a => <option key={a.userId} value={a.userId}>{profiles[a.userId]?.name || a.userId}</option>)}</select></label><Button type="submit" disabled={busy || !vowText.trim()}>Make a Vow<Plus size={16} /></Button></div></form>{vows.filter(v => v.sessionId === session.id).map(v => <VowEditRow key={v.id} vow={v} party={members} busy={busy} onSave={patch => run(() => backend.updateVow(v.id, patch), 'Vow updated.')} />)}
 <ThoughtPicker fragments={fragments.filter(f => !(session.speaker?.discussed ?? []).includes(f.id))} onPick={t => setVowText(t.slice(0, 1000))} /></> : <p>Your Warden is reviewing the Vows. While they do, rate your allies below.</p>}{!warden && vows.filter(v => v.sessionId === session.id).map(v => <VowRow key={v.id} vow={v} />)}{feedback}</>}

@@ -6,7 +6,7 @@ export const VOYAGE_BRIEFING = {
   vow_review: { title: 'Vow review', text: 'At the beacon, look back at last voyage’s vows. Each one kept relights a lamp.' },
   fragment_drop: { title: 'Write', text: 'Walk to a crystal and leave an anonymous thought: Keep, Problem, Try or Wild.' },
   vote: { title: 'Vote', text: 'Pick at least 3 thoughts you want to discuss. Your picks stay private until you’re chosen to speak.' },
-  hall: { title: 'Discuss', text: 'The Warden spins for a speaker. They choose one of their picks, the party discusses it, and it becomes a Vow.' },
+  hall: { title: 'Discuss', text: 'The Warden spins for a speaker. They bring their picks one at a time, the party discusses each, and it becomes a Vow.' },
   vow_altar: { title: 'New vows', text: 'Review the Vows made in Discuss and add any that are missing.' },
   rewards: { title: 'Homecoming', text: 'Back on the plaza: see what you shared, collect your Starlight and claim your free wish.' },
 } satisfies Record<Exclude<Stage, 'register' | 'completed' | 'opening_pull'>, { title: string; text: string }>;

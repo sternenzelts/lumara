@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Fragment } from '../backend/types';
-import { addBack, finishTurn, NO_SPEAKER, reelFrames, skipSpeaker, speakerCounts, speakerMark, speakerPool, spinSpeaker, startVow, turnChoices } from './speaker';
+import { addBack, finishTurn, nextThought, NO_SPEAKER, reelFrames, skipSpeaker, speakerCounts, speakerMark, speakerPool, spinSpeaker, startVow, turnChoices } from './speaker';
 
 const party = ['a', 'b', 'c'];
 const seq = (...xs: number[]) => () => xs.shift() ?? 0;
@@ -10,13 +10,22 @@ describe('turns', () => {
     let s = spinSpeaker(party, null, seq(0))!;
     expect(s).toMatchObject({ currentId: 'a', phase: 'choosing', thoughtId: null });
     s = finishTurn(startVow({ ...s, thoughtId: 'f1', phase: 'discussing' }));
-    expect(s).toEqual({ currentId: null, spoken: ['a'], skipped: [], thoughtId: null, phase: null, discussed: ['f1'] });
+    expect(s).toEqual({ currentId: null, spoken: ['a'], skipped: [], thoughtId: null, phase: null, discussed: ['f1'], turnDone: [] });
     s = finishTurn(spinSpeaker(party, s, seq(0))!); s = finishTurn(spinSpeaker(party, s, seq(0))!);
     expect(s.spoken).toEqual(['a', 'b', 'c']); expect(spinSpeaker(party, s)).toBeNull();
   });
   it('spin again while choosing picks someone else; the first goes back to waiting', () => {
     const again = spinSpeaker(party, spinSpeaker(party, null, seq(0))!, seq(0))!;
     expect(again.currentId).toBe('b'); expect(speakerMark(again, 'a')).toBe('waiting');
+  });
+  it('after a Vow the same speaker chooses their next thought; Finish turn then marks them spoken', () => {
+    let s = spinSpeaker(party, { ...NO_SPEAKER, discussed: ['f0'], turnDone: ['stale'] }, seq(0))!;
+    expect(s.turnDone).toEqual([]);
+    s = nextThought(startVow({ ...s, thoughtId: 'f1', phase: 'discussing' }));
+    expect(s).toMatchObject({ currentId: 'a', phase: 'choosing', thoughtId: null, discussed: ['f0', 'f1'], turnDone: ['f1'], spoken: [] });
+    s = finishTurn(s);
+    expect(s).toMatchObject({ currentId: null, spoken: ['a'], discussed: ['f0', 'f1'], turnDone: [] });
+    expect(skipSpeaker({ ...NO_SPEAKER, currentId: 'b', phase: 'choosing', turnDone: ['f1'] }, 'b').turnDone).toEqual([]);
   });
   it('startVow moves a discussing turn to the Vow box', () => {
     expect(startVow({ ...NO_SPEAKER, currentId: 'a', thoughtId: 'f1', phase: 'discussing' }).phase).toBe('vow');
@@ -39,5 +48,6 @@ describe('turns', () => {
     expect(turnChoices(fs, ['f2', 'f3'], []).map(f => f.id)).toEqual(['f2', 'f3']);
     expect(turnChoices(fs, ['f2', 'f3'], ['f2', 'f3']).map(f => f.id)).toEqual(['f1']);
     expect(turnChoices(fs, [], ['f1']).map(f => f.id)).toEqual(['f2', 'f3']);
+    expect(turnChoices(fs, ['f2', 'f3'], ['f2', 'f3'], ['f3'])).toEqual([]);   // their picks are used up this turn: nothing else to choose
   });
 });

@@ -4,7 +4,7 @@ export interface Me { id: UserId; name: string; isAdmin: boolean }
 export type Stage = 'register' | 'opening_pull' | 'vow_review' | 'fragment_drop' | 'vote' | 'hall' | 'vow_altar' | 'rewards' | 'completed';
 /** Resonance Hall turns (feature 3): spin → the chosen player chooses a thought → discuss → the Warden's Vow box. */
 export type TurnPhase = 'choosing' | 'discussing' | 'vow';
-export interface SpeakerState { currentId: UserId | null; spoken: UserId[]; skipped: UserId[]; /** The thought the current speaker chose. */ thoughtId: string | null; phase: TurnPhase | null; /** Thoughts already discussed this voyage. */ discussed: string[] }
+export interface SpeakerState { currentId: UserId | null; spoken: UserId[]; skipped: UserId[]; /** The thought the current speaker chose. */ thoughtId: string | null; phase: TurnPhase | null; /** Thoughts already discussed this voyage. */ discussed: string[]; /** Thoughts the current speaker has discussed this turn. */ turnDone?: string[] }
 export interface Session {
   id: string; sprintName: string; stage: Stage; status: 'active' | 'paused' | 'ended';
   wardenId: UserId; currentFragmentId: string | null; timerEndsAt: number | null; createdAt: number;
