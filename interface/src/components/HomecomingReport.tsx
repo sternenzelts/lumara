@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { PEER_TRAITS } from '../data/feedback';
+import { PEER_ANON_NOTE, peerEmptyText } from '../logic/feedback';
 import type { VoyageReport } from '../logic/report';
 import PartyPortrait from './PartyPortrait';
 import './report.css';
@@ -22,7 +23,7 @@ export default function HomecomingReport({ report: r, viewerSeesAll, actions }: 
     <section aria-label={viewerSeesAll ? 'Peer feedback' : 'Your peer feedback'} className="report-peer">{r.peer.length
       ? <table><thead><tr><th scope="col">{viewerSeesAll ? 'Ally' : 'You'}</th>{PEER_TRAITS.map(t => <th scope="col" key={t.key} title={t.measures}><span aria-hidden="true">{t.icon}</span> {t.title}</th>)}<th scope="col">Raters</th></tr></thead>
         <tbody>{r.peer.map(p => <tr key={p.userId}><th scope="row">{p.name}</th>{PEER_TRAITS.map(t => <td key={t.key}>{p.pct[t.key]}%</td>)}<td>{p.raters}</td></tr>)}</tbody></table>
-      : <p>{viewerSeesAll ? 'No peer feedback this voyage.' : 'No allies rated you this voyage.'}</p>}</section>
+      : <p>{peerEmptyText(viewerSeesAll)}</p>}{viewerSeesAll && r.peer.length > 0 && <small>{PEER_ANON_NOTE}</small>}</section>
     <section aria-label="All thoughts" className="report-thoughts">{r.thoughts.length ? r.thoughts.map(g => <div key={g.category}><h4><span className={`category-label ${g.category}`}>{g.label}</span> {g.plain}</h4>
       <ol>{g.items.map((t, k) => <li key={k}><p>{t.text}</p><span>{t.votes} {t.votes === 1 ? 'pick' : 'picks'}</span></li>)}</ol></div>) : <p>No thoughts were shared.</p>}</section>
     <section aria-label="Vows to carry" className="report-vows">{r.vows.length ? <ul>{r.vows.map((v, k) => <li key={k}><p>{v.text}</p><span>{v.owner}</span></li>)}</ul> : <p>No Vows were made.</p>}</section>

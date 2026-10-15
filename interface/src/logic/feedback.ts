@@ -7,6 +7,14 @@ export function summarizeCheckIns(rows: CheckIn[], partyIds: UserId[]): CheckInS
   const mine = rows.filter(r => partyIds.includes(r.userId));
   return { sat: pct(mine.map(r => r.sat)), growth: pct(mine.map(r => r.growth)), n: mine.length, of: partyIds.length };
 }
+/** A peer result shows only when at least this many ratings besides the viewer's own make it up — fewer would let the viewer work out who gave what. The server applies the same rule (0010). */
+export const MIN_OTHER_RATERS = 2;
+export const anonymousEnough = (otherRaters: number) => otherRaters >= MIN_OTHER_RATERS;
+/** Report copy for the peer section (screen and saved image say the same). */
+export const peerEmptyText = (viewerSeesAll: boolean) => viewerSeesAll
+  ? 'No peer results to show yet. A result appears once 2 allies besides you have rated someone, so nobody can tell who gave what.'
+  : 'Your peer feedback appears once at least 2 allies rate you, so nobody can tell who gave what.';
+export const PEER_ANON_NOTE = 'Allies rated by fewer than 2 people besides you are hidden, so nobody can tell who gave what.';
 const TRAITS: PeerTrait[] = ['collab', 'owner', 'comm', 'impact', 'growth'];
 /** Per-target averages (% of 5) of the given ratings. */
 export function summarizePeers(ratings: { targetId: UserId; scores: PeerScores }[]): PeerResult[] {

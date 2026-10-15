@@ -2,7 +2,7 @@ import { starlightBalance, stardustBalance } from '../logic';
 import { characterById } from '../data/characters';
 import { cleanNickname } from '../logic/names';
 import { welcomeRollsRemaining } from '../logic/welcome';
-import { summarizeCheckIns, summarizePeers } from '../logic/feedback';
+import { anonymousEnough, summarizeCheckIns, summarizePeers } from '../logic/feedback';
 import type { Attendance, Backend, CheckIn, CueTopic, PeerResult, PeerScores, Fragment, FragmentCategory, Me, Player, Presence, PullRecord, Session, Settings, Unsubscribe, UserId, Vote, Vow } from './types';
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -217,7 +217,9 @@ export function createLocalBackend(playerId = new URLSearchParams(location.searc
       async peerSummary(sid) {
         const s = read(); if (!reportOpen(s, sid)) return [];
         const party = partyOf(s, sid); const live = new Set(party.flatMap(u => Object.values(privateOf(u).peer[sid] ?? {})));
-        const all = summarizePeers(s.peerRatings.filter(r => r.sessionId === sid && party.includes(r.targetId) && live.has(r.id)));
+        const counted = s.peerRatings.filter(r => r.sessionId === sid && party.includes(r.targetId) && live.has(r.id));
+        const own = new Set(Object.values(readPrivate().peer[sid] ?? {}));   // the viewer's own ratings
+        const all = summarizePeers(counted).filter(p => anonymousEnough(counted.filter(r => r.targetId === p.targetId && !own.has(r.id)).length));
         return isWardenOf(s, sid) ? all : all.filter(r => r.targetId === id);
       },
       async myCheckIn(sid) { return read().checkins.find(c => c.sessionId === sid && c.userId === id) ?? null; },

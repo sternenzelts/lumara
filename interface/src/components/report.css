@@ -25,6 +25,7 @@
 .report-peer th,.report-peer td{padding:6px 8px;border-bottom:1px solid #d8bf8222;text-align:center;white-space:nowrap}
 .report-peer th[scope="row"],.report-peer thead th:first-child{text-align:left;font-family:'Marcellus',serif;font-weight:400}
 .report-peer td{color:#e9cf8f;font-variant-numeric:tabular-nums}
+.report-peer small{display:block;margin-top:8px;color:#b9c6d2;font-size:12px;line-height:1.5}
 .report-thoughts h4{margin:8px 0 4px;font-size:14px;font-weight:600;color:#d9e2ea}
 .report-thoughts ol,.report-vows ul{list-style:none;margin:0;padding:0;display:grid;gap:4px}
 .report-thoughts li,.report-vows li{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px dashed #d8bf8222}

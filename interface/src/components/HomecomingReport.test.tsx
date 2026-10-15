@@ -32,9 +32,13 @@ describe('HomecomingReport', () => {
     expect(el.textContent).toContain('Try pairing'); expect(el.textContent).toContain('Ship it');
     expect(el.textContent).not.toContain('Reward totals will be connected');
   });
+  it('tells the Warden why some allies have no peer row; players get no such note', async () => {
+    expect((await render(report(), true)).querySelector('section[aria-label="Peer feedback"]')?.textContent).toContain('fewer than 2 people besides you are hidden');
+    expect((await render(report())).querySelector('section[aria-label="Your peer feedback"]')?.textContent).not.toContain('hidden');
+  });
   it('labels the peer section for the Warden and handles empty states', async () => {
     const el = await render(report({ peer: [], checkIn: { sat: null, growth: null, n: 0, of: 4 }, numbers: { thoughts: 0, votes: 0, vows: 0, promisesKept: 0, myStarlight: null } }), true);
-    expect(el.querySelector('section[aria-label="Peer feedback"]')?.textContent).toContain('No peer feedback this voyage');
+    expect(el.querySelector('section[aria-label="Peer feedback"]')?.textContent).toContain('No peer results to show yet');
     expect(el.textContent).toContain('Nobody checked in'); expect(el.textContent).toContain('—');
   });
   it('lays out 8 companions in two rows', async () => {

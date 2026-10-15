@@ -25,9 +25,9 @@ beforeEach(() => {
   vi.stubGlobal('BroadcastChannel', class { postMessage() {} addEventListener() {} });
 });
 describe('local demo contract', () => {
-  it('peer feedback: no self-rating, editable, own result only, Warden sees all, removal-aware', async () => {
-    const jay = createLocalBackend('jay'), ana = createLocalBackend('ana'), bob = createLocalBackend('bob');
-    const s = await jay.createSession('Peers'); await ana.join(s.id); await bob.join(s.id);
+  it('peer feedback: no self-rating, editable, own result only, Warden sees all, anonymous, removal-aware', async () => {
+    const jay = createLocalBackend('jay'), ana = createLocalBackend('ana'), bob = createLocalBackend('bob'), cy = createLocalBackend('cy');
+    const s = await jay.createSession('Peers'); await ana.join(s.id); await bob.join(s.id); await cy.join(s.id);
     checkInEveryone(s.id); await jay.updateSession(s.id, { stage: 'vow_altar' });
     const ok = { collab: 5, owner: 4, comm: 3, impact: 4, growth: 5 };
     await expect(ana.ratePeer(s.id, 'ana', ok)).rejects.toThrow('yourself');
@@ -39,12 +39,17 @@ describe('local demo contract', () => {
     expect(await ana.peerSummary(s.id)).toEqual([]);   // before Homecoming
     let att: Attendance[] = []; jay.watchAttendance(s.id, a => att = a);
     expect(att.find(a => a.userId === 'ana')?.peerGiven).toBe(1);
+    await cy.ratePeer(s.id, 'bob', ok); await jay.ratePeer(s.id, 'ana', ok);
     await jay.updateSession(s.id, { stage: 'rewards' });
-    expect((await bob.peerSummary(s.id)).map(r => [r.targetId, r.raters, r.pct.collab])).toEqual([['bob', 1, 20]]);
+    // a result shows only with 2+ ratings that aren't the viewer's own, so nobody can work out who gave what
+    expect((await bob.peerSummary(s.id)).map(r => [r.targetId, r.raters, r.pct.collab])).toEqual([['bob', 2, 60]]);
+    expect((await ana.peerSummary(s.id)).map(r => [r.targetId, r.raters])).toEqual([['ana', 2]]);
+    expect((await jay.peerSummary(s.id)).map(r => r.targetId)).toEqual(['bob']);   // ana's other rating is jay's own
+    await cy.ratePeer(s.id, 'ana', ok);
     expect((await jay.peerSummary(s.id)).map(r => r.targetId).sort()).toEqual(['ana', 'bob']);
-    await jay.removePlayer(s.id, 'bob');
-    expect(await jay.peerSummary(s.id)).toEqual([]);
-    jay.watchAttendance(s.id, a => att = a); expect(att.find(a => a.userId === 'ana')?.peerGiven).toBe(0);
+    await jay.removePlayer(s.id, 'cy');
+    expect((await jay.peerSummary(s.id)).map(r => r.targetId)).toEqual([]);
+    jay.watchAttendance(s.id, a => att = a); expect(att.find(a => a.userId === 'ana')?.peerGiven).toBe(1);
     const pub = JSON.parse(localStorage.getItem('lumara.demo.v1')!).peerRatings as object[];   // the shared store never holds the rater
     expect(pub.every(r => Object.keys(r).sort().join() === 'id,scores,sessionId,targetId')).toBe(true);
   });

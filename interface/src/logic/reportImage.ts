@@ -1,6 +1,7 @@
 import { characterById } from '../data/characters';
 import { PEER_TRAITS } from '../data/feedback';
 import { MAP } from '../data/sanctuaryMap';
+import { PEER_ANON_NOTE, peerEmptyText } from './feedback';
 import { portraitGroups, type VoyageReport } from './report';
 
 export type ReportLine = { kind: 'title' | 'heading' | 'text' | 'muted'; text: string };
@@ -16,7 +17,8 @@ export function reportLines(r: VoyageReport, viewerSeesAll: boolean): ReportLine
   L.push({ kind: 'heading', text: 'Team check-in' }, r.checkIn && r.checkIn.sat !== null ? { kind: 'text', text: `♥ Satisfaction ${r.checkIn.sat}% · ◆ Growth ${r.checkIn.growth}% · ${r.checkIn.n} of ${r.checkIn.of} checked in` } : { kind: 'muted', text: 'Nobody checked in this voyage.' });
   L.push({ kind: 'heading', text: viewerSeesAll ? 'Peer feedback' : 'Your peer feedback' });
   if (r.peer.length) for (const p of r.peer) L.push({ kind: 'text', text: `${p.name} · ${PEER_TRAITS.map(t => `${t.title} ${p.pct[t.key]}%`).join(' · ')} · ${p.raters} ${p.raters === 1 ? 'rater' : 'raters'}` });
-  else L.push({ kind: 'muted', text: viewerSeesAll ? 'No peer feedback this voyage.' : 'No allies rated you this voyage.' });
+  else L.push({ kind: 'muted', text: peerEmptyText(viewerSeesAll) });
+  if (viewerSeesAll && r.peer.length) L.push({ kind: 'muted', text: PEER_ANON_NOTE });
   L.push({ kind: 'heading', text: 'All thoughts' });
   for (const g of r.thoughts) { L.push({ kind: 'muted', text: `${g.label} · ${g.plain}` }); for (const t of g.items) L.push({ kind: 'text', text: `${t.text} (${t.votes} ${t.votes === 1 ? 'pick' : 'picks'})` }); }
   if (!r.thoughts.length) L.push({ kind: 'muted', text: 'No thoughts were shared.' });
