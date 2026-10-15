@@ -2,7 +2,7 @@ import { useEffect, type ReactNode } from 'react';
 import { X } from 'lucide-react';
 
 /** Framed game window over the Sanctuary holding the current stage's content (the spec's button fallback). */
-export default function VoyageWindow({ title, open, onClose, children, variant }: { title: string; open: boolean; onClose: () => void; children: ReactNode; variant?: 'vow-review' }) {
+export default function VoyageWindow({ title, open, onClose, children, variant }: { title: string; open: boolean; onClose: () => void; children: ReactNode; variant?: 'vow-review' | 'homecoming' }) {
   useEffect(() => {
     if (!open) return;
     const key = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };

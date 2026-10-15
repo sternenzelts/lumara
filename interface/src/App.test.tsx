@@ -40,19 +40,19 @@ async function submitName(value: string) {
 }
 
 describe('opening gate', () => {
-  it('gives a first-time player five free wishes, then sets their companion', async () => {
+  it('gives a first-time player ten free wishes, then sets their companion', async () => {
     seedPlayer('ana','Moon',true); vi.spyOn(Math,'random').mockReturnValue(.9); await start('ana','#map');
     expect(location.hash).toBe('#banner');
     const available=Array.from(container.querySelectorAll('button')).filter(b=>!b.disabled&&!b.closest('[inert]'));
-    expect(available.map(b=>b.textContent?.trim())).toEqual(['Make 5 free wishes']);
-    await click('Make 5 free wishes');
+    expect(available.map(b=>b.textContent?.trim())).toEqual(['Make 10 free wishes']);
+    await click('Make 10 free wishes');
     expect(document.body.textContent).toContain('DAX');
-    expect(document.querySelector('.pull-sequence-progress')?.textContent).toBe('1 / 5');
+    expect(document.querySelector('.pull-sequence-progress')?.textContent).toBe('1 / 10');
     expect(document.querySelectorAll('.batch-cards>div')).toHaveLength(0);
     await click('Skip A reveals');
-    expect(document.querySelectorAll('.batch-cards>div')).toHaveLength(5); await click('Done');
+    expect(document.querySelectorAll('.batch-cards>div')).toHaveLength(10); await click('Done');
     await act(async()=>{await new Promise(r=>setTimeout(r,0))});
-    expect(location.hash).toBe('#sanctuary');const store=JSON.parse(localStorage.getItem('lumara.demo.v1')!);const p=store.players.find((p: {userId:string})=>p.userId==='ana');expect(p.displayCharacterId).toBe('dax');expect(p.pulls).toHaveLength(5);expect(p.pulls.every((r: {source:string})=>r.source==='welcome')).toBe(true);expect(container.querySelector('.game-wallet')?.textContent).toContain('1,200');
+    expect(location.hash).toBe('#sanctuary');const store=JSON.parse(localStorage.getItem('lumara.demo.v1')!);const p=store.players.find((p: {userId:string})=>p.userId==='ana');expect(p.displayCharacterId).toBe('dax');expect(p.pulls).toHaveLength(10);expect(p.pulls.every((r: {source:string})=>r.source==='welcome')).toBe(true);expect(container.querySelector('.game-wallet')?.textContent).toContain('1,200');
   });
   it('shows twelve lamp pips and routes both wallet plus buttons', async () => {
     seedPlayer('ana','Moon',true,{players:[{userId:'ana',nickname:'Moon',introSeen:true,owned:{wren:1},pulls:[],displayCharacterId:'wren'}],vows:[{id:'v',sessionId:'s',text:'Kept',ownerId:null,status:'fulfilled',createdAt:1}]});await start('ana','#sanctuary');
@@ -156,6 +156,18 @@ describe('opening gate', () => {
     const store = JSON.parse(localStorage.getItem('lumara.demo.v1')!);
     expect(store.attendance.some((a: { userId: string; sessionId: string }) => a.userId === 'late' && a.sessionId === 's1')).toBe(false);
     expect(store.players.find((p: { userId: string }) => p.userId === 'late')).toMatchObject({ nickname: 'Owl', introSeen: true });
+  });
+  it('shows a teammate’s showcase companion in the lobby before they pick one', async () => {
+    const session = { id: 's1', sprintName: 'Sprint 9', stage: 'register', status: 'active', wardenId: 'jay', currentFragmentId: null, timerEndsAt: null, createdAt: 1 };
+    seedPlayer('ana', 'Moon', true, {
+      players: [{ userId: 'ana', nickname: 'Moon', introSeen: true, owned: { wren: 1 }, pulls: [], displayCharacterId: 'wren' }, { userId: 'jay', nickname: 'Jay', introSeen: true, owned: { lucien: 1 }, pulls: [], displayCharacterId: 'lucien' }, { userId: 'bob', nickname: 'Bob', introSeen: true, owned: {}, pulls: [], displayCharacterId: null }],
+      sessions: [session], attendance: [{ sessionId: 's1', userId: 'jay', characterId: null, checkinDone: false, votesCast: 0, joinedAt: 1 }, { sessionId: 's1', userId: 'ana', characterId: null, checkinDone: false, votesCast: 0, joinedAt: 2 }, { sessionId: 's1', userId: 'bob', characterId: null, checkinDone: false, votesCast: 0, joinedAt: 3 }],
+    });
+    await start('ana', '#retro');
+    const party = container.querySelector('.lobby-party')!;
+    expect(party.querySelector('.character-art-lucien')).toBeTruthy();
+    expect(party.querySelector('.character-art-seren')).toBeTruthy();   // owns no one yet: Seren stands in
+    expect(party.querySelector('.silhouette')).toBeNull();
   });
   it('shows a late joiner the voyage lobby mid-voyage, with joining closed', async () => {
     const session = { id: 's1', sprintName: 'Sprint 9', stage: 'fragment_drop', status: 'active', wardenId: 'jay', currentFragmentId: null, timerEndsAt: null, createdAt: 1 };

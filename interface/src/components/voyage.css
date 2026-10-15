@@ -27,6 +27,7 @@
 .voyage-stage-label em{font-style:normal;font-family:'Manrope',sans-serif;font-size:12px;padding:2px 8px;border:1px solid #f0b86b;color:#f7d49a}
 .voyage-action{position:absolute;bottom:22px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:9px;min-height:48px;padding:0 26px;border:1px solid #f3dca0;background:linear-gradient(180deg,#e9cf8f,#c9a45a);color:#1b2a3a;font-family:'Marcellus',serif!important;font-size:17px;clip-path:polygon(12px 0,calc(100% - 12px) 0,100% 50%,calc(100% - 12px) 100%,12px 100%,0 50%)}
 .voyage-warden{position:absolute;right:22px;bottom:22px;display:flex;gap:8px}
+.voyage-hud:has(.voyage-warden) .voyage-action{bottom:84px}   /* the Warden's row is wide enough to reach the centre: lift the stage action above it */
 .voyage-warden button{display:flex;align-items:center;gap:7px;min-height:42px;padding:0 14px;border:1px solid #d8bf8299;background:#10233add;color:#fff4dc;font-size:14px}
 .voyage-warden .voyage-next{border-color:#f3dca0;background:#1d3a5c}
 .voyage-warden button:disabled{opacity:.45;cursor:not-allowed}
@@ -93,6 +94,11 @@
   .voyage-warden .voyage-next{flex:1;justify-content:center}
   .voyage-follow{left:0;right:0;bottom:22px;text-align:center}
 }
+/* Homecoming ends the voyage: the report gets nearly the whole screen (the HUD stays visible above and below) */
+.voyage-window--homecoming{left:22px;width:auto;background:#0f2135fa}
+.game-voyage-screen:has(.voyage-window--homecoming) .voyage-backdrop{left:0}
+.voyage-window--homecoming .homecoming-report{width:100%;max-width:1180px;margin:0 auto}
+@media (max-width:760px),(orientation:portrait){.voyage-window--homecoming{top:110px;left:0;max-height:none}}
 @media (prefers-reduced-motion:reduce){.game-voyage-screen .voyage-backdrop{transition:none}}
 
 /* Skills stay usable and visible while a stage window is open */
